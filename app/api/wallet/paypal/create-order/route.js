@@ -1,6 +1,6 @@
 import { getWalletEnvironment, requireWalletUser, jsonError } from '@/lib/wallet/server';
 import { enforceSameOrigin } from '@/lib/wallet/access-auth';
-import { parseUsdCents, usdFromCents, paypalRequest } from '@/lib/wallet/paypal';
+import { parseUsdCents, usdFromCents, paypalRequest, assertPaypalConfigured, paypalBaseUrl } from '@/lib/wallet/paypal';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
@@ -8,6 +8,11 @@ export async function POST(request) {
   try {
     const env = await getWalletEnvironment();
     const user = await requireWalletUser(request, env);
+    assertPaypalConfigured(env);
+    paypalBaseUrl(env);
+    if (!env.PAYPAL_WEBHOOK_ID) return Response.json({
+      error: 'paypal_webhook_not_configured'
+    }, { status: 503 });
     if (!user) return Response.json({ error: 'not_authenticated' }, { status: 401 });
     const body = await request.json();
     let cents;
