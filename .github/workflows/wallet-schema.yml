@@ -1,0 +1,23 @@
+name: Wallet schema checks
+on:
+  pull_request:
+    paths:
+      - "migrations/0001_wallet.sql"
+      - "tests/test_wallet_schema.py"
+      - ".github/workflows/wallet-schema.yml"
+  push:
+    branches:
+      - "feature/wallet-compartida-muapi"
+    paths:
+      - "migrations/0001_wallet.sql"
+      - "tests/test_wallet_schema.py"
+      - ".github/workflows/wallet-schema.yml"
+jobs:
+  sqlite-invariants:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m unittest discover -s tests -p "test_wallet_schema.py" -v
