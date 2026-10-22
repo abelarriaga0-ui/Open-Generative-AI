@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS verified_deposits (
   user_id TEXT NOT NULL REFERENCES wallet_users(id),
   payment_provider TEXT NOT NULL,
   payment_reference TEXT NOT NULL,
-  amount_cents INTEGER NOT NULL CHECK(amount_cents >= 2000),
+  amount_cents INTEGER NOT NULL CHECK(amount_cents > 0),
   currency TEXT NOT NULL DEFAULT 'USD' CHECK(currency = 'USD'),
   status TEXT NOT NULL DEFAULT 'paid' CHECK(status = 'paid'),
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -114,7 +114,7 @@ BEGIN
     -NEW.price_cents, 'generation:' || NEW.id || ':release');
 END;
 
--- Insert here ONLY after server-to-server payment webhook verification.
+-- First verified top-up must be at least USD 20; later top-ups may be any positive amount.\nCREATE TRIGGER IF NOT EXISTS first_deposit_minimum_before_insert\nBEFORE INSERT ON verified_deposits\nWHEN NEW.amount_cents < 2000 AND NOT EXISTS (\n  SELECT 1 FROM verified_deposits WHERE user_id=NEW.user_id\n)\nBEGIN\n  SELECT RAISE(ABORT, 'first_topup_minimum_20_usd');\nEND;\n\n-- Insert here ONLY after server-to-server payment webhook verification.
 -- A duplicate provider payment event has no second credit because of its UNIQUE key.
 CREATE TRIGGER IF NOT EXISTS wallet_credit_after_verified_deposit
 AFTER INSERT ON verified_deposits
