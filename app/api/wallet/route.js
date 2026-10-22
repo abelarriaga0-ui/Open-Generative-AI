@@ -24,8 +24,10 @@ export async function GET(request) {
       min_topup_cents: previousDeposits.total > 0 ? 1 : 2000,
       first_topup: previousDeposits.total === 0,
       currency: 'USD',
-      checkout_enabled: false,
-      message: 'Las recargas se habilitarán tras configurar el proveedor de pagos y verificar los webhooks.'
+      checkout_enabled: (env.PAYPAL_MODE || 'sandbox') === 'sandbox' &&
+        Boolean(env.PAYPAL_CLIENT_ID && env.PAYPAL_CLIENT_SECRET && env.PAYPAL_WEBHOOK_ID),
+      environment: env.REALIZO_ENV || 'unconfigured',
+      message: 'Entorno de pruebas: las recargas Sandbox no representan dinero real.'
     }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     return jsonError(error);

@@ -3,6 +3,7 @@ import {
   createReservedJob, updateJobStatus, jsonError
 } from '@/lib/wallet/server';
 import { enforceSameOrigin } from '@/lib/wallet/access-auth';
+import { isMuapiGenerationEnabled } from '@/lib/wallet/generation-policy';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +20,9 @@ export async function POST(request) {
     const env = await getWalletEnvironment();
     const user = await requireWalletUser(request, env);
     if (!user) return Response.json({ error: 'not_authenticated' }, { status: 401 });
+    if (!isMuapiGenerationEnabled(env)) {
+      return Response.json({ error: 'generation_disabled_in_test_environment' }, { status: 503 });
+    }
     if (!env.MUAPI_API_KEY) {
       return Response.json({ error: 'muapi_secret_not_configured' }, { status: 503 });
     }

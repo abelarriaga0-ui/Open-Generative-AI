@@ -1,0 +1,13 @@
+# Template only. Copy to an ignored .dev.vars for local testing if needed.
+# Remote values belong to realizo-sandbox > Settings > Variables and Secrets.
+REALIZO_ENV=sandbox
+REALIZO_WALLET_ONLY=true
+PAYPAL_MODE=sandbox
+MUAPI_GENERATION_ENABLED=false
+CF_ACCESS_TEAM_DOMAIN=
+CF_ACCESS_AUD=
+PAYPAL_CLIENT_ID=
+PAYPAL_WEBHOOK_ID=
+# Secrets: enter privately; never commit a populated copy.
+PAYPAL_CLIENT_SECRET=
+MUAPI_API_KEY=

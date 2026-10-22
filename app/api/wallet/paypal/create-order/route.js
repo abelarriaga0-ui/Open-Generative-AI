@@ -8,12 +8,12 @@ export async function POST(request) {
   try {
     const env = await getWalletEnvironment();
     const user = await requireWalletUser(request, env);
+    if (!user) return Response.json({ error: 'not_authenticated' }, { status: 401 });
     assertPaypalConfigured(env);
     paypalBaseUrl(env);
     if (!env.PAYPAL_WEBHOOK_ID) return Response.json({
       error: 'paypal_webhook_not_configured'
     }, { status: 503 });
-    if (!user) return Response.json({ error: 'not_authenticated' }, { status: 401 });
     const body = await request.json();
     let cents;
     try { cents = parseUsdCents(body?.amount_usd); }

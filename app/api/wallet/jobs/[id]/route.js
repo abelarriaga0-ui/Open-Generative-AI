@@ -2,6 +2,7 @@ import {
   getWalletEnvironment, requireWalletUser,
   getGenerationJob, updateJobStatus, jsonError
 } from '@/lib/wallet/server';
+import { isMuapiGenerationEnabled } from '@/lib/wallet/generation-policy';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,8 +15,12 @@ export async function GET(request, { params }) {
     const job = await getGenerationJob(env.WALLETS_DB, user.id, id);
     if (!job) return Response.json({ error: 'job_not_found' }, { status: 404 });
     if (job.status === 'completed' || job.status === 'failed' || !job.provider_request_id) {
-      return Response.json({ job_id: job.id, status: job.status, customer_price_cents: job.price_cents,\n        result: job.status === 'completed' && job.result_json ? JSON.parse(job.result_json) : undefined },
+      return Response.json({ job_id: job.id, status: job.status, customer_price_cents: job.price_cents,
+        result: job.status === 'completed' && job.result_json ? JSON.parse(job.result_json) : undefined },
         { headers: { 'Cache-Control': 'no-store' } });
+    }
+    if (!isMuapiGenerationEnabled(env)) {
+      return Response.json({ error: 'generation_disabled_in_test_environment' }, { status: 503 });
     }
     if (!env.MUAPI_API_KEY) return Response.json({ error: 'muapi_secret_not_configured' }, { status: 503 });
     const providerResponse = await fetch(

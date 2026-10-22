@@ -2,6 +2,10 @@
 
 **Estado: implementación inicial en rama de desarrollo, SOLO SANDBOX (pagos ficticios).** No fusionar ni activar en producción hasta completar las pruebas, el registro público y el control total de generación mediante wallets.
 
+**Preparación vigente:** usar [REALIZO-SANDBOX-SETUP.md](./REALIZO-SANDBOX-SETUP.md)
+y `wrangler.sandbox.jsonc` para el Worker separado `realizo-sandbox`. Las acciones
+remotas y la configuración de credenciales siguen pendientes de acceso.
+
 ## Qué existe en código
 
 - `GET /api/wallet/paypal/config`: entrega únicamente el Client ID público tras verificar sesión del usuario.

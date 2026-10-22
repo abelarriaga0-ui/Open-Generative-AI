@@ -2,17 +2,25 @@ name: Wallet schema checks
 on:
   pull_request:
     paths:
-      - "migrations/0001_wallet.sql"
-      - "migrations/0002_paypal.sql"
-      - "tests/test_wallet_schema.py"
+      - "migrations/**"
+      - "lib/wallet/**"
+      - "app/api/wallet/**"
+      - "proxy.js"
+      - "wrangler*.jsonc"
+      - "tests/*wallet*"
+      - "scripts/check-wallet-syntax.mjs"
       - ".github/workflows/wallet-schema.yml"
   push:
     branches:
       - "feature/wallet-compartida-muapi"
     paths:
-      - "migrations/0001_wallet.sql"
-      - "migrations/0002_paypal.sql"
-      - "tests/test_wallet_schema.py"
+      - "migrations/**"
+      - "lib/wallet/**"
+      - "app/api/wallet/**"
+      - "proxy.js"
+      - "wrangler*.jsonc"
+      - "tests/*wallet*"
+      - "scripts/check-wallet-syntax.mjs"
       - ".github/workflows/wallet-schema.yml"
 jobs:
   sqlite-invariants:
@@ -22,16 +30,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python -m unittest discover -s tests -p "test_wallet_schema.py" -v
-      - name: Comprobar sintaxis JavaScript de billetera y PayPal
-        run: |
-          node --check lib/wallet/paypal.js
-          node --check lib/wallet/server.js
-          node --check lib/wallet/access-auth.js
-          node --check app/api/wallet/route.js
-          node --check app/api/wallet/generate/route.js
-          node --check app/api/wallet/jobs/'[id]'/route.js
-          node --check app/api/wallet/paypal/config/route.js
-          node --check app/api/wallet/paypal/create-order/route.js
-          node --check app/api/wallet/paypal/capture-order/route.js
-          node --check app/api/wallet/paypal/webhook/route.js
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Billeteras, Sandbox y sintaxis ESM (sin secretos ni servicios externos)
+        run: npm run test:wallet
