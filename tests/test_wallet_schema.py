@@ -5,6 +5,7 @@ import unittest
 import uuid
 
 SCHEMA = Path(__file__).resolve().parents[1] / "migrations" / "0001_wallet.sql"
+PAYPAL_SCHEMA = Path(__file__).resolve().parents[1] / "migrations" / "0002_paypal.sql"
 
 
 class WalletSchemaTests(unittest.TestCase):
@@ -12,6 +13,7 @@ class WalletSchemaTests(unittest.TestCase):
         self.db = sqlite3.connect(":memory:")
         self.db.execute("PRAGMA foreign_keys=ON")
         self.db.executescript(SCHEMA.read_text(encoding="utf-8"))
+        self.db.executescript(PAYPAL_SCHEMA.read_text(encoding="utf-8"))
         self.db.executemany(
             "INSERT INTO wallet_users (id, auth_provider, auth_subject) VALUES (?, 'test', ?)",
             [("user-a", "sub-a"), ("user-b", "sub-b")],
@@ -103,6 +105,43 @@ class WalletSchemaTests(unittest.TestCase):
         with self.assertRaises(sqlite3.IntegrityError):
             self.db.execute("UPDATE generation_jobs SET status='failed' WHERE id='job-6'")
         self.assertEqual(self.balance("user-a"), (1650, 0))
+
+    def test_paypal_order_first_minimum_is_enforced(self):
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.db.execute(
+                "INSERT INTO paypal_topup_orders (id,user_id,amount_cents) VALUES ('pp-1','user-a',1999)"
+            )
+        self.db.execute(
+            "INSERT INTO paypal_topup_orders (id,user_id,amount_cents) VALUES ('pp-2','user-a',2000)"
+        )
+        self.deposit("user-a", 2000)
+        self.db.execute(
+            "INSERT INTO paypal_topup_orders (id,user_id,amount_cents) VALUES ('pp-3','user-a',1)"
+        )
+        self.assertEqual(self.balance("user-a"), (2000, 0))
+
+    def test_paypal_verified_capture_is_idempotent_and_isolated(self):
+        self.db.execute(
+            "INSERT INTO paypal_topup_orders (id,user_id,paypal_order_id,amount_cents,status) "
+            "VALUES ('intent-a','user-a','ORDER-123',2000,'created')"
+        )
+        self.db.execute(
+            "INSERT INTO verified_deposits "
+            "(id,user_id,payment_provider,payment_reference,amount_cents,charged_currency,charged_amount_minor) "
+            "VALUES ('paypal:CAP1','user-a','paypal','CAP1',2000,'USD',2000)"
+        )
+        self.db.execute(
+            "INSERT OR IGNORE INTO verified_deposits "
+            "(id,user_id,payment_provider,payment_reference,amount_cents,charged_currency,charged_amount_minor) "
+            "VALUES ('paypal:CAP1','user-a','paypal','CAP1',2000,'USD',2000)"
+        )
+        self.assertEqual(self.balance("user-a"), (2000, 0))
+        self.assertEqual(self.balance("user-b"), (0, 0))
+        rows = self.db.execute(
+            "SELECT COUNT(*) FROM verified_deposits WHERE payment_provider='paypal' "
+            "AND payment_reference='CAP1'"
+        ).fetchone()[0]
+        self.assertEqual(rows, 1)
 
 
 if __name__ == "__main__":
