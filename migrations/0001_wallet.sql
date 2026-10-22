@@ -1,7 +1,7 @@
 -- 0001_wallet.sql
 -- One platform Muapi account, one independent USD wallet per authenticated customer.
 -- Currency is stored in integer USD cents. No floating-point money arithmetic.
-PRAGMA foreign_keys = ON;
+-- Cloudflare D1 automatically enforces foreign keys; no PRAGMA toggle is needed.
 
 CREATE TABLE IF NOT EXISTS wallet_users (
   id TEXT PRIMARY KEY,
