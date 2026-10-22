@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS generation_jobs (
   status TEXT NOT NULL DEFAULT 'reserved'
     CHECK(status IN ('reserved', 'submitted', 'unknown', 'completed', 'failed')),
   price_cents INTEGER NOT NULL CHECK(price_cents > 0),
-  provider_request_id TEXT UNIQUE,
+  provider_request_id TEXT UNIQUE,\n  result_json TEXT,
   error_reason TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
