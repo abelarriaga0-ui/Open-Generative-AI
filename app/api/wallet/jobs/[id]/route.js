@@ -14,7 +14,7 @@ export async function GET(request, { params }) {
     const job = await getGenerationJob(env.WALLETS_DB, user.id, id);
     if (!job) return Response.json({ error: 'job_not_found' }, { status: 404 });
     if (job.status === 'completed' || job.status === 'failed' || !job.provider_request_id) {
-      return Response.json({ job_id: job.id, status: job.status, customer_price_cents: job.price_cents },
+      return Response.json({ job_id: job.id, status: job.status, customer_price_cents: job.price_cents,\n        result: job.status === 'completed' && job.result_json ? JSON.parse(job.result_json) : undefined },
         { headers: { 'Cache-Control': 'no-store' } });
     }
     if (!env.MUAPI_API_KEY) return Response.json({ error: 'muapi_secret_not_configured' }, { status: 503 });
@@ -28,8 +28,16 @@ export async function GET(request, { params }) {
     const result = await providerResponse.json();
     const status = String(result.status || '').toLowerCase();
     if (['completed','succeeded','success'].includes(status)) {
-      await updateJobStatus(env.WALLETS_DB, user.id, job.id, 'completed');
-      return Response.json({ job_id: job.id, status: 'completed', result,
+      const safeResult = {
+        status,
+        outputs: result.outputs,
+        output: result.output,
+        url: result.url,
+        request_id: job.provider_request_id,
+      };
+      await updateJobStatus(env.WALLETS_DB, user.id, job.id, 'completed', null, null,
+        JSON.stringify(safeResult).slice(0, 65000));
+      return Response.json({ job_id: job.id, status: 'completed', result: safeResult,
         customer_price_cents: job.price_cents }, { headers: { 'Cache-Control': 'no-store' } });
     }
     if (['failed','cancelled','canceled'].includes(status)) {
