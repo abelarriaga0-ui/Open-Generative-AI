@@ -1,0 +1,81 @@
+import {
+  getWalletEnvironment, requireWalletUser, getPricedModel,
+  createReservedJob, updateJobStatus, jsonError
+} from '@/lib/wallet/server';
+import { enforceSameOrigin } from '@/lib/wallet/access-auth';
+
+export const dynamic = 'force-dynamic';
+
+function validInput(input) {
+  return input && typeof input === 'object' && !Array.isArray(input) &&
+    !Object.keys(input).some(key => /^(webhook|webhook_url|callback_url|api_key|x-api-key)$/i.test(key));
+}
+
+export async function POST(request) {
+  if (!enforceSameOrigin(request)) {
+    return Response.json({ error: 'invalid_origin' }, { status: 403 });
+  }
+  try {
+    const env = await getWalletEnvironment();
+    const user = await requireWalletUser(request, env);
+    if (!user) return Response.json({ error: 'not_authenticated' }, { status: 401 });
+    if (!env.MUAPI_API_KEY) {
+      return Response.json({ error: 'muapi_secret_not_configured' }, { status: 503 });
+    }
+    if (Number(request.headers.get('content-length') || 0) > 131072) {
+      return Response.json({ error: 'payload_too_large' }, { status: 413 });
+    }
+    const body = await request.json();
+    if (!validInput(body?.input) || JSON.stringify(body.input).length > 131072 ||
+        typeof body?.model_id !== 'string' || body.model_id.length > 100 ||
+        typeof body?.idempotency_key !== 'string' ||
+        !/^[A-Za-z0-9_-]{8,128}$/.test(body.idempotency_key)) {
+      return Response.json({ error: 'invalid_generation_request' }, { status: 400 });
+    }
+    const model = await getPricedModel(env.WALLETS_DB, body.model_id);
+    if (!model) return Response.json({ error: 'model_not_available' }, { status: 404 });
+    if (!/^[A-Za-z0-9_-]+$/.test(model.muapi_endpoint)) {
+      throw new Error('invalid_configured_endpoint');
+    }
+
+    const job = await createReservedJob(env.WALLETS_DB, {
+      userId: user.id,
+      modelId: model.model_id,
+      priceCents: model.customer_price_cents,
+      idempotencyKey: body.idempotency_key,
+    });
+    if (!job.newlyCreated) {
+      return Response.json({ job_id: job.id, status: job.status, idempotent: true });
+    }
+
+    // The caller never receives the platform Muapi key.
+    try {
+      const response = await fetch('https://api.muapi.ai/api/v1/' + model.muapi_endpoint, {
+        method: 'POST',
+        headers: { 'x-api-key': env.MUAPI_API_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body.input),
+      });
+      if (response.status >= 400 && response.status < 500) {
+        await updateJobStatus(env.WALLETS_DB, user.id, job.id, 'failed', null, 'upstream_rejected');
+        return Response.json({ job_id: job.id, status: 'failed', error: 'upstream_rejected' }, { status: 422 });
+      }
+      if (!response.ok) throw new Error('upstream_ambiguous_response');
+      const data = await response.json();
+      const requestId = data.request_id || data.id;
+      if (!requestId || typeof requestId !== 'string') throw new Error('upstream_missing_request_id');
+      await updateJobStatus(env.WALLETS_DB, user.id, job.id, 'submitted', requestId);
+      return Response.json({
+        job_id: job.id, status: 'submitted',
+        customer_price_cents: model.customer_price_cents
+      }, { status: 202 });
+    } catch (error) {
+      // Never release funds on ambiguous provider/network errors:
+      // the provider may have accepted the expensive request.
+      await updateJobStatus(env.WALLETS_DB, user.id, job.id, 'unknown', null, 'manual_reconciliation_required');
+      return Response.json({ job_id: job.id, status: 'unknown',
+        message: 'Solicitud pendiente de conciliación; reserva retenida para evitar doble cargo.' }, { status: 202 });
+    }
+  } catch (error) {
+    return jsonError(error);
+  }
+}
