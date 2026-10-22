@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - "migrations/0001_wallet.sql"
+      - "migrations/0002_paypal.sql"
+      - "migrations/0002_paypal.sql"
       - "tests/test_wallet_schema.py"
       - ".github/workflows/wallet-schema.yml"
   push:
