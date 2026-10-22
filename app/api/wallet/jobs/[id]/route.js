@@ -36,7 +36,9 @@ export async function GET(request, { params }) {
         request_id: job.provider_request_id,
       };
       await updateJobStatus(env.WALLETS_DB, user.id, job.id, 'completed', null, null,
-        JSON.stringify(safeResult).slice(0, 65000));
+        JSON.stringify(safeResult).length <= 65000
+          ? JSON.stringify(safeResult)
+          : JSON.stringify({ status, request_id: job.provider_request_id, url: result.url || null }));
       return Response.json({ job_id: job.id, status: 'completed', result: safeResult,
         customer_price_cents: job.price_cents }, { headers: { 'Cache-Control': 'no-store' } });
     }
