@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getLocaleFromPathname } from './lib/locales';
+import { contentSecurityPolicy, walletPilotAction } from './lib/wallet/request-policy.js';
 
-function addSecurityHeaders(response) {
+function addSecurityHeaders(response, pathname) {
     // Prevent MIME type sniffing (CWE-693)
     response.headers.set('X-Content-Type-Options', 'nosniff');
     // Prevent clickjacking (CWE-1021)
@@ -16,13 +17,23 @@ function addSecurityHeaders(response) {
     // and other muapi subdomains that the renderer fetches directly.
     response.headers.set(
         'Content-Security-Policy',
-        "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://muapi.ai https://*.muapi.ai; font-src 'self' data:;"
+        contentSecurityPolicy(pathname)
     );
     return response;
 }
 
 export function proxy(request) {
     const url = request.nextUrl;
+    // The Sandbox pilot exposes the wallet only. Legacy BYOK studios and proxies
+    // must be migrated before they can use a shared platform credential.
+    const pilotAction = walletPilotAction(url.pathname, process.env.REALIZO_WALLET_ONLY === 'true');
+    if (pilotAction === 'deny') {
+        return addSecurityHeaders(NextResponse.json({ error: 'route_unavailable_in_wallet_pilot' },
+            { status: 404 }), url.pathname);
+    }
+    if (pilotAction === 'redirect') {
+        return addSecurityHeaders(NextResponse.redirect(new URL('/wallet', request.url)), url.pathname);
+    }
 
     // Catch requests to /api/workflow, /api/app, and /api/v1
     const isMuApi = url.pathname.startsWith('/api/workflow') ||
@@ -38,7 +49,7 @@ export function proxy(request) {
         if (url.pathname.startsWith('/api/v1') && !isHandledByRoute) {
             const targetUrl = new URL(url.pathname + url.search, 'https://api.muapi.ai');
             const rewriteResponse = NextResponse.rewrite(targetUrl);
-            return addSecurityHeaders(rewriteResponse);
+            return addSecurityHeaders(rewriteResponse, url.pathname);
         }
     }
 
@@ -47,7 +58,7 @@ export function proxy(request) {
     // trick the main muapi client uses — see docs/localization.md).
     const response = NextResponse.next();
     response.headers.set('x-locale', getLocaleFromPathname(url.pathname));
-    return addSecurityHeaders(response);
+    return addSecurityHeaders(response, url.pathname);
 }
 
 // Match all paths for security headers. Exclude Next.js internal paths.
