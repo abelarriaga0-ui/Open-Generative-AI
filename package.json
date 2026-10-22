@@ -13,9 +13,9 @@
   ],
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "build:studio": "npm run build -w studio",
     "build:workflow": "npm run build -w workflow-builder",
     "build:agent": "npm run build -w ai-agent",
@@ -35,7 +35,7 @@
     "package:linux:deb:arm64": "node scripts/package-linux-deb.js --arch arm64",
     "package:linux:deb:x64": "node scripts/package-linux-deb.js --arch x64",
     "electron:build:all": "vite build && electron-builder --mac --win --linux",
-    "cloudflare:build": "git submodule update --init --recursive && npm install --no-save @opennextjs/cloudflare@1.20.12 wrangler@4 && npm run build:packages && npx opennextjs-cloudflare build",
+    "cloudflare:build": "git submodule update --init --recursive && npm install --no-save --package-lock=false next@16.4.2 @opennextjs/cloudflare@1.20.12 wrangler@4 && npm run build:packages && npx opennextjs-cloudflare build",
     "cloudflare:deploy": "npx opennextjs-cloudflare deploy",
     "cloudflare:preview": "npx opennextjs-cloudflare upload"
   },
@@ -120,7 +120,7 @@
   "dependencies": {
     "ai-agent": "file:./packages/Open-Poe-AI/packages/agents",
     "axios": "^1.7.0",
-    "next": "^15.0.0",
+    "next": "16.4.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hot-toast": "^2.4.1",
