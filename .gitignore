@@ -36,3 +36,8 @@ out/
 .env
 .env.*
 !.env.example
+
+# Cloudflare generated files
+.open-next/
+.wrangler/
+cloudflare-env.d.ts
