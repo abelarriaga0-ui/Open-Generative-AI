@@ -23,3 +23,15 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m unittest discover -s tests -p "test_wallet_schema.py" -v
+      - name: Comprobar sintaxis JavaScript de billetera y PayPal
+        run: |
+          node --check lib/wallet/paypal.js
+          node --check lib/wallet/server.js
+          node --check lib/wallet/access-auth.js
+          node --check app/api/wallet/route.js
+          node --check app/api/wallet/generate/route.js
+          node --check app/api/wallet/jobs/'[id]'/route.js
+          node --check app/api/wallet/paypal/config/route.js
+          node --check app/api/wallet/paypal/create-order/route.js
+          node --check app/api/wallet/paypal/capture-order/route.js
+          node --check app/api/wallet/paypal/webhook/route.js
