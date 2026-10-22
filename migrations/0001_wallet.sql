@@ -24,6 +24,8 @@ CREATE TABLE IF NOT EXISTS model_prices (
   model_id TEXT PRIMARY KEY,
   muapi_endpoint TEXT NOT NULL,
   customer_price_cents INTEGER NOT NULL CHECK(customer_price_cents > 0),
+  allowed_input_keys_json TEXT NOT NULL DEFAULT '["prompt"]' CHECK(json_valid(allowed_input_keys_json)),
+  fixed_options_json TEXT NOT NULL DEFAULT '{}' CHECK(json_valid(fixed_options_json)),
   enabled INTEGER NOT NULL DEFAULT 0 CHECK(enabled IN (0, 1)),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
