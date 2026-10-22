@@ -34,7 +34,10 @@
     "package:linux:deb": "node scripts/package-linux-deb.js",
     "package:linux:deb:arm64": "node scripts/package-linux-deb.js --arch arm64",
     "package:linux:deb:x64": "node scripts/package-linux-deb.js --arch x64",
-    "electron:build:all": "vite build && electron-builder --mac --win --linux"
+    "electron:build:all": "vite build && electron-builder --mac --win --linux",
+    "cloudflare:build": "git submodule update --init --recursive && npm install --no-save @opennextjs/cloudflare@1.20.12 wrangler@4 && npm run build:packages && npx opennextjs-cloudflare build",
+    "cloudflare:deploy": "npx opennextjs-cloudflare deploy",
+    "cloudflare:preview": "npx opennextjs-cloudflare upload"
   },
   "build": {
     "appId": "ai.generative.open",
