@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import PaypalTopup from '@/components/wallet/PaypalTopup';
 
 const money = (cents) => new Intl.NumberFormat('es-EC', {
   style: 'currency', currency: 'USD'
@@ -53,12 +54,13 @@ export default function WalletPage() {
           </section>
           <section className="rounded-2xl bg-white/5 border border-white/10 p-6 space-y-3">
             <h2 className="text-xl font-semibold">Recargar saldo</h2>
-            <p>Recarga mínima: <strong>{money(data.min_topup_cents)}</strong>.
-              Después podrás agregar cualquier importe igual o superior al mínimo.</p>
-            <button disabled className="bg-cyan-500/30 text-white/60 px-5 py-3 rounded-lg cursor-not-allowed">
-              Recargas disponibles próximamente
-            </button>
-            <p className="text-xs text-white/50">Las recargas internacionales estarán disponibles tras integrar un procesador de pagos autorizado para tu país.</p>
+            <PaypalTopup minCents={data.min_topup_cents}
+              firstTopup={data.first_topup}
+              onPaid={() => window.location.reload()} />
+            <p className="text-xs text-white/50">
+              PayPal procesa el cobro. El saldo se acredita después de confirmar la captura.
+              Los créditos son de consumo interno y no son transferibles entre cuentas.
+            </p>
           </section>
           <section className="rounded-2xl bg-white/5 border border-white/10 p-6">
             <h2 className="text-xl font-semibold mb-4">Movimientos recientes</h2>
