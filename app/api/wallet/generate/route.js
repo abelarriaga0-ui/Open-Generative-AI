@@ -37,6 +37,18 @@ export async function POST(request) {
     if (!/^[A-Za-z0-9_-]+$/.test(model.muapi_endpoint)) {
       throw new Error('invalid_configured_endpoint');
     }
+    // The buyer cannot override expensive duration, size, quality or resolution fields.
+    // Operators must define separate priced model variants for those options.
+    const allowed = JSON.parse(model.allowed_input_keys_json);
+    const fixed = JSON.parse(model.fixed_options_json);
+    if (!Array.isArray(allowed) || !allowed.every(key => typeof key === 'string') ||
+        !fixed || typeof fixed !== 'object' || Array.isArray(fixed)) {
+      throw new Error('invalid_catalog_configuration');
+    }
+    if (Object.keys(body.input).some(key => !allowed.includes(key) || key in fixed)) {
+      return Response.json({ error: 'model_input_not_allowed' }, { status: 400 });
+    }
+    const pricedInput = { ...body.input, ...fixed };
 
     const job = await createReservedJob(env.WALLETS_DB, {
       userId: user.id,
@@ -53,7 +65,7 @@ export async function POST(request) {
       const response = await fetch('https://api.muapi.ai/api/v1/' + model.muapi_endpoint, {
         method: 'POST',
         headers: { 'x-api-key': env.MUAPI_API_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify(body.input),
+        body: JSON.stringify(pricedInput),
       });
       if (response.status >= 400 && response.status < 500) {
         await updateJobStatus(env.WALLETS_DB, user.id, job.id, 'failed', null, 'upstream_rejected');
