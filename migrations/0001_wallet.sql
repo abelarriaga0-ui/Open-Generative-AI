@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS wallet_users (
   auth_provider TEXT NOT NULL,
   auth_subject TEXT NOT NULL,
   email TEXT,
+  country_code TEXT CHECK(country_code IS NULL OR (length(country_code) = 2 AND country_code = upper(country_code))),
+  preferred_locale TEXT NOT NULL DEFAULT 'es',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(auth_provider, auth_subject)
 );
@@ -51,6 +53,11 @@ CREATE TABLE IF NOT EXISTS verified_deposits (
   user_id TEXT NOT NULL REFERENCES wallet_users(id),
   payment_provider TEXT NOT NULL,
   payment_reference TEXT NOT NULL,
+  -- Original checkout amount, currency and country are informational/auditable.
+  -- The credit is ALWAYS the USD value of service credits that was sold.
+  charged_currency TEXT CHECK(charged_currency IS NULL OR length(charged_currency) = 3),
+  charged_amount_minor INTEGER CHECK(charged_amount_minor IS NULL OR charged_amount_minor > 0),
+  checkout_country TEXT CHECK(checkout_country IS NULL OR length(checkout_country) = 2),
   amount_cents INTEGER NOT NULL CHECK(amount_cents > 0),
   currency TEXT NOT NULL DEFAULT 'USD' CHECK(currency = 'USD'),
   status TEXT NOT NULL DEFAULT 'paid' CHECK(status = 'paid'),
