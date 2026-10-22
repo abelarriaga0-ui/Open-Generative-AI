@@ -27,7 +27,7 @@ export default function WalletPage() {
     <main className="min-h-screen bg-[#080d16] text-white p-6 md:p-12">
       <div className="max-w-4xl mx-auto space-y-8">
         <header className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Mi billetera</h1>
+          <h1 className="text-3xl font-bold">Mi billetera <span className="text-base font-normal text-cyan-300">USD</span></h1>
           <Link className="text-cyan-300 hover:underline" href="/studio">Volver al estudio</Link>
         </header>
         {error && <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-5">
@@ -43,7 +43,7 @@ export default function WalletPage() {
             <div className="rounded-2xl bg-white/5 border border-white/10 p-6">
               <p className="text-white/60 text-sm">Saldo disponible</p>
               <p className="mt-2 text-4xl font-bold text-cyan-300">{money(data.wallet.available_cents)}</p>
-              <p className="mt-2 text-white/50 text-xs">Solo de tu cuenta · USD</p>
+              <p className="mt-2 text-white/50 text-xs">Saldo de consumo exclusivo de tu cuenta · USD</p>
             </div>
             <div className="rounded-2xl bg-white/5 border border-white/10 p-6">
               <p className="text-white/60 text-sm">Saldo reservado para generaciones</p>
@@ -58,7 +58,7 @@ export default function WalletPage() {
             <button disabled className="bg-cyan-500/30 text-white/60 px-5 py-3 rounded-lg cursor-not-allowed">
               Recargas disponibles próximamente
             </button>
-            <p className="text-xs text-white/50">Los pagos estarán disponibles cuando se integre y valide el proveedor de cobros.</p>
+            <p className="text-xs text-white/50">Las recargas internacionales estarán disponibles tras integrar un procesador de pagos autorizado para tu país.</p>
           </section>
           <section className="rounded-2xl bg-white/5 border border-white/10 p-6">
             <h2 className="text-xl font-semibold mb-4">Movimientos recientes</h2>
