@@ -46,14 +46,22 @@ No guardar secretos en el repositorio o en capturas. El Client ID es público, p
 
 ### D1
 
-Crear una base D1 y agregar el binding `WALLETS_DB` a wrangler.jsonc con el `database_id` real. Aplicar ambas migraciones en orden:
+Para el piloto, **no usar la D1 original** `realizo-wallets` ni la configuración `wrangler.jsonc`.
+Crear una D1 distinta llamada `realizo-wallets-sandbox` y colocar su UUID real en
+`wrangler.sandbox.jsonc`. Los comandos siguientes se bloquearán si la base aún
+no existe o comparte UUID con el Worker original:
 
 ```bash
-npx wrangler d1 execute realizo-wallets --remote --file=migrations/0001_wallet.sql
-npx wrangler d1 execute realizo-wallets --remote --file=migrations/0002_paypal.sql
+npx wrangler d1 create realizo-wallets-sandbox
+# Reemplazar el UUID placeholder en wrangler.sandbox.jsonc
+npm run wallet:preflight:sandbox
+npm run wallet:migrations:sandbox
+npm run wallet:migrate:sandbox
+npm run wallet:check:sandbox
 ```
 
-El nombre `realizo-wallets` aquí es un ejemplo; reemplazar por la base creada.
+Las migraciones se aplican en orden mediante Wrangler. Revisar
+[REALIZO-SANDBOX-SETUP.md](./REALIZO-SANDBOX-SETUP.md) antes de comandos remotos.
 
 ### Seguridad con Cloudflare Access
 
