@@ -6,6 +6,7 @@ import { enforceSameOrigin, verifyAccessUser } from '../lib/wallet/access-auth.j
 import { isMuapiGenerationEnabled } from '../lib/wallet/generation-policy.js';
 import { contentSecurityPolicy, walletPilotAction } from '../lib/wallet/request-policy.js';
 import { checkSandboxIsolation } from '../scripts/check-sandbox-isolation.mjs';
+import { planSandboxD1 } from '../scripts/provision-sandbox-d1.mjs';
 
 test('PayPal defaults to Sandbox and refuses Live before sending credentials', async () => {
   assert.equal(paypalBaseUrl({}), 'https://api-m.sandbox.paypal.com');
@@ -136,4 +137,24 @@ test('remote operation guard rejects placeholder, shared D1 and unsafe flags', (
   live.d1_databases[0].database_id = '123e4567-e89b-12d3-a456-426614174000';
   live.vars.PAYPAL_MODE = 'live';
   assert.throws(() => checkSandboxIsolation(live, original), /insegura/);
+});
+
+test('D1 provisioning never adopts unknown existing databases or touches original', () => {
+  const original = JSON.parse(readFileSync('wrangler.jsonc', 'utf8'));
+  const sandbox = JSON.parse(readFileSync('wrangler.sandbox.jsonc', 'utf8'));
+  const clone = () => JSON.parse(JSON.stringify(sandbox));
+  const uid = '123e4567-e89b-12d3-a456-426614174000';
+  assert.equal(planSandboxD1({ sandbox, original, existing: null }).action, 'create');
+  assert.throws(() => planSandboxD1({
+    sandbox, original, existing: { name: 'realizo-wallets-sandbox', uuid: uid },
+  }), /revisión manual/i);
+  const safe = clone();
+  safe.d1_databases[0].database_id = uid;
+  assert.equal(planSandboxD1({
+    sandbox: safe, original, existing: { name: 'realizo-wallets-sandbox', uuid: uid },
+  }).action, 'reuse');
+  assert.throws(() => planSandboxD1({ sandbox: safe, original, existing: null }), /no existe/i);
+  const shared = clone();
+  shared.d1_databases[0].database_id = original.d1_databases[0].database_id;
+  assert.throws(() => planSandboxD1({ sandbox: shared, original, existing: null }), /coincide con la original/i);
 });
