@@ -24,23 +24,24 @@
 
 ## Configuración piloto de Cloudflare
 
-1. Crear la base Cloudflare D1, p. ej. `realizo-wallets`, en el mismo Cloudflare Account/Worker.
-2. Obtener el `database_id` **real** que genera Cloudflare. En `wrangler.jsonc`, dentro de la raíz, agregar:
-   ```json
-   "d1_databases": [
-     {
-       "binding": "WALLETS_DB",
-       "database_name": "realizo-wallets",
-       "database_id": "REEMPLAZAR_CON_ID_REAL"
-     }
-   ]
-   ```
-   No usar este texto de ejemplo como ID real.
-3. Aplicar la migración contra la base remota, desde una terminal con Wrangler autenticado:
+1. Para la prueba piloto, **no tocar el Worker ni la D1 originales**. Crear
+   `realizo-wallets-sandbox`, una D1 nueva e independiente:
    ```bash
-   npx wrangler d1 execute realizo-wallets --remote --file=migrations/0001_wallet.sql
+   npx wrangler d1 create realizo-wallets-sandbox
    ```
-   Usar primero una base de pruebas; `--remote` apunta a datos reales.
+2. Copiar el UUID real generado al campo `database_id` del binding `WALLETS_DB`
+   en `wrangler.sandbox.jsonc`, reemplazando el UUID de ceros.
+3. Validar que la base de pruebas no comparte identificador con la original y aplicar
+   las **dos migraciones**:
+   ```bash
+   npm run wallet:preflight:sandbox
+   npm run wallet:migrations:sandbox
+   npm run wallet:migrate:sandbox
+   npm run wallet:check:sandbox
+   ```
+   El preflight bloquea cualquier operación remota mientras el UUID sea falso,
+   compartido o las opciones de Sandbox sean inseguras. Ver instrucciones detalladas
+   en [REALIZO-SANDBOX-SETUP.md](./REALIZO-SANDBOX-SETUP.md).
 4. En Cloudflare Workers > Settings > Variables and Secrets, agregar **Secret** `MUAPI_API_KEY` (el valor real se establece allí, nunca en GitHub).
 5. Para la **prueba piloto**, crear una app de Cloudflare Access que proteja las rutas de la aplicación y que sólo permita usuarios de prueba. Configurar las variables del Worker:
    - `CF_ACCESS_TEAM_DOMAIN`: el subdominio del equipo Access (sin `https://`; p. ej. `mi-equipo`).
