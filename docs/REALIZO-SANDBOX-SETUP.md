@@ -28,9 +28,15 @@ Preparación basada en `feature/wallet-compartida-muapi`, commit
   registró su UUID en esta rama, aplicó `0001_wallet.sql` y `0002_paypal.sql`
   y ejecutó una consulta de verificación de solo lectura.
 - El token de Cloudflare se guarda únicamente como secreto de GitHub Actions.
-  **Pendientes:** aplicación y webhook PayPal Sandbox, secretos de PayPal,
-  autenticación Cloudflare Access, compilación, despliegue del Worker Sandbox y
-  pruebas completas de recarga entre dos usuarios. No hay pagos ni Worker real activados.
+- **Credenciales de PayPal Sandbox verificadas el 28/10/2026**, mediante OAuth
+  con `https://api-m.sandbox.paypal.com/v1/oauth2/token` desde el flujo
+  [Realizo - verify PayPal Sandbox credentials](https://github.com/abelarriaga0-ui/Open-Generative-AI/actions/runs/40776352700).
+  `PAYPAL_CLIENT_ID` y `PAYPAL_CLIENT_SECRET` se leen exclusivamente de
+  GitHub Actions Secrets. No se generó ningún cobro, pedido ni webhook.
+- **Pendientes:** crear y confirmar un webhook PayPal Sandbox, instalar
+  credenciales en el Worker aislado, autenticación Cloudflare Access,
+  compilación y despliegue del Worker Sandbox y pruebas de recarga entre
+  dos usuarios. No hay pagos reales ni Worker de esta rama activados.
 
 ## Base D1 remota y seguridad
 
