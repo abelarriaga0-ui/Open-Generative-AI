@@ -3,8 +3,13 @@
 **Estado: implementación inicial en rama de desarrollo, SOLO SANDBOX (pagos ficticios).** No fusionar ni activar en producción hasta completar las pruebas, el registro público y el control total de generación mediante wallets.
 
 **Preparación vigente:** usar [REALIZO-SANDBOX-SETUP.md](./REALIZO-SANDBOX-SETUP.md)
-y `wrangler.sandbox.jsonc` para el Worker separado `realizo-sandbox`. Las acciones
-remotas y la configuración de credenciales siguen pendientes de acceso.
+y `wrangler.sandbox.jsonc` para el Worker separado `realizo-sandbox`.
+**Completado 28/10/2026:** D1 remota aislada y migrada, Worker Sandbox publicado
+en `https://realizo-sandbox.abelarriaga0.workers.dev`, PayPal Sandbox
+autenticado por OAuth, credenciales instaladas en secretos de Worker y webhook
+`PAYMENT.CAPTURE.COMPLETED` registrado. Ejecución exitosa:
+https://github.com/abelarriaga0-ui/Open-Generative-AI/actions/runs/40777030938.
+**Pendiente:** Cloudflare Access y pruebas de pagos ficticios con dos usuarios.
 
 ## Qué existe en código
 
@@ -17,6 +22,14 @@ remotas y la configuración de credenciales siguen pendientes de acceso.
 - Los depósitos se escriben una sola vez gracias a `UNIQUE(payment_provider, payment_reference)` y un trigger incrementa el saldo en centavos USD.
 
 ## Configuración inicial en PayPal
+
+**Los pasos 1–6 ya se completaron para la REST App Realizo de PayPal Sandbox.**
+No crear otra aplicación ni otro webhook de captura para este Worker.
+La URL verificada de webhook es
+`https://realizo-sandbox.abelarriaga0.workers.dev/api/wallet/paypal/webhook`.
+Los comandos siguientes se conservan como documentación, no como tareas pendientes.
+
+
 
 1. Entrar en [PayPal Developer Dashboard](https://developer.paypal.com/dashboard/applications/sandbox).
 2. Crear una **REST App** en **Sandbox**, asociada a una cuenta **Business sandbox** que reciba pagos. Generar/identificar cuentas comprador Sandbox para pruebas.
@@ -34,11 +47,11 @@ En el Worker asociado al proyecto, Settings > Variables and Secrets (runtime):
 | Nombre | Tipo | Valor |
 |---|---|---|
 | `PAYPAL_MODE` | Variable | `sandbox` |
-| `PAYPAL_CLIENT_ID` | Variable (no secreto) | El Client ID del Sandbox |
+| `PAYPAL_CLIENT_ID` | Secret instalado | El Client ID del Sandbox |
 | `PAYPAL_CLIENT_SECRET` | **Secret** | Client Secret del Sandbox |
-| `PAYPAL_WEBHOOK_ID` | Variable | Identificador del webhook configurado |
+| `PAYPAL_WEBHOOK_ID` | Secret instalado | Identificador del webhook configurado |
 | `WALLETS_DB` | **Binding D1** | El identificador real de la base |
-| `MUAPI_API_KEY` | **Secret** | Una clave de Muapi para todos los usuarios |
+| `MUAPI_API_KEY` | Deshabilitado en Sandbox | No instalar una clave con fondos reales en pruebas de billetera |
 | `CF_ACCESS_TEAM_DOMAIN` | Variable | Equipo Access usado para usuarios piloto |
 | `CF_ACCESS_AUD` | Variable | Audience tag exacta de Cloudflare Access |
 
@@ -47,9 +60,10 @@ No guardar secretos en el repositorio o en capturas. El Client ID es público, p
 ### D1
 
 Para el piloto, **no usar la D1 original** `realizo-wallets` ni la configuración `wrangler.jsonc`.
-Crear una D1 distinta llamada `realizo-wallets-sandbox` y colocar su UUID real en
-`wrangler.sandbox.jsonc`. Los comandos siguientes se bloquearán si la base aún
-no existe o comparte UUID con el Worker original:
+La D1 `realizo-wallets-sandbox` **ya se creó** y su UUID real está en
+`wrangler.sandbox.jsonc`. No volver a crearla ni sustituirlo. Los comandos
+siguientes son de referencia para una instalación nueva, no se deben ejecutar
+sin revisar el estado actual:
 
 ```bash
 npx wrangler d1 create realizo-wallets-sandbox
