@@ -5,6 +5,7 @@ import { paypalBaseUrl, paypalRequest, parseUsdCents, usdFromCents, confirmedCap
 import { enforceSameOrigin, verifyAccessUser } from '../lib/wallet/access-auth.js';
 import { isMuapiGenerationEnabled } from '../lib/wallet/generation-policy.js';
 import { contentSecurityPolicy, walletPilotAction } from '../lib/wallet/request-policy.js';
+import { checkSandboxIsolation } from '../scripts/check-sandbox-isolation.mjs';
 
 test('PayPal defaults to Sandbox and refuses Live before sending credentials', async () => {
   assert.equal(paypalBaseUrl({}), 'https://api-m.sandbox.paypal.com');
@@ -111,8 +112,28 @@ test('Sandbox configuration names a separate worker and explicitly uses test set
   assert.equal(sandbox.vars.REALIZO_WALLET_ONLY, 'true');
   assert.equal(sandbox.vars.MUAPI_GENERATION_ENABLED, 'false');
   assert.equal(sandbox.d1_databases[0].binding, 'WALLETS_DB');
-  assert.equal(sandbox.d1_databases[0].database_name, 'realizo-wallets');
+  assert.equal(sandbox.d1_databases[0].database_name, 'realizo-wallets-sandbox');
   assert.equal(sandbox.d1_databases[0].migrations_dir, 'migrations');
   assert.equal(sandbox.vars.MUAPI_API_KEY, undefined);
   assert.equal(sandbox.vars.PAYPAL_CLIENT_SECRET, undefined);
+});
+
+
+test('remote operation guard rejects placeholder, shared D1 and unsafe flags', () => {
+  const original = JSON.parse(readFileSync('wrangler.jsonc', 'utf8'));
+  const sandbox = JSON.parse(readFileSync('wrangler.sandbox.jsonc', 'utf8'));
+  const clone = () => JSON.parse(JSON.stringify(sandbox));
+  const withDedicatedDb = clone();
+  withDedicatedDb.d1_databases[0].database_id = '123e4567-e89b-12d3-a456-426614174000';
+  assert.equal(checkSandboxIsolation(withDedicatedDb, original), true);
+  const missing = clone();
+  missing.d1_databases[0].database_id = '00000000-0000-0000-0000-000000000000';
+  assert.throws(() => checkSandboxIsolation(missing, original), /UUID pendiente|reemplaza el UUID/);
+  const shared = clone();
+  shared.d1_databases[0].database_id = original.d1_databases[0].database_id;
+  assert.throws(() => checkSandboxIsolation(shared, original), /comparte base de datos/);
+  const live = clone();
+  live.d1_databases[0].database_id = '123e4567-e89b-12d3-a456-426614174000';
+  live.vars.PAYPAL_MODE = 'live';
+  assert.throws(() => checkSandboxIsolation(live, original), /insegura/);
 });
