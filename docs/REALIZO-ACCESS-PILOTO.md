@@ -7,30 +7,46 @@ fiable. El código del piloto valida la firma del JWT de Cloudflare Access antes
 de crear un usuario o acceder a su billetera. Sin `CF_ACCESS_TEAM_DOMAIN` y
 `CF_ACCESS_AUD`, el servicio falla cerrado con 503.
 
-## Configurar en Cloudflare Zero Trust
+## Configuración actual y excepción de PayPal
 
-1. Ir a **Zero Trust → Access → Applications → Create application → Self-hosted**.
-2. Dar nombre `Realizo Wallet Sandbox`. Proteger únicamente el hostname real
-   `realizo-sandbox.<subdominio-de-la-cuenta>.workers.dev`. Confirmar el subdominio
-   de la ejecución de GitHub; no inventarlo.
-3. Añadir una política **Allow** limitada a **dos cuentas de prueba**. Usar
-   un método de inicio de sesión habilitado en Zero Trust (por ejemplo,
-   código de un solo uso al correo). No activar **Everyone** como Allow.
-4. Crear una aplicación de Access separada, de ruta **más específica**:
-   `realizo-sandbox.<subdominio>.workers.dev/api/wallet/paypal/webhook`.
-   Su política será **Bypass → Everyone**, únicamente para recibir los POST
-   de PayPal sin inicio de sesión. El backend sigue exigiendo firma válida,
-   `PAYPAL_WEBHOOK_ID` correcto y verificación PayPal API.
-   Confirmar en Cloudflare que la ruta específica tiene precedencia.
-5. Ir a **Zero Trust → Settings** y copiar el **Team domain**; luego abrir
-   la aplicación de billetera y copiar el **Application Audience (AUD) Tag**.
-6. Configurar en el Worker `realizo-sandbox`, **Settings → Variables and Secrets**:
-   - `CF_ACCESS_TEAM_DOMAIN`: nombre de equipo o hostname
-     `<team>.cloudflareaccess.com` (sin protocolo)
-   - `CF_ACCESS_AUD`: etiqueta AUD **de la aplicación de billetera** (no de
-     la excepción de webhook)
-7. Probar dos cuentas diferentes y comprobar rechazo sin sesión antes de
-   permitir recargas. Un usuario no puede leer ni capturar órdenes de otro.
+**Completado el 28 de octubre de 2026:**
+
+- La aplicación Access `Realizo Wallet Sandbox` protege el **Worker** `realizo-sandbox`,
+  tanto su URL de producción como sus URLs preview.
+- Solo está asociada la política `Realizo - Usuarios de prueba` (Allow);
+  no se usa la política compartida de otros proyectos.
+- El Team Domain es `muddy-glitter-0708.cloudflareaccess.com`.
+- El AUD de esa aplicación se guarda en GitHub Actions Secrets como
+  `CF_ACCESS_AUD`, sin publicarlo.
+- El flujo
+  [Realizo Sandbox - connect Cloudflare Access identity](https://github.com/abelarriaga0-ui/Open-Generative-AI/actions/runs/40790405661)
+  instaló los secretos `CF_ACCESS_AUD` y `CF_ACCESS_TEAM_DOMAIN` en
+  `realizo-sandbox` y verificó que los secretos de PayPal Sandbox permanecen.
+
+**Pendiente crítico: excepción de ruta para el webhook PayPal.**
+
+1. En **Zero Trust → Access → Applications → Realizo Wallet Sandbox → Edit**
+   abrir **Destinations** y localizar el destino de tipo Worker
+   `realizo-sandbox`.
+2. Configurar un **path override** con comportamiento `public` para la
+   **ruta exacta** `/api/wallet/paypal/webhook`.
+3. No utilizar `*` ni crear un bypass para todo el Worker, la página
+   `/wallet` o el prefijo `/api/wallet/`. Los demás endpoints deben seguir
+   exigiendo autenticación.
+4. Guardar y probar: una solicitud POST al webhook **sin firma de PayPal**
+   debe llegar al backend y ser rechazada con HTTP 401; **sin sesión**,
+   `GET /api/wallet` debe permanecer bloqueada por Access.
+5. La excepción de Access no es una autorización de pago: el código del
+   webhook verifica la firma y consulta PayPal Sandbox antes de acreditar
+   una orden.
+
+Cloudflare documenta explícitamente `destinations[].overrides`, con
+`behavior: "public"` y `path_pattern` exacto para destinos tipo Worker.
+También puede utilizarse una app de Access más específica para esa ruta,
+pero no modificar la política Allow del Worker completo.
+
+**No probar recargas hasta que el webhook y el inicio de sesión estén
+verificados.**
 
 ## Pruebas finales
 
@@ -40,7 +56,7 @@ de crear un usuario o acceder a su billetera. Sin `CF_ACCESS_TEAM_DOMAIN` y
 - Segunda recarga de USD 0.01 permitida por la lógica de Realizo (PayPal
   puede aplicar restricciones adicionales).
 - Captura repetida y webhook duplicado no suman dos veces.
-- Webhook sin firma se rechaza incluso si pasa el Bypass de Access.
+- Webhook sin firma se rechaza incluso cuando la ruta está exceptuada de Access.
 - Ninguna generación usa créditos Muapi reales en este entorno.
 
 **Importante:** esta autenticación es provisional para el piloto. El registro
@@ -49,5 +65,5 @@ desarrollar antes del lanzamiento internacional.
 
 Referencias Cloudflare:
 - https://developers.cloudflare.com/workers/configuration/cloudflare-access/
-- https://developers.cloudflare.com/cloudflare-one/access-controls/policies/app-paths/
+- https://developers.cloudflare.com/api/resources/zero_trust/subresources/access/subresources/applications/methods/create/
 - https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/
