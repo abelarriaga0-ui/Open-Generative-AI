@@ -66,8 +66,7 @@ async function cloudflare(path, { method = 'GET', body } = {}) {
 export async function provisionSandbox() {
   const sandbox = JSON.parse(readFileSync('wrangler.sandbox.jsonc', 'utf8'));
   const original = JSON.parse(readFileSync('wrangler.jsonc', 'utf8'));
-  // Validate local safety before making any API request.
-  planSandboxD1({ sandbox, original, existing: null });
+  // The remote lookup is read-only; both create/reuse paths are checked below.
   const found = await cloudflare('/d1/database?name=' + SANDBOX_NAME + '&per_page=10');
   if (!Array.isArray(found)) throw new Error('Respuesta D1 inesperada.');
   const matches = found.filter(db => db.name === SANDBOX_NAME);
