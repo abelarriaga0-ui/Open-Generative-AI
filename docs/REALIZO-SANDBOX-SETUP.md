@@ -6,7 +6,7 @@ Preparación basada en `feature/wallet-compartida-muapi`, commit
 ## Estado de esta preparación
 
 - Configuración dedicada: `wrangler.sandbox.jsonc`, Worker `realizo-sandbox`.
-- D1 configurada: `realizo-wallets`, binding `WALLETS_DB`, UUID recuperado de la rama original.
+- D1 para Sandbox: se exige una **base separada** llamada `realizo-wallets-sandbox`, binding `WALLETS_DB`. El UUID está intencionalmente en ceros hasta crearla; las operaciones remotas quedan BLOQUEADAS mientras tanto. La base original `realizo-wallets` no se modifica.
 - Migraciones existentes: `0001_wallet.sql` y `0002_paypal.sql`.
 - Ambas migraciones se ejecutaron correctamente en **D1 local emulado con Wrangler
   4.151.3**. Verificación: 7 tablas de aplicación, 7 triggers y ningún error en
@@ -28,12 +28,23 @@ Preparación basada en `feature/wallet-compartida-muapi`, commit
 
 ## Antes de tocar D1 remoto
 
-Comprobar en la cuenta Cloudflare que el UUID configurado corresponde a
-`realizo-wallets` y que esa base no está siendo utilizada por un servicio de
-producción. El fichero original `wrangler.jsonc` también referencia esa base;
-un Worker separado no aísla los datos si dos Workers comparten la misma D1.
-Si contiene datos de producción, detener la migración y separar la base de prueba.
-No modificar la rama de despliegue ni la configuración del Worker original.
+**Nunca usar `realizo-wallets` para el piloto.** Un Worker separado no aísla
+datos cuando dos Workers comparten una misma D1. El archivo de Sandbox ya NO
+reutiliza el UUID de la base original.
+
+1. Acceder a Cloudflare con una cuenta autorizada y ejecutar `npx wrangler whoami`.
+2. Crear una **nueva** D1 remota con `npx wrangler d1 create realizo-wallets-sandbox`.
+3. Copiar exclusivamente el UUID de esa base nueva al campo
+   `d1_databases[0].database_id` de `wrangler.sandbox.jsonc`.
+   No introducir UUIDs ficticios ni usar el ID de `realizo-wallets`.
+4. Ejecutar `npm run wallet:preflight:sandbox`: bloquea UUID vacío,
+   ID compartido, base incorrecta, cambios de Worker y flags que permitan
+   pagos o generaciones reales.
+5. Verificar desde el panel que `realizo-wallets-sandbox` es una D1 nueva y
+   que no tiene datos reales antes de aplicar migraciones.
+
+Hasta completar estos pasos, NO ejecutar comandos remotos ni desplegar Sandbox.
+No modificar `main`, ni el Worker original ni la D1 original.
 
 ## Compilación y migraciones
 
@@ -45,6 +56,8 @@ original para esta tarea.
 npm run test:wallet
 npm run cloudflare:build:sandbox
 npm run wallet:migrate:local
+# Crear D1 Sandbox y configurar su UUID real antes de lo siguiente:
+npm run wallet:preflight:sandbox
 npm run wallet:migrations:sandbox
 npm run wallet:migrate:sandbox
 npm run wallet:check:sandbox
@@ -56,7 +69,7 @@ ejecutó `setup/INICIALIZAR-D1-CONSOLA.sql`, las dos migraciones actuales usan
 La consulta de verificación debe mostrar **7 tablas de aplicación** y ningún fallo
 de integridad referencial. No borra datos ni devuelve información de clientes.
 
-`cloudflare:upload:sandbox` sube una versión del Worker de pruebas, sin promover
+`cloudflare:upload:sandbox` comprueba primero el aislamiento D1 y sube una versión del Worker de pruebas, sin promover
 el Worker original. La primera creación/configuración del Worker y la URL real
 deben verificarse en Cloudflare; todavía no existe una URL confirmada para este
 entorno en esta sesión. La compilación completa también está pendiente.
