@@ -33,10 +33,18 @@ Preparación basada en `feature/wallet-compartida-muapi`, commit
   [Realizo - verify PayPal Sandbox credentials](https://github.com/abelarriaga0-ui/Open-Generative-AI/actions/runs/40776352700).
   `PAYPAL_CLIENT_ID` y `PAYPAL_CLIENT_SECRET` se leen exclusivamente de
   GitHub Actions Secrets. No se generó ningún cobro, pedido ni webhook.
-- **Pendientes:** crear y confirmar un webhook PayPal Sandbox, instalar
-  credenciales en el Worker aislado, autenticación Cloudflare Access,
-  compilación y despliegue del Worker Sandbox y pruebas de recarga entre
-  dos usuarios. No hay pagos reales ni Worker de esta rama activados.
+- **Despliegue del Worker y PayPal Sandbox completado el 28/10/2026**:
+  [Realizo Sandbox - deploy wallet and PayPal webhook](https://github.com/abelarriaga0-ui/Open-Generative-AI/actions/runs/40777030938)
+  terminó en SUCCESS. Se compiló y publicó exclusivamente `realizo-sandbox`
+  en `https://realizo-sandbox.abelarriaga0.workers.dev`, se instaló
+  `PAYPAL_CLIENT_ID` y `PAYPAL_CLIENT_SECRET` como secretos en Cloudflare,
+  se creó el webhook `PAYMENT.CAPTURE.COMPLETED` en la REST App Sandbox
+  existente y se almacenó `PAYPAL_WEBHOOK_ID` en el Worker. Pasaron pruebas
+  de bloqueo de BYOK y billetera sin autenticación.
+- **Pendientes:** configurar Cloudflare Access (equipo y AUD de la aplicación,
+  política para dos usuarios y excepción solo del webhook), probar recargas con
+  dos compradores Sandbox y diseñar la autenticación pública para producción.
+  No se realizaron compras reales ni se habilitaron generaciones Muapi.
 
 ## Base D1 remota y seguridad
 
@@ -76,10 +84,12 @@ ejecutó `setup/INICIALIZAR-D1-CONSOLA.sql`, las dos migraciones actuales usan
 La consulta de verificación debe mostrar **7 tablas de aplicación** y ningún fallo
 de integridad referencial. No borra datos ni devuelve información de clientes.
 
-`cloudflare:upload:sandbox` comprueba primero el aislamiento D1 y sube una versión del Worker de pruebas, sin promover
-el Worker original. La primera creación/configuración del Worker y la URL real
-deben verificarse en Cloudflare; todavía no existe una URL confirmada para este
-entorno en esta sesión. La compilación completa también está pendiente.
+El Worker de pruebas ya está desplegado en
+`https://realizo-sandbox.abelarriaga0.workers.dev/wallet` desde el flujo
+`.github/workflows/realizo-sandbox-paypal-deploy.yml`. Se comprobó que
+`/api/v1/models` responde 404, `/api/wallet` no devuelve datos sin
+autenticación y el endpoint de webhook está presente. La configuración y el
+deploy no modificaron el Worker original `open-generative-ai` ni `main`.
 
 ## Variables de runtime y secretos
 
@@ -99,10 +109,10 @@ Secrets**, como valores de runtime, no solo de compilación:
 |---|---|---|
 | `CF_ACCESS_TEAM_DOMAIN` | Variable | Equipo Access del piloto |
 | `CF_ACCESS_AUD` | Variable | Audience de la aplicación Access del piloto |
-| `PAYPAL_CLIENT_ID` | Variable | REST App Sandbox de PayPal |
-| `PAYPAL_WEBHOOK_ID` | Variable | Webhook de esa misma REST App Sandbox |
-| `PAYPAL_CLIENT_SECRET` | Secret | REST App Sandbox de PayPal |
-| `MUAPI_API_KEY` | Secret | Única cuenta de Muapi de la plataforma |
+| `PAYPAL_CLIENT_ID` | Secret instalado | REST App Sandbox de PayPal |
+| `PAYPAL_WEBHOOK_ID` | Secret instalado | Webhook de esa misma REST App Sandbox |
+| `PAYPAL_CLIENT_SECRET` | Secret instalado | REST App Sandbox de PayPal |
+| `MUAPI_API_KEY` | No instalar en Sandbox | Muapi deshabilitado, no gastar créditos reales |
 
 Los secretos no se pueden leer de vuelta desde Cloudflare. No copiarlos a GitHub,
 variables `NEXT_PUBLIC_*`, código cliente, capturas, logs o mensajes de chat.
@@ -112,18 +122,21 @@ de pruebas; el binding D1 se declara explícitamente en el fichero.
 
 ## PayPal Sandbox y autenticación
 
-1. Usar una REST App **Sandbox** asociada a una cuenta Business Sandbox.
-2. Una vez verificada la URL del Worker de pruebas, registrar en esa app el webhook
-   con la ruta `/api/wallet/paypal/webhook` y evento `PAYMENT.CAPTURE.COMPLETED`.
-3. Guardar el Client ID, el Client Secret y el Webhook ID de esa misma aplicación.
-4. Proteger `/wallet` y las APIs de usuario con Cloudflare Access. La identidad se
+1. **Completado:** se usa la REST App **Realizo** en PayPal Sandbox.
+2. **Completado:** se creó y registró el webhook de
+   `PAYMENT.CAPTURE.COMPLETED` en la URL real de `realizo-sandbox`.
+3. **Completado:** Client ID, Client Secret y Webhook ID están en secretos
+   del Worker de pruebas. No volver a publicarlos ni enviarlos por chat.
+4. **Pendiente:** proteger `/wallet` y las APIs de usuario con Cloudflare Access. La identidad se
    valida criptográficamente; nunca se acepta un `user_id` enviado por el navegador.
-5. El webhook debe poder recibir llamadas de PayPal sin login interactivo. Aplicar
+5. **Pendiente:** el webhook debe poder recibir llamadas de PayPal sin login interactivo. Aplicar
    la excepción únicamente a esa ruta y comprobar que sigue exigiendo firma PayPal.
    Las políticas Access se verifican/configuran por separado, nunca se desprotege
    todo el Worker para hacer funcionar un webhook.
 
-## Validación remota pendiente
+## Validación remota de pagos pendiente (requiere Access)
+
+Guía de Access: [REALIZO-ACCESS-PILOTO.md](./REALIZO-ACCESS-PILOTO.md).
 
 Con dos identidades Access y cuentas compradoras Sandbox:
 
