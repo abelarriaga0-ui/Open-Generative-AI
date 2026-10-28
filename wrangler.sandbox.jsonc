@@ -25,7 +25,7 @@
     {
       "binding": "WALLETS_DB",
       "database_name": "realizo-wallets-sandbox",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "2561f6c8-bfb2-4ea4-8527-7fec29188edf",
       "migrations_dir": "migrations"
     }
   ]
