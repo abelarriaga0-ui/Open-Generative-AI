@@ -144,7 +144,9 @@ test('D1 provisioning never adopts unknown existing databases or touches origina
   const sandbox = JSON.parse(readFileSync('wrangler.sandbox.jsonc', 'utf8'));
   const clone = () => JSON.parse(JSON.stringify(sandbox));
   const uid = '123e4567-e89b-12d3-a456-426614174000';
-  assert.equal(planSandboxD1({ sandbox, original, existing: null }).action, 'create');
+  const fresh = clone();
+  fresh.d1_databases[0].database_id = '00000000-0000-0000-0000-000000000000';
+  assert.equal(planSandboxD1({ sandbox: fresh, original, existing: null }).action, 'create');
   assert.throws(() => planSandboxD1({
     sandbox, original, existing: { name: 'realizo-wallets-sandbox', uuid: uid },
   }), /revisión manual/i);
