@@ -6,7 +6,7 @@ Preparación basada en `feature/wallet-compartida-muapi`, commit
 ## Estado de esta preparación
 
 - Configuración dedicada: `wrangler.sandbox.jsonc`, Worker `realizo-sandbox`.
-- D1 para Sandbox: se exige una **base separada** llamada `realizo-wallets-sandbox`, binding `WALLETS_DB`. El UUID está intencionalmente en ceros hasta crearla; las operaciones remotas quedan BLOQUEADAS mientras tanto. La base original `realizo-wallets` no se modifica.
+- **D1 remota Sandbox creada y verificada**: `realizo-wallets-sandbox`, binding `WALLETS_DB`. Su UUID real quedó guardado en `wrangler.sandbox.jsonc`; es distinto del de la base original `realizo-wallets`, que no fue modificada.
 - Migraciones existentes: `0001_wallet.sql` y `0002_paypal.sql`.
 - Ambas migraciones se ejecutaron correctamente en **D1 local emulado con Wrangler
   4.151.3**. Verificación: 7 tablas de aplicación, 7 triggers y ningún error en
@@ -22,29 +22,30 @@ Preparación basada en `feature/wallet-compartida-muapi`, commit
 - `REALIZO_WALLET_ONLY=true` limita el piloto a `/wallet` y `/api/wallet/*`;
   las pantallas y proxies BYOK originales quedan fuera del piloto. Migrar los
   estudios completos al gateway sigue siendo un trabajo previo al lanzamiento.
-- El acceso remoto a Cloudflare no se completó en esta sesión. **No se han
-  ejecutado las migraciones en D1 remoto, ni guardado secretos, ni creado una
-  aplicación/webhook PayPal, ni desplegado un Worker.**
+- **Integración Cloudflare completada hasta D1**: GitHub Actions
+  [Realizo Sandbox - isolated D1 setup](https://github.com/abelarriaga0-ui/Open-Generative-AI/actions/runs/40775059285)
+  terminó en SUCCESS el 28 de octubre de 2026. Creó la base remota,
+  registró su UUID en esta rama, aplicó `0001_wallet.sql` y `0002_paypal.sql`
+  y ejecutó una consulta de verificación de solo lectura.
+- El token de Cloudflare se guarda únicamente como secreto de GitHub Actions.
+  **Pendientes:** aplicación y webhook PayPal Sandbox, secretos de PayPal,
+  autenticación Cloudflare Access, compilación, despliegue del Worker Sandbox y
+  pruebas completas de recarga entre dos usuarios. No hay pagos ni Worker real activados.
 
-## Antes de tocar D1 remoto
+## Base D1 remota y seguridad
 
-**Nunca usar `realizo-wallets` para el piloto.** Un Worker separado no aísla
-datos cuando dos Workers comparten una misma D1. El archivo de Sandbox ya NO
-reutiliza el UUID de la base original.
+La D1 de pruebas ya está creada y migrada. **No volver a crearla** ni
+reemplazar su identificador. La configuración `wrangler.jsonc` y la base
+original `realizo-wallets` permanecen independientes.
 
-1. Acceder a Cloudflare con una cuenta autorizada y ejecutar `npx wrangler whoami`.
-2. Crear una **nueva** D1 remota con `npx wrangler d1 create realizo-wallets-sandbox`.
-3. Copiar exclusivamente el UUID de esa base nueva al campo
-   `d1_databases[0].database_id` de `wrangler.sandbox.jsonc`.
-   No introducir UUIDs ficticios ni usar el ID de `realizo-wallets`.
-4. Ejecutar `npm run wallet:preflight:sandbox`: bloquea UUID vacío,
-   ID compartido, base incorrecta, cambios de Worker y flags que permitan
-   pagos o generaciones reales.
-5. Verificar desde el panel que `realizo-wallets-sandbox` es una D1 nueva y
-   que no tiene datos reales antes de aplicar migraciones.
+El flujo `.github/workflows/realizo-sandbox-d1.yml` puede volver a ejecutarse
+de forma segura solo cuando el UUID configurado coincide con una D1 real
+llamada `realizo-wallets-sandbox` dentro de la cuenta autorizada. Bloquea
+UUIDs no confirmados, identificadores originales y cambios que permitirían
+pagos Live o generaciones con saldo Sandbox.
 
-Hasta completar estos pasos, NO ejecutar comandos remotos ni desplegar Sandbox.
-No modificar `main`, ni el Worker original ni la D1 original.
+**Nunca usar `realizo-wallets` ni el Worker original para el piloto.**
+No modificar `main` ni activar producción.
 
 ## Compilación y migraciones
 
@@ -56,7 +57,7 @@ original para esta tarea.
 npm run test:wallet
 npm run cloudflare:build:sandbox
 npm run wallet:migrate:local
-# Crear D1 Sandbox y configurar su UUID real antes de lo siguiente:
+# La base Sandbox y su UUID ya están confirmados:
 npm run wallet:preflight:sandbox
 npm run wallet:migrations:sandbox
 npm run wallet:migrate:sandbox
