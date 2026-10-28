@@ -6,6 +6,7 @@ on:
       - feature/wallet-compartida-muapi
     paths:
       - .github/workflows/realizo-sandbox-build.yml
+      - tests/wallet-sandbox.test.mjs
   workflow_dispatch:
 
 permissions:
