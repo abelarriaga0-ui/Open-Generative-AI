@@ -1,0 +1,49 @@
+name: Realizo Sandbox - build validation only
+
+on:
+  push:
+    branches:
+      - feature/wallet-compartida-muapi
+    paths:
+      - .github/workflows/realizo-sandbox-build.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: realizo-sandbox-build-validation
+  cancel-in-progress: false
+
+jobs:
+  build-only:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/feature/wallet-compartida-muapi'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      CI: 'true'
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - name: Checkout feature branch and submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Wallet SQL, PayPal and authentication tests
+        run: npm run test:wallet
+      - name: Ensure isolated sandbox D1 and no live payment or Muapi
+        run: npm run wallet:preflight:sandbox
+      - name: Compile Next.js into Cloudflare OpenNext worker - NO DEPLOY
+        run: npm run cloudflare:build:sandbox
+      - name: Ensure generated Cloudflare bundle exists and is nonempty
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s .open-next/worker.js
+          test -d .open-next/assets
+          echo 'Construcción Sandbox OK. El Worker NO se publicó.'
