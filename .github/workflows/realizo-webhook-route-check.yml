@@ -1,0 +1,56 @@
+name: Realizo Sandbox - verify public webhook and protected wallet
+on:
+  push:
+    branches:
+      - feature/wallet-compartida-muapi
+    paths:
+      - .github/workflows/realizo-webhook-route-check.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-routes:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/feature/wallet-compartida-muapi'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Probe ONLY non-mutating access and invalid-signature webhook
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          const base = 'https://realizo-sandbox.abelarriaga0.workers.dev';
+          const probe = async (path, init = {}) => {
+            const response = await fetch(base + path, { redirect: 'manual', signal: AbortSignal.timeout(15000), ...init });
+            const body = (await response.text()).slice(0, 1200);
+            const host = response.headers.get('location') ? new URL(response.headers.get('location'), base).hostname : null;
+            return { status: response.status, body, redirectHost: host, type: response.headers.get('content-type') || '' };
+          };
+          let failed = false;
+          const wallet = await probe('/api/wallet');
+          const redirectToAccess = [301,302,303,307,308].includes(wallet.status)
+            && !!wallet.redirectHost && wallet.redirectHost.endsWith('.cloudflareaccess.com');
+          const blocked = redirectToAccess || [401,403].includes(wallet.status);
+          console.log('WALLET_UNAUTH_HTTP=' + wallet.status);
+          console.log('WALLET_IS_ACCESS_REDIRECT=' + redirectToAccess);
+          if (!blocked) { console.error('ERROR: Unauthenticated wallet request not blocked'); failed = true; }
+          const webhook = await probe('/api/wallet/paypal/webhook', {
+            method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}'
+          });
+          console.log('WEBHOOK_UNSIGNED_HTTP=' + webhook.status);
+          const originRejected = webhook.status === 401 &&
+            webhook.type.includes('application/json') &&
+            (() => { try { return JSON.parse(webhook.body).error === 'missing_signature_headers'; } catch { return false; } })();
+          console.log('WEBHOOK_REACHED_ORIGIN_AND_REJECTED_UNSIGNED=' + originRejected);
+          if (!originRejected) { console.error('ERROR: PayPal webhook did not reach its signature verifier'); failed = true; }
+          const webhookGet = await probe('/api/wallet/paypal/webhook');
+          console.log('WEBHOOK_GET_HTTP=' + webhookGet.status);
+          if (webhookGet.status !== 405) {
+            console.error('ERROR: Webhook GET did not reach its route handler');
+            failed = true;
+          }
+          if (failed) process.exitCode = 1;
+          else console.log('OK: webhook reachable without login; invalid signature rejected; wallet protected.');
+          JS
