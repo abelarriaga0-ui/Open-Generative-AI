@@ -1,0 +1,41 @@
+name: Realizo - diagnose wallet generation failure safely
+on:
+  push:
+    branches: [feature/realizo-cloudflare-auth-videos]
+    paths: ['.github/workflows/realizo-wallet-diagnostic.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/feature/realizo-cloudflare-auth-videos'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+      DB_ID: '2561f6c8-bfb2-4ea4-8527-7fec29188edf'
+    steps:
+      - name: Read counters and table schema without exposing account or credentials
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          const uri='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/d1/database/'+process.env.DB_ID+'/query';
+          async function get(label,sql) {
+            const r=await fetch(uri,{method:'POST',headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({sql}),signal:AbortSignal.timeout(18000)});
+            const json=await r.json();
+            if(!r.ok||!json.success){console.log(label+'_FAILED=true');return;}
+            const rows=json.result?.[0]?.results||[];
+            console.log(label+'='+JSON.stringify(rows).slice(0,2000));
+          }
+          await get('WALLET_TOTALS',"SELECT COUNT(*) AS n, SUM(available_cents) AS available, SUM(reserved_cents) AS reserved FROM wallets");
+          await get('PILOT_USAGE',"SELECT COUNT(*) AS used FROM realizo_muapi_pilot_uses");
+          await get('PILOT_CREDITS',"SELECT COUNT(*) AS n FROM realizo_muapi_pilot_grants");
+          await get('JOBS_BY_STATUS',"SELECT status,COUNT(*) AS n FROM generation_jobs GROUP BY status");
+          await get('LEDGER_BY_KIND',"SELECT kind,COUNT(*) AS n FROM wallet_ledger GROUP BY kind");
+          await get('RECENT_JOB_STATUS',"SELECT status,price_cents,error_reason FROM generation_jobs ORDER BY created_at DESC LIMIT 3");
+          await get('JOBS_COLUMNS',"SELECT name,type FROM pragma_table_info('generation_jobs')");
+          await get('LEDGER_COLUMNS',"SELECT name,type FROM pragma_table_info('wallet_ledger')");
+          await get('APPLIED_MIGRATION_NUMBERS',"SELECT name FROM d1_migrations ORDER BY id DESC LIMIT 8");
+          await get('PILOT_PRICE',"SELECT model_id,enabled,customer_price_cents FROM model_prices WHERE model_id='wan2.2-image-to-video'");
+          JS
