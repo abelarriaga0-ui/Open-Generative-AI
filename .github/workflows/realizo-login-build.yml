@@ -1,0 +1,56 @@
+name: Realizo Login - build and security validation (no deployment)
+on:
+  push:
+    branches:
+      - feature/realizo-login-propio
+    paths:
+      - .github/workflows/realizo-login-build.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: realizo-login-build
+  cancel-in-progress: false
+jobs:
+  validate:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/feature/realizo-login-propio'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CI: 'true'
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Pin Auth packages in package-lock without deploying
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Commit updated dependency lockfile only
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet -- package-lock.json; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add package-lock.json
+            git commit -m 'chore(auth): lock Supabase SSR dependency versions'
+            git push origin HEAD:feature/realizo-login-propio
+          fi
+      - name: Verify original wallet, webhook and own login tests
+        run: npm run test:wallet
+      - name: Verify original Sandbox isolation stays unchanged
+        run: npm run wallet:preflight:sandbox
+      - name: Compile own-site login and worker without deploying
+        run: npm run cloudflare:build:sandbox
+      - name: Confirm production never deployed
+        shell: bash
+        run: |
+          test -s .open-next/worker.js
+          test -d .open-next/assets
+          echo 'Own-site login build passed. NO Cloudflare deployment performed.'
