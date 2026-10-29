@@ -4,6 +4,7 @@ import {
 } from '@/lib/wallet/server';
 import { enforceSameOrigin } from '@/lib/wallet/access-auth';
 import { isMuapiGenerationEnabled } from '@/lib/wallet/generation-policy';
+import {isPilotAccount,claimPilotSlot,isPilotPriceConfigValid,PILOT_MODEL_ID} from '@/lib/wallet/muapi-pilot';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +21,7 @@ export async function POST(request) {
     const env = await getWalletEnvironment();
     const user = await requireWalletUser(request, env);
     if (!user) return Response.json({ error: 'not_authenticated' }, { status: 401 });
-    if (!isMuapiGenerationEnabled(env)) {
+    if (!isMuapiGenerationEnabled(env,user)) {
       return Response.json({ error: 'generation_disabled_in_test_environment' }, { status: 503 });
     }
     if (!env.MUAPI_API_KEY) {
@@ -38,6 +39,11 @@ export async function POST(request) {
     }
     const model = await getPricedModel(env.WALLETS_DB, body.model_id);
     if (!model) return Response.json({ error: 'model_not_available' }, { status: 404 });
+    const pilot=env.REALIZO_ENV==='sandbox';
+    if (pilot && (!isPilotAccount(env,user)||!isPilotPriceConfigValid(model) ||
+      body.model_id!==PILOT_MODEL_ID)) {
+      return Response.json({error:'pilot_model_not_allowed'},{status:403});
+    }
     if (!/^[A-Za-z0-9_-]+$/.test(model.muapi_endpoint)) {
       throw new Error('invalid_configured_endpoint');
     }
@@ -49,8 +55,22 @@ export async function POST(request) {
         !fixed || typeof fixed !== 'object' || Array.isArray(fixed)) {
       throw new Error('invalid_catalog_configuration');
     }
-    if (Object.keys(body.input).some(key => !allowed.includes(key) || key in fixed)) {
+    // The original video editor includes selected duration, quality and
+    // resolution. Permit repeating an operator-locked value, never changing it.
+    if (Object.keys(body.input).some(key =>
+      (key in fixed && body.input[key] !== fixed[key]) ||
+      (!(key in fixed) && !allowed.includes(key))
+    )) {
       return Response.json({ error: 'model_input_not_allowed' }, { status: 400 });
+    }
+    if(pilot){
+      const url=body.input.image_url;
+      if(typeof url!=='string'||!url.startsWith(env.REALIZO_AUTH_ORIGIN+'/api/realizo/media/') ||
+         typeof body.input.prompt!=='string'||body.input.prompt.trim().length<5||
+         body.input.prompt.length>6000 ||
+         !['16:9','9:16'].includes(body.input.aspect_ratio||'16:9')) {
+        return Response.json({error:'pilot_image_or_prompt_invalid'},{status:400});
+      }
     }
     const pricedInput = { ...body.input, ...fixed };
 
@@ -62,6 +82,15 @@ export async function POST(request) {
     });
     if (!job.newlyCreated) {
       return Response.json({ job_id: job.id, status: job.status, idempotent: true });
+    }
+    if(pilot){
+      // A single D1 primary-key slot prevents concurrent requests from
+      // spending provider credits more than once (including ambiguous retries).
+      const claimed=await claimPilotSlot(env,user,job.id);
+      if(!claimed){
+        await updateJobStatus(env.WALLETS_DB,user.id,job.id,'failed',null,'pilot_one_generation_limit');
+        return Response.json({job_id:job.id,status:'failed',error:'pilot_one_generation_limit'},{status:429});
+      }
     }
 
     // The caller never receives the platform Muapi key.
