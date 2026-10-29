@@ -38,7 +38,7 @@
     "cloudflare:build": "git submodule update --init --recursive && npm install --no-save --package-lock=false next@16.4.2 @opennextjs/cloudflare@1.20.12 wrangler@4 && npm run build:packages && npx opennextjs-cloudflare build",
     "cloudflare:deploy": "npx opennextjs-cloudflare deploy",
     "cloudflare:preview": "npx opennextjs-cloudflare upload",
-    "test:wallet": "python3 -m unittest discover -s tests -p test_wallet_schema.py -v && node --test tests/wallet-sandbox.test.mjs && node --test tests/paypal-webhook-registration.test.mjs && node scripts/check-wallet-syntax.mjs",
+    "test:wallet": "python3 -m unittest discover -s tests -p test_wallet_schema.py -v && node --test tests/wallet-sandbox.test.mjs && node --test tests/paypal-webhook-registration.test.mjs && node scripts/check-wallet-syntax.mjs && node --test tests/realizo-login.test.mjs",
     "wallet:migrate:local": "wrangler d1 migrations apply WALLETS_DB --config wrangler.sandbox.jsonc --local",
     "wallet:migrate:sandbox": "node scripts/check-sandbox-isolation.mjs && wrangler d1 migrations apply WALLETS_DB --config wrangler.sandbox.jsonc --remote",
     "wallet:migrations:sandbox": "node scripts/check-sandbox-isolation.mjs && wrangler d1 migrations list WALLETS_DB --config wrangler.sandbox.jsonc --remote",
