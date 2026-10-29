@@ -5,6 +5,7 @@ import {
 import { enforceSameOrigin } from '@/lib/wallet/access-auth';
 import { isMuapiGenerationEnabled } from '@/lib/wallet/generation-policy';
 import {isPilotAccount,claimPilotSlot,isPilotPriceConfigValid,isOwnedSignedProductImage,PILOT_MODEL_ID} from '@/lib/wallet/muapi-pilot';
+import { isAllowedMuapiEndpoint } from '@/lib/wallet/muapi-endpoint';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,7 +51,7 @@ export async function POST(request) {
       body.model_id!==PILOT_MODEL_ID)) {
       return Response.json({error:'pilot_model_not_allowed'},{status:403});
     }
-    if (!/^[A-Za-z0-9_-]+$/.test(model.muapi_endpoint)) {
+    if (!isAllowedMuapiEndpoint(model.muapi_endpoint)) {
       throw new Error('invalid_configured_endpoint');
     }
     // The buyer cannot override expensive duration, size, quality or resolution fields.
