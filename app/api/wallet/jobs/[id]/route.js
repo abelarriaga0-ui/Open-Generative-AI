@@ -19,7 +19,7 @@ export async function GET(request, { params }) {
         result: job.status === 'completed' && job.result_json ? JSON.parse(job.result_json) : undefined },
         { headers: { 'Cache-Control': 'no-store' } });
     }
-    if (!isMuapiGenerationEnabled(env)) {
+    if (!isMuapiGenerationEnabled(env,user)) {
       return Response.json({ error: 'generation_disabled_in_test_environment' }, { status: 503 });
     }
     if (!env.MUAPI_API_KEY) return Response.json({ error: 'muapi_secret_not_configured' }, { status: 503 });
