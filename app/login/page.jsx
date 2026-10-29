@@ -60,7 +60,7 @@ export default function LoginPage() {
     ]).then(([flags, session]) => {
       if (!active) return;
       setFeatures(flags);
-      if (session.authenticated) router.replace('/wallet');
+      if (session.authenticated) router.replace('/studio');
     }).catch(() => {
       if (active) setFeatures({ enabled: false, email: false, google: false });
     });
@@ -104,7 +104,7 @@ export default function LoginPage() {
         body: JSON.stringify({ email, code }),
       });
       if (!response.ok) throw new Error('invalid_code');
-      router.replace('/wallet');
+      router.replace('/studio');
       router.refresh();
     } catch {
       setNotice('Código incorrecto o vencido.');
