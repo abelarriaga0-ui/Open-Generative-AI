@@ -1,0 +1,126 @@
+name: Realizo - native login + PayPal Sandbox isolated deployment
+on:
+  push:
+    branches: [feature/realizo-cloudflare-auth-videos]
+    paths: ['.github/workflows/realizo-native-auth-sandbox.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: realizo-native-auth-sandbox
+  cancel-in-progress: false
+jobs:
+  native-auth-sandbox:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/feature/realizo-cloudflare-auth-videos'
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      CI: 'true'
+      NEXT_TELEMETRY_DISABLED: '1'
+      REALIZO_ENV: 'sandbox'
+      REALIZO_AUTH_PROVIDER: 'native'
+      REALIZO_WALLET_ONLY: 'true'
+      PAYPAL_MODE: 'sandbox'
+      MUAPI_GENERATION_ENABLED: 'false'
+      REALIZO_AUTH_ORIGIN: 'https://realizo-auth-sandbox.abelarriaga0.workers.dev'
+    steps:
+      - name: Checkout isolated development branch with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test existing wallet, PayPal and new multi-user authentication
+        run: npm run test:wallet
+      - name: Verify no production D1, Worker, PayPal or Muapi access
+        run: |
+          npm run wallet:preflight:sandbox
+          node scripts/check-realizo-auth-sandbox.mjs
+      - name: Compile Realizo login, wallet and video generator
+        run: npm run cloudflare:build:realizo-auth-sandbox
+      - name: Confirm Worker bundle and rerun isolation verification
+        run: |
+          test -s .open-next/worker.js
+          test -d .open-next/assets
+          node scripts/check-realizo-auth-sandbox.mjs
+      - name: Apply only additive migration to existing isolated Sandbox D1
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+        run: npx --no-install wrangler d1 migrations apply WALLETS_DB --config wrangler.auth-sandbox.jsonc --remote
+      - name: Deploy ONLY realizo-auth-sandbox (not production or original pilot)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+        run: npx --no-install opennextjs-cloudflare deploy --config wrangler.auth-sandbox.jsonc
+      - name: Install stable unique session signing secret if missing
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if npx --no-install wrangler secret list --name realizo-auth-sandbox --config wrangler.auth-sandbox.jsonc |
+              node -e "let t='';process.stdin.on('data',x=>t+=x).on('end',()=>{try{process.exit(JSON.parse(t).some(s=>s.name==='REALIZO_AUTH_PEPPER')?0:1)}catch{process.exit(2)}})"; then
+            echo 'Realizo auth signing secret exists (value never read).'
+          else
+            openssl rand -hex 32 | npx --no-install wrangler secret put REALIZO_AUTH_PEPPER --name realizo-auth-sandbox --config wrangler.auth-sandbox.jsonc
+            echo 'New private signing secret created for Realizo auth Sandbox.'
+          fi
+      - name: Install existing PayPal Sandbox credentials on new Worker only
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$PAYPAL_CLIENT_ID" && test -n "$PAYPAL_CLIENT_SECRET"
+          node -e "process.stdout.write(JSON.stringify({PAYPAL_CLIENT_ID:process.env.PAYPAL_CLIENT_ID,PAYPAL_CLIENT_SECRET:process.env.PAYPAL_CLIENT_SECRET}))" |
+            npx --no-install wrangler secret bulk --name realizo-auth-sandbox --config wrangler.auth-sandbox.jsonc
+          echo 'Only PayPal Sandbox credentials installed; values not printed.'
+      - name: Register separate webhook ONLY with PayPal Sandbox
+        id: paypal_webhook
+        env:
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          REALIZO_AUTH_SANDBOX_WEBHOOK_URL: 'https://realizo-auth-sandbox.abelarriaga0.workers.dev/api/wallet/paypal/webhook'
+        run: node scripts/register-realizo-auth-webhook.mjs
+      - name: Save webhook ID in native-auth Sandbox Worker only
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+          PAYPAL_WEBHOOK_ID: ${{ steps.paypal_webhook.outputs.webhook_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$PAYPAL_WEBHOOK_ID"
+          printf '%s' "$PAYPAL_WEBHOOK_ID" | npx --no-install wrangler secret put PAYPAL_WEBHOOK_ID --name realizo-auth-sandbox --config wrangler.auth-sandbox.jsonc
+      - name: Verify public login with disabled providers, protected wallet, and signed webhook
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          const base='https://realizo-auth-sandbox.abelarriaga0.workers.dev';
+          const go=async(path,init={})=>{
+            const r=await fetch(base+path,{redirect:'manual',signal:AbortSignal.timeout(20000),...init});
+            return {status:r.status,body:(await r.text()).slice(0,3000)};
+          };
+          let login=await go('/login');if(login.status!==200 || !login.body.includes('Realizo'))throw Error('Login page unavailable');
+          const features=await go('/api/auth/features');
+          if(features.status!==200 || !JSON.parse(features.body).enabled)throw Error('Native auth flags not loaded');
+          const wallet=await go('/api/wallet');
+          if(wallet.status!==401)throw Error('Anonymous wallet NOT blocked');
+          const legacy=await go('/api/v1/models');
+          if(legacy.status!==404)throw Error('Legacy BYOK endpoint exposed');
+          const invalid=await go('/api/wallet/paypal/webhook',{method:'POST',headers:{'content-type':'application/json'},body:'{}'});
+          if(invalid.status!==401 || JSON.parse(invalid.body).error!=='missing_signature_headers')
+            throw Error('Webhook failed to reject unsigned POST at origin');
+          const getHook=await go('/api/wallet/paypal/webhook');
+          if(getHook.status!==405)throw Error('Webhook route unexpectedly blocked');
+          console.log('PASS: Public Realizo login accessible, wallet protected, BYOK blocked, PayPal webhook verified.');
+          JS
