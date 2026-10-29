@@ -1,4 +1,5 @@
 name: Realizo Sandbox - verify public webhook and protected wallet
+# Recheck security isolation after selecting Access login methods.
 on:
   push:
     branches:
