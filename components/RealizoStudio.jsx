@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { optimizeImage } from '@/lib/realizo-creative/optimize-image';
+import { generateWithRealizoWallet } from '@/lib/realizo-creative/wallet-generation';
 import { VideoStudio } from 'studio';
 import RealizoCreator from '@/components/RealizoCreator';
 
@@ -31,6 +32,8 @@ const usd=c=>new Intl.NumberFormat('es-EC',{style:'currency',currency:'USD'}).fo
 const navBase='flex items-center gap-3 px-4 py-3 rounded-2xl transition w-full text-left font-semibold text-[14px]';
 export default function RealizoStudio({accountId}){
  const [wallet,setWallet]=useState(null);
+ const [billableModelIds,setBillableModelIds]=useState([]);
+ const [generationReady,setGenerationReady]=useState(false);
  const [page,setPage]=useState('create');
  const [brief,setBrief]=useState(null);
  const [editorOpen,setEditorOpen]=useState(false);
@@ -47,9 +50,10 @@ export default function RealizoStudio({accountId}){
    const controller=new AbortController();
    fetch('/api/wallet',{credentials:'same-origin',cache:'no-store',signal:controller.signal})
      .then(r=>r.ok?r.json():null)
-     .then(x=>setWallet(x?.wallet||null)).catch(()=>{});
+     .then(x=>{setWallet(x?.wallet||null);setBillableModelIds((x?.models||[]).map(m=>m.model_id));setGenerationReady(Boolean(x?.generation_enabled));}).catch(()=>{});
    return ()=>controller.abort();
  },[]);
+ const onWalletGenerate=useCallback(params=>generateWithRealizoWallet(params),[]);
  async function exit(){
    try{await fetch('/api/auth/logout',{method:'POST',credentials:'same-origin'});}
    finally{window.location.assign('/login');}
@@ -113,9 +117,11 @@ export default function RealizoStudio({accountId}){
         </div>}
         <div className="rounded-[24px] overflow-hidden border border-[#D6C7E0] shadow-[0_18px_50px_rgba(51,38,83,.12)] h-[min(990px,calc(100vh-195px))] min-h-[680px]">
           <VideoStudio locale="en" apiKey={null} persistenceScope={accountId} preparedBrief={brief}
-            realizoBrand previewOnly uploadAsset={uploadAsset} />
+            realizoBrand previewOnly uploadAsset={uploadAsset}
+            onWalletGenerate={onWalletGenerate} generationReady={generationReady}
+            billableModelIds={billableModelIds} />
         </div>
-        <p className="text-[12px] text-[#9A8B9B]">La generación permanece deshabilitada en este entorno de pruebas hasta conectar las tarifas y el consumo por billetera.</p>
+        <p className="text-[12px] text-[#9A8B9B]">La generación estará disponible cuando el modelo tenga una tarifa configurada y la billetera pueda cubrirla.</p>
        </section>}
      </>}
 
