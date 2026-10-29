@@ -32,7 +32,8 @@ export function proxy(request) {
             { status: 404 }), url.pathname);
     }
     if (pilotAction === 'redirect') {
-        return addSecurityHeaders(NextResponse.redirect(new URL('/wallet', request.url)), url.pathname);
+        const destination = process.env.REALIZO_AUTH_PROVIDER === 'native' ? '/login' : '/wallet';
+        return addSecurityHeaders(NextResponse.redirect(new URL(destination, request.url)), url.pathname);
     }
 
     // Catch requests to /api/workflow, /api/app, and /api/v1
