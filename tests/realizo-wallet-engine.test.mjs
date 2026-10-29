@@ -26,7 +26,7 @@ test('paid model unlock requires both wallet server readiness and matching model
  assert.match(editor,/previewOnly && !\(generationReady && billableModelIds.includes\(selectedModel\)\)/);
  assert.match(editor,/onWalletGenerate && generationReady/);
  const wrapper=readFileSync('components/RealizoStudio.jsx','utf8');
- assert.match(wrapper,/setGenerationReady\(Boolean\(x\?\.generation_enabled\)\)/);
+ assert.match(wrapper,/setGenerationReady\(Boolean\(x\?\.generation_enabled &&/);
  const flags=JSON.parse(readFileSync('wrangler.auth-sandbox.jsonc','utf8')).vars;
  assert.equal(flags.MUAPI_GENERATION_ENABLED,'true');
  assert.equal(flags.REALIZO_MUAPI_PILOT,'true');
