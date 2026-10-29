@@ -1438,6 +1438,15 @@ export default function VideoStudio({
       const currentFamily = videoModelCatalog.familyById.get(selectionRef.current.selectedFamilyId);
       let variant = getFamilyVariant(videoModelCatalog, currentFamily, "i2v", selectionRef.current.selectedModel);
       let family = currentFamily;
+      // When a priced model exists, select that exact catalog variant rather than
+      // a nonbillable default. Provider parameters are still built by the engine.
+      const pilotVariant = billableModelIds
+        .map(id => videoModelCatalog.variantById.get(id))
+        .find(item => item && getModelMediaCapabilities(item.model).image.maxItems > 0);
+      if (pilotVariant) {
+        variant = pilotVariant;
+        family = videoModelCatalog.familyByVariantId.get(pilotVariant.model.id);
+      }
       if (!variant) {
         const selected = videoModelPickerEntries.find(entry => entry.variantsByMode.i2v);
         variant = selected?.variantsByMode.i2v;
@@ -1450,7 +1459,21 @@ export default function VideoStudio({
         setUploadedImageUrls(briefImages.slice(0, Math.max(1, cap.maxItems || 1)));
       }
     }
-  }, [preparedBrief?.revision, applyUserSelectedVariant]);
+  }, [preparedBrief?.revision, applyUserSelectedVariant, billableModelIds]);
+
+  // Select the single safely priced pilot model when opening the advanced
+  // editor without a product brief; never unlock unpriced models.
+  const autoSelectedPaidModel = useRef(null);
+  useEffect(() => {
+    if (!generationReady || billableModelIds.length !== 1 || preparedBrief?.revision) return;
+    const id=billableModelIds[0];
+    if (autoSelectedPaidModel.current===id || selectionRef.current.selectedModel===id) return;
+    const variant=videoModelCatalog.variantById.get(id);
+    const family=videoModelCatalog.familyByVariantId.get(id);
+    if (!variant || !family || getModelMediaCapabilities(variant.model).image.maxItems===0) return;
+    autoSelectedPaidModel.current=id;
+    applyUserSelectedVariant(variant,'i2v',family);
+  },[generationReady,billableModelIds,preparedBrief?.revision,applyUserSelectedVariant]);
 
   // ── Persistence: Save ────────────────────────────────────────────────────
   useEffect(() => {
