@@ -34,6 +34,8 @@ export default function RealizoStudio({accountId}){
  const [wallet,setWallet]=useState(null);
  const [billableModelIds,setBillableModelIds]=useState([]);
  const [generationReady,setGenerationReady]=useState(false);
+ const [jobs,setJobs]=useState([]);
+ const [jobsLoading,setJobsLoading]=useState(false);
  const [page,setPage]=useState('create');
  const [brief,setBrief]=useState(null);
  const [editorOpen,setEditorOpen]=useState(false);
@@ -54,6 +56,15 @@ export default function RealizoStudio({accountId}){
    return ()=>controller.abort();
  },[]);
  const onWalletGenerate=useCallback(params=>generateWithRealizoWallet(params),[]);
+ useEffect(()=>{
+   if(page!=='videos')return;
+   let cancelled=false;setJobsLoading(true);
+   fetch('/api/realizo/jobs',{credentials:'same-origin',cache:'no-store'})
+    .then(r=>r.ok?r.json():Promise.reject(new Error('No se pudo cargar el historial')))
+    .then(r=>{if(!cancelled)setJobs(r.jobs||[])}).catch(()=>{if(!cancelled)setJobs([])})
+    .finally(()=>{if(!cancelled)setJobsLoading(false)});
+   return ()=>{cancelled=true};
+ },[page]);
  async function exit(){
    try{await fetch('/api/auth/logout',{method:'POST',credentials:'same-origin'});}
    finally{window.location.assign('/login');}
@@ -128,11 +139,30 @@ export default function RealizoStudio({accountId}){
      {page==='videos'&&<section className="max-w-[1030px] mx-auto">
        <p className="uppercase tracking-[.19em] text-[#8A61B5] font-bold text-[11px] mb-2">Biblioteca</p>
        <h1 className="text-[36px] tracking-tight font-extrabold">Mis videos<span className="text-[#EB8A87]">.</span></h1>
-       <div className="rounded-[25px] bg-white border border-[#E8DEDA] py-20 px-6 text-center mt-7">
-        <div className="inline-grid place-items-center w-16 h-16 bg-[#F0E6FB] rounded-2xl text-[#8057BC]"><Icon name="folder" size={29}/></div>
-        <h2 className="text-[23px] font-bold mt-5">Tu biblioteca empieza aquí</h2>
-        <p className="text-sm text-[#8E8294] mt-2">Tus videos aparecerán cuando completes una generación.</p>
-        <button onClick={()=>setPage('create')} className="inline-flex gap-2 items-center mt-6 rounded-2xl bg-[#6E4BD2] text-white font-bold px-5 py-3"><Icon name="video"/>Crear un video</button>
+       <div className="rounded-[25px] bg-white border border-[#E8DEDA] p-6 sm:p-8 mt-7">
+         {jobsLoading?<p role="status" className="text-[#867A91]">Cargando tus videos…</p>:
+          jobs.length?<div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {jobs.map(job=><article key={job.id} className="rounded-2xl border border-[#E9DEE2] bg-[#FAF7F4] overflow-hidden">
+              <div className="h-32 bg-[#EBE1F6] flex items-center justify-center">
+                {job.video_url?<video src={job.video_url} controls preload="metadata" className="w-full h-full object-cover" />:
+                 <Icon name="video" size={39}/>}
+              </div>
+              <div className="p-4 space-y-2">
+               <p className="font-bold text-[13px] truncate">{job.model}</p>
+               <p className="text-xs text-[#8A7C90]">{new Date(job.created_at+'Z').toLocaleDateString('es-EC')}</p>
+               <span className="inline-flex text-[11px] rounded-full bg-[#EBE1F8] text-[#7155A1] px-3 py-1 font-semibold">
+                {job.status==='completed'?'Completado':job.status==='failed'?'No completado':job.status==='unknown'?'En revisión':'En proceso'}
+               </span>
+               {job.video_url&&<a href={job.video_url} target="_blank" rel="noopener noreferrer" className="block text-[#6E4BD2] underline text-sm font-semibold">Abrir video</a>}
+              </div>
+            </article>)}
+          </div>:
+          <div className="py-14 text-center">
+           <div className="inline-grid place-items-center w-16 h-16 bg-[#F0E6FB] rounded-2xl text-[#8057BC]"><Icon name="folder" size={29}/></div>
+           <h2 className="text-[23px] font-bold mt-5">Tu biblioteca empieza aquí</h2>
+           <p className="text-sm text-[#8E8294] mt-2">Tus videos aparecerán cuando completes una generación.</p>
+           <button onClick={()=>setPage('create')} className="inline-flex gap-2 items-center mt-6 rounded-2xl bg-[#6E4BD2] text-white font-bold px-5 py-3"><Icon name="video"/>Crear un video</button>
+          </div>}
        </div>
       </section>}
     </div>
