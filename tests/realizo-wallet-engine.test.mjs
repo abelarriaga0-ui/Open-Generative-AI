@@ -44,3 +44,13 @@ test('Wan pilot maps raw original VideoStudio fields to a fixed-price billable p
  const editor=readFileSync('packages/studio/src/components/VideoStudio.jsx','utf8');
  assert.match(editor,/videoModelCatalog\.variantById\.get\("wan2\.2-image-to-video"\)/);
 });
+
+test('after authentication Realizo always syncs the paid pilot to 5s 480p i2v',()=>{
+ const editor=readFileSync('packages/studio/src/components/VideoStudio.jsx','utf8');
+ assert.match(editor,/selectedModel!==id \|\| !imageMode/);
+ assert.match(editor,/applyUserSelectedVariant\(variant,"i2v",family\)/);
+ assert.match(editor,/setSelectedDuration\(5\)/);
+ assert.match(editor,/setSelectedResolution\("480p"\)/);
+ assert.match(editor,/setSelectedQuality\("medium"\)/);
+ assert.match(editor,/if \(!realizoBrand \|\| !generationReady/);
+});
