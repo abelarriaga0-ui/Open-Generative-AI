@@ -14,6 +14,14 @@ on:
       - 'tests/realizo-native-auth.test.mjs'
       - 'tests/paypal-settlement-collision.test.mjs'
       - 'package.json'
+      - 'components/RealizoStudio.jsx'
+      - 'components/wallet/**'
+      - 'app/studio/**'
+      - 'app/wallet/**'
+      - 'lib/wallet/request-policy.js'
+      - 'proxy.js'
+      - 'packages/studio/src/components/VideoStudio.jsx'
+      - 'tests/realizo-studio-routing.test.mjs'
       - 'migrations/**'
   workflow_dispatch:
 permissions:
