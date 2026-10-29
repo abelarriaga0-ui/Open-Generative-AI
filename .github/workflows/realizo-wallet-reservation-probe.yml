@@ -1,0 +1,52 @@
+name: Realizo - isolated wallet reserve probe without Muapi
+on:
+  push:
+    branches: [feature/realizo-cloudflare-auth-videos]
+    paths: ['.github/workflows/realizo-wallet-reservation-probe.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reserve-probe:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/feature/realizo-cloudflare-auth-videos'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+      DB_ID: '2561f6c8-bfb2-4ea4-8527-7fec29188edf'
+    steps:
+      - name: Reserve and roll back exactly 35 cents with temporary diagnostic account only
+        run: |
+          node --input-type=module <<'JS'
+          const url='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/d1/database/'+process.env.DB_ID+'/query';
+          const uid='realizo-wallet-probe-temp-v1', job='realizo-wallet-probe-job-v1';
+          async function query(label,sql,{ignoreError=false}={}) {
+            const response=await fetch(url,{method:'POST',headers:{
+              Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,'Content-Type':'application/json'
+            },body:JSON.stringify({sql}),signal:AbortSignal.timeout(18000)});
+            const data=await response.json().catch(()=>({}));
+            const valid=response.ok&&data.success===true;
+            console.log(label+'_OK='+valid);
+            if(!valid){
+              const errors=(data.errors||[]).map(e=>({code:e.code,message:String(e.message||'').slice(0,300)}));
+              console.log(label+'_DB_ERROR='+JSON.stringify(errors));
+              if(!ignoreError)throw Error('Diagnostic step failed: '+label);
+            }
+            return data.result?.[0]?.results;
+          }
+          try {
+            await query('CREATE_TEST_ACCOUNT',`INSERT OR IGNORE INTO wallet_users(id,auth_provider,auth_subject) VALUES('${uid}','diagnostic','reservation_probe')`);
+            await query('CREATE_TEST_WALLET',`INSERT OR IGNORE INTO wallets(user_id) VALUES('${uid}')`);
+            await query('FUND_TEST_WALLET',`UPDATE wallets SET available_cents=35,reserved_cents=0 WHERE user_id='${uid}'`);
+            await query('RESERVE_TEST_JOB',`INSERT OR IGNORE INTO generation_jobs(id,user_id,model_id,idempotency_key,price_cents) VALUES('${job}','${uid}','wan2.2-image-to-video','reservationprobe',35)`);
+            const state=await query('TEST_JOB_STATE',`SELECT status,price_cents FROM generation_jobs WHERE id='${job}'`);
+            console.log('TEST_RESERVE_RESULT='+JSON.stringify(state));
+            await query('RELEASE_TEST_JOB',`UPDATE generation_jobs SET status='failed' WHERE id='${job}'`);
+          } finally {
+            await query('CLEAN_TEST_LEDGER',`DELETE FROM wallet_ledger WHERE user_id='${uid}'`,{ignoreError:true});
+            await query('CLEAN_TEST_JOB',`DELETE FROM generation_jobs WHERE id='${job}'`,{ignoreError:true});
+            await query('CLEAN_TEST_WALLET',`DELETE FROM wallets WHERE user_id='${uid}'`,{ignoreError:true});
+            await query('CLEAN_TEST_ACCOUNT',`DELETE FROM wallet_users WHERE id='${uid}'`,{ignoreError:true});
+          }
+          JS
