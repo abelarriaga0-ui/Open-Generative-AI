@@ -1668,7 +1668,7 @@ export default function VideoStudio({
         setProgress(0);
       }
     },
-    [apiKey, copy.errors.labelExceedsLimit, copy.errors.labelUploadFailed],
+    [apiKey, uploadAsset, copy.errors.labelExceedsLimit, copy.errors.labelUploadFailed],
   );
 
   const uploadWorkflowSlotFiles = useCallback(
