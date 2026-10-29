@@ -17,10 +17,13 @@ export async function POST(request) {
   if (!enforceSameOrigin(request)) {
     return Response.json({ error: 'invalid_origin' }, { status: 403 });
   }
+  let phase='environment';
   try {
     const env = await getWalletEnvironment();
+    phase='identity';
     const user = await requireWalletUser(request, env);
     if (!user) return Response.json({ error: 'not_authenticated' }, { status: 401 });
+    phase='pilot-authorization';
     if (!isMuapiGenerationEnabled(env,user)) {
       return Response.json({ error: 'generation_disabled_in_test_environment' }, { status: 503 });
     }
@@ -30,6 +33,7 @@ export async function POST(request) {
     if (Number(request.headers.get('content-length') || 0) > 131072) {
       return Response.json({ error: 'payload_too_large' }, { status: 413 });
     }
+    phase='request-body';
     const body = await request.json();
     if (!validInput(body?.input) || JSON.stringify(body.input).length > 131072 ||
         typeof body?.model_id !== 'string' || body.model_id.length > 100 ||
@@ -37,8 +41,10 @@ export async function POST(request) {
         !/^[A-Za-z0-9_-]{8,128}$/.test(body.idempotency_key)) {
       return Response.json({ error: 'invalid_generation_request' }, { status: 400 });
     }
+    phase='model-lookup';
     const model = await getPricedModel(env.WALLETS_DB, body.model_id);
     if (!model) return Response.json({ error: 'model_not_available' }, { status: 404 });
+    phase='model-authorization';
     const pilot=env.REALIZO_ENV==='sandbox';
     if (pilot && (!isPilotAccount(env,user)||!isPilotPriceConfigValid(model) ||
       body.model_id!==PILOT_MODEL_ID)) {
@@ -49,6 +55,7 @@ export async function POST(request) {
     }
     // The buyer cannot override expensive duration, size, quality or resolution fields.
     // Operators must define separate priced model variants for those options.
+    phase='model-options';
     const allowed = JSON.parse(model.allowed_input_keys_json);
     const fixed = JSON.parse(model.fixed_options_json);
     if (!Array.isArray(allowed) || !allowed.every(key => typeof key === 'string') ||
@@ -63,6 +70,7 @@ export async function POST(request) {
     )) {
       return Response.json({ error: 'model_input_not_allowed' }, { status: 400 });
     }
+    phase='image-ownership';
     if(pilot){
       const url=body.input.image_url;
       if(!await isOwnedSignedProductImage(env,user,url) ||
@@ -74,6 +82,7 @@ export async function POST(request) {
     }
     const pricedInput = { ...body.input, ...fixed };
 
+    phase='wallet-reservation';
     const job = await createReservedJob(env.WALLETS_DB, {
       userId: user.id,
       modelId: model.model_id,
@@ -86,6 +95,7 @@ export async function POST(request) {
     if(pilot){
       // A single D1 primary-key slot prevents concurrent requests from
       // spending provider credits more than once (including ambiguous retries).
+      phase='pilot-slot';
       const claimed=await claimPilotSlot(env,user,job.id);
       if(!claimed){
         await updateJobStatus(env.WALLETS_DB,user.id,job.id,'failed',null,'pilot_one_generation_limit');
@@ -93,6 +103,7 @@ export async function POST(request) {
       }
     }
 
+    phase='provider-request';
     // The caller never receives the platform Muapi key.
     try {
       const response = await fetch('https://api.muapi.ai/api/v1/' + model.muapi_endpoint, {
@@ -121,6 +132,14 @@ export async function POST(request) {
         message: 'Solicitud pendiente de conciliación; reserva retenida para evitar doble cargo.' }, { status: 202 });
     }
   } catch (error) {
-    return jsonError(error);
+    const generic=jsonError(error);
+    if(generic.status===500){
+      // Public phase names are a fixed allowlist, never exception messages,
+      // SQL, account IDs or provider secrets.
+      console.warn('Realizo wallet generation failure phase='+phase);
+      return Response.json({error:'wallet_internal_error',phase},{status:500,
+        headers:{'Cache-Control':'no-store'}});
+    }
+    return generic;
   }
 }
