@@ -18,6 +18,7 @@ const matching=apps.filter(a=>a.name==='Realizo Wallet Sandbox');
 if(matching.length!==1)fail('Realizo Wallet Sandbox debe existir exactamente una vez.');
 const app=await request('/apps/'+matching[0].id);
 if(app.id!==matching[0].id||app.type!=='self_hosted'||app.name!=='Realizo Wallet Sandbox')fail('Aplicación no coincide.');
+console.log('DESTINATION_SHAPE='+JSON.stringify((app.destinations||[]).map(d=>({type:d.type,has_worker_id:!!d.worker_id,worker_id_is_name:d.worker_id==='realizo-sandbox',has_uri:!!d.uri,keys:Object.keys(d)}))));
 if(!Array.isArray(app.destinations)||app.destinations.length!==1||app.destinations[0]?.worker_id!=='realizo-sandbox'){
  fail('Destino inesperado: no se modificó ninguna aplicación.');
 }
