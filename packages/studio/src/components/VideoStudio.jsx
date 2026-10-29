@@ -1440,7 +1440,7 @@ export default function VideoStudio({
       let family = currentFamily;
       // When a priced model exists, select that exact catalog variant rather than
       // a nonbillable default. Provider parameters are still built by the engine.
-      const pilotVariant = billableModelIds
+      const pilotVariant = [...billableModelIds, ...(realizoBrand ? ["wan2.2-image-to-video"] : [])]
         .map(id => videoModelCatalog.variantById.get(id))
         .find(item => item && getModelMediaCapabilities(item.model).image.maxItems > 0);
       if (pilotVariant) {
@@ -1459,7 +1459,7 @@ export default function VideoStudio({
         setUploadedImageUrls(briefImages.slice(0, Math.max(1, cap.maxItems || 1)));
       }
     }
-  }, [preparedBrief?.revision, applyUserSelectedVariant, billableModelIds]);
+  }, [preparedBrief?.revision, applyUserSelectedVariant, billableModelIds, realizoBrand]);
 
   // Select the single safely priced pilot model when opening the advanced
   // editor without a product brief; never unlock unpriced models.
