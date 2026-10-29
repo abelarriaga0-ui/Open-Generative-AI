@@ -12,8 +12,6 @@ class RealizoIdentitySchema(unittest.TestCase):
     def test_accounts_link_independent_wallets(self):
         self.db.executemany('INSERT INTO realizo_accounts (id,email) VALUES (?,?)',
                             [('id-a','a@example.com'),('id-b','b@example.com')])
-        self.db.executemany('INSERT INTO realizo_identities VALUES (?,?,datetime("now"))',
-                            [('email','a@example.com','id-a'),('google','102030','id-b')]) if False else None
         self.db.executemany('INSERT INTO realizo_identities (provider,provider_subject,account_id) VALUES (?,?,?)',
                             [('email','a@example.com','id-a'),('google','102030','id-b')])
         self.db.executemany("INSERT INTO wallet_users (id,auth_provider,auth_subject) VALUES (?,'realizo',?)",
