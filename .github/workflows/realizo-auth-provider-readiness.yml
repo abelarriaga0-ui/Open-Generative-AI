@@ -47,7 +47,17 @@ jobs:
           const wallet=await fetch(base+'/api/wallet',{redirect:'manual',signal:AbortSignal.timeout(15000)});
           console.log('ANONYMOUS_WALLET_STATUS='+wallet.status);
           if(wallet.status!==401) throw new Error('Anonymous wallet request must remain blocked');
-          console.log('PASS: Google OAuth start redirect and anonymous wallet protection validated.');
+          const studio=await fetch(base+'/studio',{redirect:'manual',signal:AbortSignal.timeout(15000)});
+          const studioLocation=studio.headers.get('location') || '';
+          console.log('ANONYMOUS_STUDIO_STATUS='+studio.status);
+          if(![302,303,307,308].includes(studio.status) || !new URL(studioLocation,base).pathname.startsWith('/login'))
+            throw new Error('Anonymous studio must redirect to login');
+          const oldCreate=await fetch(base+'/create',{redirect:'manual',signal:AbortSignal.timeout(15000)});
+          console.log('LEGACY_CREATE_STATUS='+oldCreate.status);
+          if(![302,303,307,308].includes(oldCreate.status) || new URL(oldCreate.headers.get('location'),base).pathname!=='/studio')
+            throw new Error('Legacy create route must point to the original video studio');
+          console.log('PASS: Google OAuth, anonymous studio guard, legacy generator route and wallet isolation validated.');
+
           console.log('NOTE: A complete Google login still requires a human test account.');
 
           JS
