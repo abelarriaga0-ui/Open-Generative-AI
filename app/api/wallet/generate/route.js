@@ -4,7 +4,7 @@ import {
 } from '@/lib/wallet/server';
 import { enforceSameOrigin } from '@/lib/wallet/access-auth';
 import { isMuapiGenerationEnabled } from '@/lib/wallet/generation-policy';
-import {isPilotAccount,claimPilotSlot,isPilotPriceConfigValid,PILOT_MODEL_ID} from '@/lib/wallet/muapi-pilot';
+import {isPilotAccount,claimPilotSlot,isPilotPriceConfigValid,isOwnedSignedProductImage,PILOT_MODEL_ID} from '@/lib/wallet/muapi-pilot';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,7 +65,7 @@ export async function POST(request) {
     }
     if(pilot){
       const url=body.input.image_url;
-      if(typeof url!=='string'||!url.startsWith(env.REALIZO_AUTH_ORIGIN+'/api/realizo/media/') ||
+      if(!await isOwnedSignedProductImage(env,user,url) ||
          typeof body.input.prompt!=='string'||body.input.prompt.trim().length<5||
          body.input.prompt.length>6000 ||
          !['16:9','9:16'].includes(body.input.aspect_ratio||'16:9')) {
