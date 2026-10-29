@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildVideoBrief, SALES_ANGLES } from '@/lib/realizo-creative/brief';
 import { readProductDocument } from '@/lib/realizo-creative/read-document';
+import { optimizeImage } from '@/lib/realizo-creative/optimize-image';
 
 function Icon({name,size=21}) {
  const paths={
@@ -62,11 +63,12 @@ export default function RealizoCreator({accountId,onPrepare,onOpenAdvanced}) {
    }
    setError('');setUploading(true);
    try{
-     const data=new FormData();data.append('image',file);
+     const optimized=await optimizeImage(file);
+     const data=new FormData();data.append('image',optimized);
      const result=await fetch('/api/realizo/media',{method:'POST',credentials:'same-origin',body:data});
      const json=await result.json();
      if(!result.ok) throw new Error(json.error==='daily_upload_limit'?'Límite diario de imágenes alcanzado.':
-       json.error==='media_not_configured'?'El almacenamiento de imágenes aún no está disponible.':'No se pudo guardar la imagen.');
+       json.error==='media_not_configured'?'El almacenamiento de imágenes aún no está disponible.':json.error==='image_too_large_for_sandbox'?'La imagen supera el tamaño permitido en pruebas.':'No se pudo guardar la imagen.');
      const attachment={id:json.id,name:file.name,url:json.url};
      if(asPrimary)setPrimary(attachment);
      else setReferences(items=>[...items,attachment].slice(0,3));
