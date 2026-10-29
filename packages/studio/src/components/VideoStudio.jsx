@@ -785,8 +785,17 @@ export default function VideoStudio({
   persistenceScope,
   // Sandbox displays the original model picker without opening legacy BYOK spending.
   previewOnly = false,
+  realizoBrand = false,
+  preparedBrief = null,
 }) {
-  const copy = useMemo(() => resolveCopy(en, zh, locale), [locale]);
+  const copy = useMemo(() => {
+    const original = resolveCopy(en, zh, locale);
+    if (!realizoBrand) return original;
+    return { ...original, empty: {
+      heading: 'REALIZO',
+      subtitle: 'Tu siguiente video comienza con una idea.',
+    }};
+  }, [locale, realizoBrand]);
   const LEGACY_PERSIST_KEY = "hg_video_studio_persistent";
   const PERSIST_KEY = scopedPersistKey(LEGACY_PERSIST_KEY, persistenceScope ?? apiKey);
   useEffect(() => {
@@ -1412,6 +1421,32 @@ export default function VideoStudio({
       hasRestored.current = true;
     }
   }, [applyControlsForModel, defaultModel.id]);
+
+  // Apply the prepared product brief after the normal account-scoped draft restore.
+  const appliedBriefRevision = useRef(null);
+  useEffect(() => {
+    if (!preparedBrief?.revision || appliedBriefRevision.current === preparedBrief.revision) return;
+    appliedBriefRevision.current = preparedBrief.revision;
+    const briefImages = Array.isArray(preparedBrief.images) ?
+      preparedBrief.images.filter(url => typeof url === "string" && /^https:\/\//.test(url)).slice(0,4) : [];
+    setPrompt(String(preparedBrief.prompt || "").slice(0,6000));
+    if (briefImages.length) {
+      const currentFamily = videoModelCatalog.familyById.get(selectionRef.current.selectedFamilyId);
+      let variant = getFamilyVariant(videoModelCatalog, currentFamily, "i2v", selectionRef.current.selectedModel);
+      let family = currentFamily;
+      if (!variant) {
+        const selected = videoModelPickerEntries.find(entry => entry.variantsByMode.i2v);
+        variant = selected?.variantsByMode.i2v;
+        family = selected?.family;
+      }
+      if (variant && family) {
+        applyUserSelectedVariant(variant, "i2v", family);
+        // Reconcile inside applyUserSelectedVariant acts on old state; inject after it.
+        const cap = getModelMediaCapabilities(variant.model).image;
+        setUploadedImageUrls(briefImages.slice(0, Math.max(1, cap.maxItems || 1)));
+      }
+    }
+  }, [preparedBrief?.revision, applyUserSelectedVariant]);
 
   // ── Persistence: Save ────────────────────────────────────────────────────
   useEffect(() => {
