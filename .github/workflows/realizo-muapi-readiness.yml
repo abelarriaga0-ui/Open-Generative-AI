@@ -39,3 +39,18 @@ jobs:
               echo "WORKER_${worker}_SECRET_LIST_UNAVAILABLE=true"
             fi
           done
+      - name: Count eligible verified Realizo accounts without exposing identity
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          const base='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+
+            '/d1/database/2561f6c8-bfb2-4ea4-8527-7fec29188edf/query';
+          const res=await fetch(base,{method:'POST',headers:{
+            Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,
+            'Content-Type':'application/json'
+          },body:JSON.stringify({sql:"SELECT COUNT(*) AS n FROM wallet_users WHERE auth_provider='realizo'"})});
+          if(!res.ok){console.log('REALIZO_ACCOUNT_COUNT_LOOKUP_AVAILABLE=false');process.exit(0)}
+          const json=await res.json();
+          console.log('REALIZO_ACCOUNT_COUNT_LOOKUP_AVAILABLE='+Boolean(json.success));
+          if(json.success)console.log('REALIZO_NATIVE_ACCOUNT_COUNT='+Number(json.result?.[0]?.results?.[0]?.n??-1));
+          JS
