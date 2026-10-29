@@ -23,7 +23,22 @@ de crear un usuario o acceder a su billetera. Sin `CF_ACCESS_TEAM_DOMAIN` y
   instaló los secretos `CF_ACCESS_AUD` y `CF_ACCESS_TEAM_DOMAIN` en
   `realizo-sandbox` y verificó que los secretos de PayPal Sandbox permanecen.
 
-**Pendiente crítico: excepción de ruta para el webhook PayPal.**
+**Verificado el 28/10/2026 mediante la ejecución**
+[Realizo Sandbox - verify public webhook and protected wallet](https://github.com/abelarriaga0-ui/Open-Generative-AI/actions/runs/40794142235):
+
+- `GET /api/wallet` sin sesión → **HTTP 302**, redirige a Cloudflare Access.
+- `POST /api/wallet/paypal/webhook` con JSON válido pero sin firma →
+  **HTTP 401** y error de backend `missing_signature_headers` (no bloqueado por Access).
+- `GET /api/wallet/paypal/webhook` → **HTTP 405** del backend.
+- La excepción de ruta del webhook y la protección del resto del Worker
+  quedaron confirmadas externamente. No se generaron órdenes ni recargas.
+
+**Pendiente:** iniciar sesión real con una identidad incluida en
+`Realizo - Usuarios de prueba`, comprobar saldo individual con dos cuentas
+y probar recarga ficticia de PayPal Sandbox. No probar pagos Live.
+
+### Referencia de configuración de ruta (ya aplicada)
+
 
 1. En **Zero Trust → Access → Applications → Realizo Wallet Sandbox → Edit**
    abrir **Destinations** y localizar el destino de tipo Worker
@@ -45,8 +60,8 @@ Cloudflare documenta explícitamente `destinations[].overrides`, con
 También puede utilizarse una app de Access más específica para esa ruta,
 pero no modificar la política Allow del Worker completo.
 
-**No probar recargas hasta que el webhook y el inicio de sesión estén
-verificados.**
+**La excepción de webhook ya está verificada. Antes de recargar, comprobar
+inicio de sesión con la cuenta autorizada y billetera creada.**
 
 ## Pruebas finales
 
