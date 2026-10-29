@@ -1,0 +1,38 @@
+name: Realizo Sandbox - login provider readiness (no deployment)
+on:
+  push:
+    branches: [feature/realizo-cloudflare-auth-videos]
+    paths: ['.github/workflows/realizo-auth-provider-readiness.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/feature/realizo-cloudflare-auth-videos'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Verify configured provider secrets by presence only and check hosted login
+        env:
+          GOOGLE_ID: ${{ secrets.REALIZO_GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_SECRET: ${{ secrets.REALIZO_GOOGLE_OAUTH_CLIENT_SECRET }}
+          RESEND_KEY: ${{ secrets.REALIZO_RESEND_API_KEY }}
+          EMAIL_FROM: ${{ secrets.REALIZO_EMAIL_FROM }}
+        run: |
+          node --input-type=module <<'JS'
+          const google = !!process.env.GOOGLE_ID && !!process.env.GOOGLE_SECRET;
+          const email = !!process.env.RESEND_KEY && !!process.env.EMAIL_FROM;
+          const partialGoogle = (!!process.env.GOOGLE_ID) !== (!!process.env.GOOGLE_SECRET);
+          const partialEmail = (!!process.env.RESEND_KEY) !== (!!process.env.EMAIL_FROM);
+          const r = await fetch('https://realizo-auth-sandbox.abelarriaga0.workers.dev/api/auth/features',{signal:AbortSignal.timeout(15000)});
+          if (!r.ok) throw new Error('Login configuration endpoint is unreachable');
+          const flags = await r.json();
+          console.log('GITHUB_GOOGLE_OAUTH_PAIR_PRESENT=' + google);
+          console.log('GITHUB_EMAIL_SENDER_PAIR_PRESENT=' + email);
+          console.log('GITHUB_GOOGLE_PAIR_INCOMPLETE=' + partialGoogle);
+          console.log('GITHUB_EMAIL_PAIR_INCOMPLETE=' + partialEmail);
+          console.log('WORKER_NATIVE_LOGIN_ENABLED=' + Boolean(flags.enabled));
+          console.log('WORKER_GOOGLE_LOGIN_READY=' + Boolean(flags.google));
+          console.log('WORKER_EMAIL_LOGIN_READY=' + Boolean(flags.email));
+          console.log('NOTE: These are configuration checks, not end-to-end sign-in tests.');
+          JS
