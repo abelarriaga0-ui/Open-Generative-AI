@@ -9,7 +9,14 @@ function javascriptFiles(directory) {
   });
 }
 
-const files = ['proxy.js', ...javascriptFiles('lib/wallet'), ...javascriptFiles('app/api/wallet')];
+const files = [
+  'proxy.js',
+  ...javascriptFiles('lib/wallet'),
+  ...javascriptFiles('lib/realizo-auth'),
+  ...javascriptFiles('app/api/wallet'),
+  ...javascriptFiles('app/api/auth'),
+  ...javascriptFiles('app/auth'),
+];
 for (const file of files) {
   // Force ESM parsing. Module autodetection can mask a bad JS file in this repo.
   const result = spawnSync(process.execPath, ['--input-type=module', '--check'], {
