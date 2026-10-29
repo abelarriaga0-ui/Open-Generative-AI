@@ -787,6 +787,7 @@ export default function VideoStudio({
   previewOnly = false,
   realizoBrand = false,
   preparedBrief = null,
+  uploadAsset = null,
 }) {
   const copy = useMemo(() => {
     const original = resolveCopy(en, zh, locale);
@@ -1635,12 +1636,14 @@ export default function VideoStudio({
         const progress = new Array(selectedFiles.length).fill(0);
         const results = await Promise.allSettled(
           selectedFiles.map((file, index) =>
-            uploadFile(apiKey, file, (value) => {
-              progress[index] = value;
-              setProgress(
-                Math.round(progress.reduce((sum, item) => sum + item, 0) / progress.length),
-              );
-            }),
+            (uploadAsset && file.type.startsWith('image/')
+              ? uploadAsset(file)
+              : uploadFile(apiKey, file, (value) => {
+                  progress[index] = value;
+                  setProgress(
+                    Math.round(progress.reduce((sum, item) => sum + item, 0) / progress.length),
+                  );
+                })),
           ),
         );
         const failures = results.flatMap((result, index) =>
@@ -1910,9 +1913,9 @@ export default function VideoStudio({
     setEndImageProgress(0);
     const selectionAtStart = { ...selectionRef.current };
     try {
-      const url = await uploadFile(apiKey, file, (pct) => {
-        setEndImageProgress(pct);
-      });
+      const url = uploadAsset
+        ? await uploadAsset(file)
+        : await uploadFile(apiKey, file, (pct) => { setEndImageProgress(pct); });
       const latestModel = videoModelCatalog.variantById.get(
         selectionRef.current.selectedModel,
       )?.model;
