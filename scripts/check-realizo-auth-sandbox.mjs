@@ -1,0 +1,18 @@
+import { readFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
+const config=JSON.parse(readFileSync('wrangler.auth-sandbox.jsonc','utf8'));
+const main=JSON.parse(readFileSync('wrangler.jsonc','utf8'));
+const old=JSON.parse(readFileSync('wrangler.sandbox.jsonc','utf8'));
+assert.equal(config.name,'realizo-auth-sandbox');
+assert.equal(config.vars.REALIZO_AUTH_PROVIDER,'native');
+assert.equal(config.vars.REALIZO_ENV,'sandbox');
+assert.equal(config.vars.PAYPAL_MODE,'sandbox');
+assert.equal(config.vars.MUAPI_GENERATION_ENABLED,'false');
+assert.equal(config.vars.REALIZO_WALLET_ONLY,'true');
+assert.equal(config.vars.REALIZO_AUTH_ORIGIN,'https://realizo-auth-sandbox.abelarriaga0.workers.dev');
+assert.equal(config.d1_databases.length,1);
+assert.equal(config.d1_databases[0].database_id,old.d1_databases[0].database_id);
+assert.notEqual(config.d1_databases[0].database_id,main.d1_databases?.[0]?.database_id);
+assert.notEqual(config.name,main.name);
+assert.notEqual(config.name,old.name);
+console.log('OK: first-party authentication Worker isolated from production and confined to Sandbox D1.');
