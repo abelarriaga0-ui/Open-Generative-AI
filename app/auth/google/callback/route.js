@@ -12,7 +12,7 @@ export async function GET(request) {
     const identity=await finishGoogle(env,request);
     if(!identity) return fallback();
     const user=await findOrCreateAccount(env.WALLETS_DB,identity.email,'google',identity.subject);
-    const response=NextResponse.redirect(new URL('/wallet',env.REALIZO_AUTH_ORIGIN),303);
+    const response=NextResponse.redirect(new URL('/studio',env.REALIZO_AUTH_ORIGIN),303);
     return clearOauthCookie(await createOwnSession(env,user.id,response));
   }catch{
     console.error('Google login failed');
