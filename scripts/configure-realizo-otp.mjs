@@ -25,12 +25,12 @@ const permittedPolicy='77222d03-b774-4132-9dbd-d0b8665c6347';
 if(!Array.isArray(app.policies)||app.policies.length!==1||app.policies[0]?.id!==permittedPolicy){
  fail('La política de usuarios ya no coincide con la configuración autorizada.');
 }
-const idps=await request('/identity_providers?per_page=100');
-const otp=idps.filter(provider=>provider.type==='onetimepin'&&provider.id);
-if(otp.length!==1){console.log('OTP_DIAGNOSTIC='+JSON.stringify({matching:otp.length,availableTypes:idps.map(p=>({type:p.type,name:p.name,hasId:!!p.id}))}));fail('Proveedor One-time PIN no es único en la cuenta.');}
-const desiredId=otp[0].id;
-if(app.allowed_idps?.length===1&&app.allowed_idps[0]===desiredId&&app.auto_redirect_to_identity===true) {
- console.log('Realizo ya utiliza exclusivamente One-time PIN. Ningún cambio requerido.');
+// Cloudflare's IdP listing may be unavailable through an Access:Apps-only token.
+// A missing allowed_idps selection means use all configured account login methods.
+// Disable the forced Cloudflare redirect so One-time PIN can be selected.
+if((app.allowed_idps==null || app.allowed_idps.length===0) &&
+   app.auto_redirect_to_identity===false){
+ console.log('Pantalla de selección de proveedores ya habilitada.');
 } else {
  // PUT replaces a configuration. Preserve the current security policies,
  // Worker destination and all user-editable app options; never use another app ID.
@@ -42,18 +42,18 @@ if(app.allowed_idps?.length===1&&app.allowed_idps[0]===desiredId&&app.auto_redir
  'same_site_cookie_attribute','enable_binding_cookie','read_service_tokens_from_header',
  'self_hosted_domains'];
  const body=Object.fromEntries(fields.filter(k=>app[k]!==undefined).map(k=>[k,app[k]]));
- body.allowed_idps=[desiredId];
- body.auto_redirect_to_identity=true;
+ body.allowed_idps=[];
+ body.auto_redirect_to_identity=false;
  // Important: never change destination, policy, identity or bypass application.
  await request('/apps/'+app.id,'PUT',body);
- console.log('One-time PIN seleccionado para la aplicación Realizo Wallet Sandbox.');
+ console.log('Redirección forzada desactivada; proveedores de inicio de sesión disponibles según la cuenta.');
 }
 const check=await request('/apps/'+app.id);
-if(check.allowed_idps?.length!==1||check.allowed_idps[0]!==desiredId||
-   check.auto_redirect_to_identity!==true||
+if((check.allowed_idps||[]).length!==0||
+   check.auto_redirect_to_identity!==false||
    check.name!==app.name||check.type!==app.type||
    JSON.stringify(check.destinations)!==JSON.stringify(app.destinations)||
    check.policies?.length!==1||check.policies[0]?.id!==permittedPolicy){
  fail('La comprobación posterior no coincide; revisar manualmente.');
 }
-console.log('OK: políticas y destino preservados; método de acceso exclusivamente One-time PIN.');
+console.log('OK: políticas y destino preservados; pantalla de selección de métodos habilitada.');
