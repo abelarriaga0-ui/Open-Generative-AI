@@ -137,7 +137,9 @@
     "react-hot-toast": "^2.4.1",
     "studio": "*",
     "workflow-builder": "file:./packages/Vibe-Workflow/packages/workflow-builder",
-    "xtend": "^4.0.2"
+    "xtend": "^4.0.2",
+    "fflate": "^0.8.2",
+    "pdfjs-dist": "6.4.299"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
