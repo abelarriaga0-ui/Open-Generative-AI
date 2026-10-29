@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import PaypalTopup from '@/components/wallet/PaypalTopup';
+import { getRealizoBrowserAuth } from '@/lib/realizo-auth/browser';
 
 const money = (cents) => new Intl.NumberFormat('es-EC', {
   style: 'currency', currency: 'USD'
@@ -10,6 +11,15 @@ const money = (cents) => new Intl.NumberFormat('es-EC', {
 export default function WalletPage() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+  const [authMode] = useState(() => Boolean(getRealizoBrowserAuth()));
+  async function signOut() {
+    if (!authMode) return;
+    try {
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+      const client = getRealizoBrowserAuth();
+      if (client) await client.auth.signOut();
+    } finally { window.location.assign('/login'); }
+  }
   useEffect(() => {
     const controller = new AbortController();
     fetch('/api/wallet', { credentials: 'same-origin', cache: 'no-store', signal: controller.signal })
@@ -29,11 +39,15 @@ export default function WalletPage() {
       <div className="max-w-4xl mx-auto space-y-8">
         <header className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Mi billetera <span className="text-base font-normal text-cyan-300">USD</span></h1>
-          <Link className="text-cyan-300 hover:underline" href="/studio">Volver al estudio</Link>
+          <div className="flex gap-5 items-center">
+            <Link className="text-cyan-300 hover:underline" href="/studio">Volver al estudio</Link>
+            {authMode && <button type="button" onClick={signOut} className="text-slate-300 hover:text-white text-sm">Cerrar sesión</button>}
+          </div>
         </header>
         {error && <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-5">
           <p className="font-semibold">La billetera todavía no está disponible.</p>
           <p className="text-sm text-white/70 mt-2">{error}</p>
+          {authMode && <Link href="/login" className="text-cyan-300 underline text-sm inline-block mt-3">Iniciar sesión en Realizo</Link>}
           <p className="text-sm text-white/70 mt-2">
             Se requiere configurar la base de datos y el acceso autenticado antes de habilitar las recargas.
           </p>
