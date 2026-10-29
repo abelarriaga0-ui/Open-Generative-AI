@@ -27,7 +27,7 @@ if(!Array.isArray(app.policies)||app.policies.length!==1||app.policies[0]?.id!==
 }
 const idps=await request('/identity_providers?per_page=100');
 const otp=idps.filter(provider=>provider.type==='onetimepin'&&provider.id);
-if(otp.length!==1)fail('Proveedor One-time PIN no es único en la cuenta.');
+if(otp.length!==1){console.log('OTP_DIAGNOSTIC='+JSON.stringify({matching:otp.length,availableTypes:idps.map(p=>({type:p.type,name:p.name,hasId:!!p.id}))}));fail('Proveedor One-time PIN no es único en la cuenta.');}
 const desiredId=otp[0].id;
 if(app.allowed_idps?.length===1&&app.allowed_idps[0]===desiredId&&app.auto_redirect_to_identity===true) {
  console.log('Realizo ya utiliza exclusivamente One-time PIN. Ningún cambio requerido.');
