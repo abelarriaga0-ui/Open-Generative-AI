@@ -23,6 +23,10 @@ on:
       - 'packages/studio/src/components/VideoStudio.jsx'
       - 'tests/realizo-studio-routing.test.mjs'
       - 'migrations/**'
+      - 'wrangler.auth-sandbox.jsonc'
+      - 'lib/realizo-creative/**'
+      - 'app/api/realizo/**'
+      - 'components/RealizoCreator.jsx'
   workflow_dispatch:
 permissions:
   contents: read
@@ -72,6 +76,20 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
         run: npx --no-install wrangler d1 migrations apply WALLETS_DB --config wrangler.auth-sandbox.jsonc --remote
+      - name: Verify or create isolated private R2 bucket
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if npx --no-install wrangler r2 bucket list --json |
+              node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>{try{const x=JSON.parse(s);process.exit((Array.isArray(x)?x:x.buckets||[]).some(b=>b.name==='realizo-media-sandbox')?0:1)}catch{process.exit(2)}})"; then
+            echo 'Private Realizo media Sandbox R2 bucket already exists.'
+          else
+            npx --no-install wrangler r2 bucket create realizo-media-sandbox
+            echo 'Private Realizo media Sandbox R2 bucket created.'
+          fi
       - name: Deploy ONLY realizo-auth-sandbox (not production or original pilot)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
