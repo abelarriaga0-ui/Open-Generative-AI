@@ -2562,7 +2562,9 @@ export default function VideoStudio({
         : "w-full h-full flex flex-col items-center justify-center bg-app-bg relative overflow-hidden"}
     >
       {/* ── CENTRAL GALLERY AREA ── */}
-      <div className="flex-1 w-full max-w-7xl mx-auto overflow-y-auto custom-scrollbar pb-40 lg:pb-32 px-2">
+      <div className={realizoBrand
+          ? "realizo-video-gallery flex-1 min-h-0 w-full max-w-7xl mx-auto overflow-y-auto custom-scrollbar px-3 sm:px-6"
+          : "flex-1 w-full max-w-7xl mx-auto overflow-y-auto custom-scrollbar pb-40 lg:pb-32 px-2"}>
         {history.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full pt-4 animate-fade-in-up">
             {history.map((entry, idx) => {
@@ -3491,6 +3493,7 @@ export default function VideoStudio({
 
             {/* Generate button */}
             <PromptAction
+              className={realizoBrand ? "realizo-generation-action" : ""}
               onClick={handleGenerate}
               disabled={(previewOnly && !(generationReady && billableModelIds.includes(selectedModel))) || generating || mediaUploading || (selectedTool?.group === "continueGenerated" && !hasContinuationSource) || (selectedVeoTool && !selectedVeoSource)}
             >
