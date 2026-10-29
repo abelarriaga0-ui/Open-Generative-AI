@@ -26,6 +26,8 @@ on:
       - 'wrangler.auth-sandbox.jsonc'
       - 'lib/realizo-creative/**'
       - 'app/api/realizo/**'
+      - 'lib/realizo-creative/wallet-generation.js'
+      - 'tests/realizo-wallet-engine.test.mjs'
       - 'components/RealizoCreator.jsx'
       - 'lib/realizo-creative/**'
       - 'tests/realizo-creator.test.mjs'
