@@ -2,6 +2,7 @@ import {
   getWalletEnvironment, requireWalletUser, getWallet,
   getWalletActivity, getActiveModels, jsonError
 } from '@/lib/wallet/server';
+import { isMuapiGenerationEnabled } from '@/lib/wallet/generation-policy';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +25,7 @@ export async function GET(request) {
       min_topup_cents: previousDeposits.total > 0 ? 1 : 2000,
       first_topup: previousDeposits.total === 0,
       currency: 'USD',
+      generation_enabled: isMuapiGenerationEnabled(env) && Boolean(env.MUAPI_API_KEY),
       checkout_enabled: (env.PAYPAL_MODE || 'sandbox') === 'sandbox' &&
         Boolean(env.PAYPAL_CLIENT_ID && env.PAYPAL_CLIENT_SECRET && env.PAYPAL_WEBHOOK_ID),
       environment: env.REALIZO_ENV || 'unconfigured',
