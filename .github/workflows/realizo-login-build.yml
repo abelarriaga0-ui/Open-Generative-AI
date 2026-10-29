@@ -5,6 +5,10 @@ on:
       - feature/realizo-login-propio
     paths:
       - .github/workflows/realizo-login-build.yml
+      - lib/wallet/request-policy.js
+      - lib/realizo-auth/**
+      - app/login/**
+      - app/auth/**
   workflow_dispatch:
 permissions:
   contents: write
