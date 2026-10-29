@@ -128,7 +128,7 @@ export default function RealizoStudio({accountId}){
           <span className="text-[13px] text-[#624496] font-semibold">✓ Producto y ángulo de venta aplicados al editor</span>
           <button type="button" onClick={()=>setEditorOpen(false)} className="text-[#6E4BD2] text-[13px] font-bold hover:underline">Editar concepto</button>
         </div>}
-        <div className="rounded-[24px] overflow-hidden border border-[#D6C7E0] shadow-[0_18px_50px_rgba(51,38,83,.12)] h-[min(990px,calc(100vh-195px))] min-h-[680px]">
+        <div className="realizo-native-video rounded-[26px] overflow-hidden border border-[#E6DBE4] bg-[#FAF7F4] shadow-[0_16px_44px_rgba(51,38,83,.065)] h-[min(790px,calc(100vh-190px))] min-h-[605px]">
           <VideoStudio locale="en" apiKey={null} persistenceScope={accountId} preparedBrief={brief}
             realizoBrand previewOnly uploadAsset={uploadAsset}
             onWalletGenerate={onWalletGenerate} generationReady={generationReady}
