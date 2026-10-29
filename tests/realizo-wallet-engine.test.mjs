@@ -38,6 +38,8 @@ test('Wan pilot maps raw original VideoStudio fields to a fixed-price billable p
  assert.match(bridge,/model==='wan2\.2-image-to-video'/);
  assert.match(bridge,/image_url:typeof inputs\.image_url/);
  assert.match(bridge,/aspect_ratio:inputs\.aspect_ratio==='9:16'/);
+ assert.match(bridge,/Number\\(inputs\\.duration\\)!==5/);
+ assert.match(bridge,/calidad media/);
  assert.doesNotMatch(bridge,/MUAPI_API_KEY/);
  const editor=readFileSync('packages/studio/src/components/VideoStudio.jsx','utf8');
  assert.match(editor,/videoModelCatalog\.variantById\.get\("wan2\.2-image-to-video"\)/);
