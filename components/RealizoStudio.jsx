@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { optimizeImage } from '@/lib/realizo-creative/optimize-image';
 import { VideoStudio } from 'studio';
 import RealizoCreator from '@/components/RealizoCreator';
 
@@ -34,6 +35,14 @@ export default function RealizoStudio({accountId}){
  const [brief,setBrief]=useState(null);
  const [editorOpen,setEditorOpen]=useState(false);
  const [sidebar,setSidebar]=useState(false);
+ const uploadAsset=useCallback(async(file)=>{
+    const compressed=await optimizeImage(file);
+    const body=new FormData();body.append('image',compressed);
+    const r=await fetch('/api/realizo/media',{method:'POST',credentials:'same-origin',body});
+    const json=await r.json();
+    if(!r.ok||!json.url)throw new Error(json.error||'No se pudo cargar la imagen');
+    return json.url;
+ },[]);
  useEffect(()=>{
    const controller=new AbortController();
    fetch('/api/wallet',{credentials:'same-origin',cache:'no-store',signal:controller.signal})
@@ -104,7 +113,7 @@ export default function RealizoStudio({accountId}){
         </div>}
         <div className="rounded-[24px] overflow-hidden border border-[#D6C7E0] shadow-[0_18px_50px_rgba(51,38,83,.12)] h-[min(990px,calc(100vh-195px))] min-h-[680px]">
           <VideoStudio locale="en" apiKey={null} persistenceScope={accountId} preparedBrief={brief}
-            realizoBrand previewOnly />
+            realizoBrand previewOnly uploadAsset={uploadAsset} />
         </div>
         <p className="text-[12px] text-[#9A8B9B]">La generación permanece deshabilitada en este entorno de pruebas hasta conectar las tarifas y el consumo por billetera.</p>
        </section>}
