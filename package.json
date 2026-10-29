@@ -47,7 +47,7 @@
     "cloudflare:upload:sandbox": "node scripts/check-sandbox-isolation.mjs && opennextjs-cloudflare upload --config wrangler.sandbox.jsonc",
     "cloudflare:preview:sandbox": "opennextjs-cloudflare preview --config wrangler.sandbox.jsonc",
     "wallet:preflight:sandbox": "node scripts/check-sandbox-isolation.mjs",
-    "test:realizo-auth": "python3 -m unittest discover -s tests -p 'test_realizo_identity_schema.py' -v && node --test tests/realizo-native-auth.test.mjs && node scripts/check-realizo-auth-sandbox.mjs && node --test tests/paypal-settlement-collision.test.mjs",
+    "test:realizo-auth": "python3 -m unittest discover -s tests -p 'test_realizo_identity_schema.py' -v && node --test tests/realizo-native-auth.test.mjs && node scripts/check-realizo-auth-sandbox.mjs && node --test tests/paypal-settlement-collision.test.mjs && node --test tests/realizo-studio-routing.test.mjs",
     "cloudflare:build:realizo-auth-sandbox": "git submodule update --init --recursive && npm install --no-save --package-lock=false next@16.4.2 @opennextjs/cloudflare@1.20.12 wrangler@4 && npm run build:packages && opennextjs-cloudflare build --config wrangler.auth-sandbox.jsonc"
   },
   "build": {
