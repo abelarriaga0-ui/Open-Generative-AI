@@ -5,6 +5,7 @@ on:
       - feature/wallet-compartida-muapi
     paths:
       - .github/workflows/realizo-otp-login.yml
+      - scripts/configure-realizo-otp.mjs
   workflow_dispatch:
 permissions:
   contents: read
