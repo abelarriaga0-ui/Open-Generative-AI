@@ -1,0 +1,41 @@
+name: Realizo - inspect Muapi readiness safely
+on:
+  push:
+    branches: [feature/realizo-cloudflare-auth-videos]
+    paths: ['.github/workflows/realizo-muapi-readiness.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/feature/realizo-cloudflare-auth-videos'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      GITHUB_MUAPI_KEY: ${{ secrets.MUAPI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check secret presence without reading secret values
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e "console.log('GITHUB_MUAPI_API_KEY_PRESENT='+Boolean(process.env.GITHUB_MUAPI_KEY))"
+          npm install --prefix "$RUNNER_TEMP/realizo-wrangler" --no-save --no-audit --no-fund wrangler@4.151.3 >/dev/null
+          for worker in realizo-auth-sandbox realizo-sandbox open-generative-ai; do
+            if "$RUNNER_TEMP/realizo-wrangler/node_modules/.bin/wrangler" secret list --name "$worker" > "$RUNNER_TEMP/realizo-worker-secrets.json" 2>/dev/null; then
+              WORKER_NAME="$worker" node --input-type=module <<'JS'
+          import {readFileSync} from 'node:fs';
+          const data=JSON.parse(readFileSync(process.env.RUNNER_TEMP+'/realizo-worker-secrets.json','utf8'));
+          const names=new Set(data.map(x=>x.name));
+          const name=process.env.WORKER_NAME;
+          console.log('WORKER_'+name+'_MUAPI_API_KEY_PRESENT='+names.has('MUAPI_API_KEY'));
+          JS
+            else
+              echo "WORKER_${worker}_SECRET_LIST_UNAVAILABLE=true"
+            fi
+          done
