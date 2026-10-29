@@ -135,7 +135,9 @@
     "react-hot-toast": "^2.4.1",
     "studio": "*",
     "workflow-builder": "file:./packages/Vibe-Workflow/packages/workflow-builder",
-    "xtend": "^4.0.2"
+    "xtend": "^4.0.2",
+    "@supabase/ssr": "0.12.7",
+    "@supabase/supabase-js": "2.118.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
