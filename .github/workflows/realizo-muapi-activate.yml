@@ -78,6 +78,25 @@ jobs:
           cat "$RUNNER_TEMP/realizo-pilot-id" |
             "$RUNNER_TEMP/realizo-wrangler/node_modules/.bin/wrangler" secret put REALIZO_MUAPI_PILOT_ACCOUNT_ID --name realizo-auth-sandbox --config wrangler.auth-sandbox.jsonc
           echo 'Shared Muapi key and a single allowed verified owner installed without logging values.'
+      - name: Issue one auditable USD 0.35 developer test credit
+        if: env.MUAPI_API_KEY != ''
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          import {readFileSync} from 'node:fs';
+          const id=readFileSync(process.env.RUNNER_TEMP+'/realizo-pilot-id','utf8').trim();
+          if(!/^[0-9a-f-]{36}$/i.test(id))throw Error('Invalid pilot account');
+          const base='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+
+            '/d1/database/'+process.env.REALIZO_D1_SANDBOX+'/query';
+          const sql="INSERT OR IGNORE INTO realizo_muapi_pilot_grants(slot,user_id,amount_cents) VALUES(1,'"+id+"',35)";
+          const response=await fetch(base,{method:'POST',headers:{
+            Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,'Content-Type':'application/json'
+          },body:JSON.stringify({sql})});
+          if(!response.ok)throw Error('Test-credit grant rejected');
+          const json=await response.json();
+          if(!json.success)throw Error('Test-credit grant failed');
+          console.log('ONE_TIME_PILOT_GRANT_READY=true; USD 0.35, not a PayPal deposit');
+          JS
       - name: Activate only verified low-cost Wan 2.2 5-second model in Sandbox D1
         if: env.MUAPI_API_KEY != ''
         shell: bash
