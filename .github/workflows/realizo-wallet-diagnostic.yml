@@ -39,3 +39,35 @@ jobs:
           await get('APPLIED_MIGRATION_NUMBERS',"SELECT name FROM d1_migrations ORDER BY id DESC LIMIT 8");
           await get('PILOT_PRICE',"SELECT model_id,enabled,customer_price_cents FROM model_prices WHERE model_id='wan2.2-image-to-video'");
           JS
+      - name: Read Cloudflare Worker 500 event counts if token permits
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          const now=Date.now();
+          const uri='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers/observability/telemetry/query';
+          const response=await fetch(uri,{method:'POST',headers:{
+            Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,
+            'Content-Type':'application/json',
+          },body:JSON.stringify({
+            queryId:'realizo-wallet-investigation',
+            timeframe:{from:now-30*60*1000,to:now},
+            view:'events',limit:1000,order:'desc',
+            parameters:{datasets:['cloudflare-workers']},
+          }),signal:AbortSignal.timeout(18000)});
+          if(!response.ok){console.log('OBSERVABILITY_API_AVAILABLE=false (status '+response.status+')');process.exit(0);}
+          const json=await response.json();
+          if(!json.success){console.log('OBSERVABILITY_QUERY_UNAVAILABLE=true');process.exit(0);}
+          let total=0,errors=0,wallet=0;
+          for(const item of json.result?.events?.events||json.events?.events||[]){
+            const worker=item.$workers||{}, meta=item.$metadata||{};
+            if(worker.scriptName!=='realizo-auth-sandbox'&&meta.service!=='realizo-auth-sandbox')continue;
+            total++;
+            const source=typeof item.source==='string'?item.source:JSON.stringify(item.source||{});
+            if(source.includes('Wallet request failed'))wallet++;
+            const status=Number(item.statusCode||meta.statusCode||worker.event?.response?.status);
+            if(status>=500)errors++;
+          }
+          console.log('OBSERVABILITY_REALIZO_EVENTS='+total);
+          console.log('OBSERVABILITY_REALIZO_HTTP_500='+errors);
+          console.log('OBSERVABILITY_WALLET_INTERNAL_LOGS='+wallet);
+          JS
