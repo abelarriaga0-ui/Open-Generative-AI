@@ -26,10 +26,14 @@ export function proxy(request) {
     const url = request.nextUrl;
     // The Sandbox pilot exposes the wallet only. Legacy BYOK studios and proxies
     // must be migrated before they can use a shared platform credential.
-    const pilotAction = walletPilotAction(url.pathname, process.env.REALIZO_WALLET_ONLY === 'true');
+    const pilotAction = walletPilotAction(url.pathname, process.env.REALIZO_WALLET_ONLY === 'true', process.env.REALIZO_AUTH_PROVIDER === 'native');
     if (pilotAction === 'deny') {
         return addSecurityHeaders(NextResponse.json({ error: 'route_unavailable_in_wallet_pilot' },
             { status: 404 }), url.pathname);
+    }
+    if (process.env.REALIZO_AUTH_PROVIDER === 'native' &&
+        (url.pathname === '/create' || url.pathname === '/create/')) {
+        return addSecurityHeaders(NextResponse.redirect(new URL('/studio', request.url)), url.pathname);
     }
     if (pilotAction === 'redirect') {
         const destination = process.env.REALIZO_AUTH_PROVIDER === 'native' ? '/login' : '/wallet';
