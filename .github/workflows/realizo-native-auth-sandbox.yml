@@ -2,7 +2,19 @@ name: Realizo - native login + PayPal Sandbox isolated deployment
 on:
   push:
     branches: [feature/realizo-cloudflare-auth-videos]
-    paths: ['.github/workflows/realizo-native-auth-sandbox.yml']
+    paths:
+      - '.github/workflows/realizo-native-auth-sandbox.yml'
+      - 'lib/wallet/paypal.js'
+      - 'lib/realizo-auth/**'
+      - 'app/login/**'
+      - 'app/create/**'
+      - 'app/api/auth/**'
+      - 'app/auth/**'
+      - 'app/api/wallet/**'
+      - 'tests/realizo-native-auth.test.mjs'
+      - 'tests/paypal-settlement-collision.test.mjs'
+      - 'package.json'
+      - 'migrations/**'
   workflow_dispatch:
 permissions:
   contents: read
