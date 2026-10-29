@@ -23,7 +23,7 @@ async function postJson(path, body) {
   return json;
 }
 
-export default function PaypalTopup({ minCents, firstTopup, onPaid }) {
+export default function PaypalTopup({ minCents, firstTopup, onPaid, theme = 'dark' }) {
   const [amount, setAmount] = useState(firstTopup ? '20.00' : '10.00');
   const [config, setConfig] = useState(null);
   const [error, setError] = useState(null);
@@ -112,19 +112,19 @@ export default function PaypalTopup({ minCents, firstTopup, onPaid }) {
     <div className="space-y-3">
       <p>{firstTopup ? 'Primera recarga mínima: $20 USD.' :
         'Puedes recargar desde $0.01 USD, sujeto a las restricciones de PayPal.'}</p>
-      <label className="block text-sm text-white/70" htmlFor="paypal-topup-amount">
+      <label className={theme === 'light' ? 'block text-sm font-medium text-[#665977]' : 'block text-sm text-white/70'} htmlFor="paypal-topup-amount">
         Importe a recargar (USD)
       </label>
       <input id="paypal-topup-amount" type="text" inputMode="decimal" value={amount}
         onChange={event => setAmount(event.target.value)}
-        className="w-full rounded-lg bg-white/10 border border-white/20 px-4 py-3 text-white"
+        className={theme === 'light' ? 'w-full rounded-2xl bg-[#F7F3EE] border border-[#DED4D8] px-4 py-3.5 text-[#251D37] outline-none focus:border-[#8F67C6]' : 'w-full rounded-lg bg-white/10 border border-white/20 px-4 py-3 text-white'}
         placeholder="20.00" />
       {config?.mode === 'sandbox' && (
-        <p className="text-amber-300 text-sm font-medium">MODO DE PRUEBA — No se cobra dinero real.</p>
+        <p className={theme === 'light' ? 'text-[#9B6B42] text-xs font-semibold' : 'text-amber-300 text-sm font-medium'}>PayPal Sandbox · Pago de prueba</p>
       )}
-      {!config && !error && <p className="text-white/60 text-sm">Preparando PayPal...</p>}
-      {error && <p role="alert" className="text-amber-300 text-sm">{error}</p>}
-      {status && <p role="status" className="text-cyan-300 text-sm">{status}</p>}
+      {!config && !error && <p className={theme === 'light' ? 'text-[#887B93] text-sm' : 'text-white/60 text-sm'}>Preparando PayPal...</p>}
+      {error && <p role="alert" className={theme === 'light' ? 'text-[#AA5C43] text-sm' : 'text-amber-300 text-sm'}>{error}</p>}
+      {status && <p role="status" className={theme === 'light' ? 'text-[#6E4BD2] text-sm' : 'text-cyan-300 text-sm'}>{status}</p>}
       <div ref={node} aria-label="Botones de recarga con PayPal" />
     </div>
   );
