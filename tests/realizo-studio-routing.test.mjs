@@ -37,7 +37,7 @@ test('first party studio requires authenticated D1 session before rendering orig
 test('original video studio remains in place, no client BYOK key or paid requests enabled',()=>{
   const video=readFileSync('packages/studio/src/components/VideoStudio.jsx','utf8');
   assert.match(video,/persistenceScope/);
-  assert.match(video,/disabled=\{previewOnly \|\| generating/);
+  assert.match(video,/disabled=\{\(previewOnly && !\(generationReady && billableModelIds.includes\(selectedModel\)\)\)/);
   const env=JSON.parse(readFileSync('wrangler.auth-sandbox.jsonc','utf8'));
   assert.equal(env.vars.REALIZO_ENV,'sandbox');
   assert.equal(env.vars.MUAPI_GENERATION_ENABLED,'false');
