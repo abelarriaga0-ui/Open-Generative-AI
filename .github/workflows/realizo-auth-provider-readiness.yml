@@ -34,5 +34,20 @@ jobs:
           console.log('WORKER_NATIVE_LOGIN_ENABLED=' + Boolean(flags.enabled));
           console.log('WORKER_GOOGLE_LOGIN_READY=' + Boolean(flags.google));
           console.log('WORKER_EMAIL_LOGIN_READY=' + Boolean(flags.email));
-          console.log('NOTE: These are configuration checks, not end-to-end sign-in tests.');
+          if (google && !flags.google) throw new Error('Google credentials present in GitHub but not active on Worker');
+          const base='https://realizo-auth-sandbox.abelarriaga0.workers.dev';
+          const result=await fetch(base+'/api/auth/google/start',{redirect:'manual',signal:AbortSignal.timeout(15000)});
+          const location=result.headers.get('location');
+          let redirectHost='none';
+          try {redirectHost=location ? new URL(location,base).hostname : 'none';} catch {}
+          console.log('GOOGLE_START_STATUS='+result.status);
+          console.log('GOOGLE_REDIRECT_HOST='+redirectHost);
+          if (!flags.google || result.status!==302 || redirectHost!=='accounts.google.com')
+            throw new Error('Google OAuth start is not redirecting to Google');
+          const wallet=await fetch(base+'/api/wallet',{redirect:'manual',signal:AbortSignal.timeout(15000)});
+          console.log('ANONYMOUS_WALLET_STATUS='+wallet.status);
+          if(wallet.status!==401) throw new Error('Anonymous wallet request must remain blocked');
+          console.log('PASS: Google OAuth start redirect and anonymous wallet protection validated.');
+          console.log('NOTE: A complete Google login still requires a human test account.');
+
           JS
