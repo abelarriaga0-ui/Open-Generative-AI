@@ -56,7 +56,19 @@ jobs:
           console.log('LEGACY_CREATE_STATUS='+oldCreate.status);
           if(![302,303,307,308].includes(oldCreate.status) || new URL(oldCreate.headers.get('location'),base).pathname!=='/studio')
             throw new Error('Legacy create route must point to the original video studio');
-          console.log('PASS: Google OAuth, anonymous studio guard, legacy generator route and wallet isolation validated.');
+          const jobs=await fetch(base+'/api/realizo/jobs',{redirect:'manual',signal:AbortSignal.timeout(15000)});
+          console.log('ANONYMOUS_GENERATION_HISTORY_STATUS='+jobs.status);
+          if(jobs.status!==401) throw new Error('Video history must be user-scoped');
+          const upload=await fetch(base+'/api/realizo/media',{
+            method:'POST',headers:{'content-type':'application/json'},
+            body:'{}',redirect:'manual',signal:AbortSignal.timeout(15000)});
+          console.log('CROSS_ORIGIN_MEDIA_UPLOAD_STATUS='+upload.status);
+          if(upload.status!==403) throw new Error('Media upload without same origin was not blocked');
+          const unsigned=await fetch(base+'/api/realizo/media/00000000-0000-4000-8000-000000000001?expires=1&sig=bad',{
+            redirect:'manual',signal:AbortSignal.timeout(15000)});
+          console.log('INVALID_SIGNED_MEDIA_STATUS='+unsigned.status);
+          if(unsigned.status!==403) throw new Error('Unsigned media link was not rejected');
+          console.log('PASS: Google OAuth, video studio, wallet, private media and history security verified.');
 
           console.log('NOTE: A complete Google login still requires a human test account.');
 
