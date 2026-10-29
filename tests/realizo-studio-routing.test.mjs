@@ -40,5 +40,7 @@ test('original video studio remains in place, no client BYOK key or paid request
   assert.match(video,/disabled=\{\(previewOnly && !\(generationReady && billableModelIds.includes\(selectedModel\)\)\)/);
   const env=JSON.parse(readFileSync('wrangler.auth-sandbox.jsonc','utf8'));
   assert.equal(env.vars.REALIZO_ENV,'sandbox');
-  assert.equal(env.vars.MUAPI_GENERATION_ENABLED,'false');
+  assert.equal(env.vars.MUAPI_GENERATION_ENABLED,'true');
+  assert.equal(env.vars.REALIZO_MUAPI_PILOT,'true');
+  assert.equal(env.vars.REALIZO_MUAPI_PILOT_ACCOUNT_ID,undefined);
 });
