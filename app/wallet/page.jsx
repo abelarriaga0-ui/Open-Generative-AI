@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import PaypalTopup from '@/components/wallet/PaypalTopup';
+import { useRouter } from 'next/navigation';
 
 const money = (cents) => new Intl.NumberFormat('es-EC', {
   style: 'currency', currency: 'USD'
@@ -10,18 +11,31 @@ const money = (cents) => new Intl.NumberFormat('es-EC', {
 export default function WalletPage() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+  const router = useRouter();
+  const [ownAuth, setOwnAuth] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
+    fetch('/api/auth/features', {cache:'no-store', signal:controller.signal})
+      .then(r=>r.json()).then(r=>setOwnAuth(Boolean(r.enabled)))
+      .catch(()=>{});
     fetch('/api/wallet', { credentials: 'same-origin', cache: 'no-store', signal: controller.signal })
       .then(async (response) => {
         const json = await response.json();
+        if (response.status===401) {
+          router.replace('/login');
+          throw new Error('Inicia sesión para acceder a tu billetera.');
+        }
         if (!response.ok) throw new Error(json.message || json.error || 'No se pudo obtener la billetera');
         setData(json);
       }).catch((failure) => {
         if (failure.name !== 'AbortError') setError(failure.message);
       });
     return () => controller.abort();
-  }, []);
+  }, [router]);
+  async function signOut() {
+    try { await fetch('/api/auth/logout', {method:'POST',credentials:'same-origin'}); }
+    finally { window.location.assign('/login'); }
+  }
   const entryLabels = { deposit: 'Recarga', reserve: 'Generación reservada',
     capture: 'Generación completada', release: 'Reserva devuelta' };
   return (
@@ -29,7 +43,10 @@ export default function WalletPage() {
       <div className="max-w-4xl mx-auto space-y-8">
         <header className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Mi billetera <span className="text-base font-normal text-cyan-300">USD</span></h1>
-          <Link className="text-cyan-300 hover:underline" href="/studio">Volver al estudio</Link>
+          <nav className="flex items-center gap-5">
+            <Link className="text-cyan-300 hover:underline" href="/create">Generar video</Link>
+            {ownAuth && <button onClick={signOut} className="text-sm text-white/70 hover:text-white">Cerrar sesión</button>}
+          </nav>
         </header>
         {error && <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-5">
           <p className="font-semibold">La billetera todavía no está disponible.</p>
