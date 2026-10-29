@@ -1440,9 +1440,11 @@ export default function VideoStudio({
       let family = currentFamily;
       // When a priced model exists, select that exact catalog variant rather than
       // a nonbillable default. Provider parameters are still built by the engine.
-      const pilotVariant = [...billableModelIds, ...(realizoBrand ? ["wan2.2-image-to-video"] : [])]
-        .map(id => videoModelCatalog.variantById.get(id))
-        .find(item => item && getModelMediaCapabilities(item.model).image.maxItems > 0);
+      const pilotVariant = (realizoBrand && previewOnly
+        ? videoModelCatalog.variantById.get("wan2.2-image-to-video")
+        : null) || billableModelIds
+          .map(id => videoModelCatalog.variantById.get(id))
+          .find(item => item?.mode === "i2v" && getModelMediaCapabilities(item.model).image.maxItems > 0);
       if (pilotVariant) {
         variant = pilotVariant;
         family = videoModelCatalog.familyByVariantId.get(pilotVariant.model.id);
