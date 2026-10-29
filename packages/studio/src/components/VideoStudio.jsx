@@ -2557,7 +2557,9 @@ export default function VideoStudio({
   return (
     <div
       ref={containerRef}
-      className="w-full h-full flex flex-col items-center justify-center bg-app-bg relative overflow-hidden"
+      className={realizoBrand
+        ? "realizo-video-core w-full h-full flex flex-col items-center bg-[#FAF7F4] relative overflow-hidden"
+        : "w-full h-full flex flex-col items-center justify-center bg-app-bg relative overflow-hidden"}
     >
       {/* ── CENTRAL GALLERY AREA ── */}
       <div className="flex-1 w-full max-w-7xl mx-auto overflow-y-auto custom-scrollbar pb-40 lg:pb-32 px-2">
@@ -2695,6 +2697,23 @@ export default function VideoStudio({
               );
             })}
           </div>
+        ) : realizoBrand ? (
+          <div className="realizo-visual-empty w-full min-h-[245px] h-full flex flex-col items-center justify-center px-5 py-6 text-center">
+            <div className="relative mb-5 flex items-center justify-center">
+              <div className="absolute -rotate-[13deg] translate-x-[-28px] translate-y-1 w-[93px] h-[112px] rounded-[22px] border-2 border-[#DEC6F2] bg-[#E4D1F5]" />
+              <div className="absolute rotate-[10deg] translate-x-[26px] translate-y-[-3px] w-[93px] h-[112px] rounded-[22px] border-2 border-[#FFCCC5] bg-[#FFBEB6]" />
+              <div className="relative z-10 w-[96px] h-[115px] rounded-[23px] bg-[#332447] shadow-[0_15px_35px_rgba(48,33,79,.18)] flex items-center justify-center">
+                <svg width="43" height="43" viewBox="0 0 48 48" fill="none" aria-hidden="true"><path d="M16 9v30L39 24 16 9Z" fill="#FFBCA6"/><circle cx="34" cy="11" r="4" fill="#BDF9CD"/></svg>
+              </div>
+            </div>
+            <p className="text-[11px] font-extrabold tracking-[.24em] uppercase text-[#9576B6]">REALIZO STUDIO</p>
+            <h2 className="mt-2 text-[27px] sm:text-[36px] font-extrabold tracking-[-.05em] text-[#2D2042] leading-tight">Tu idea cobra vida<span className="text-[#ED8F8B]">.</span></h2>
+            <p className="mt-3 text-[13px] text-[#83768C] max-w-[440px] leading-relaxed">
+              {uploadedImageUrls.length || preparedBrief?.images?.length
+                ? "Tu producto y su concepto están listos. Ajusta el modelo y los detalles de tu video."
+                : "Escribe una idea o incorpora una imagen para crear tu próximo video."}
+            </p>
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full animate-fade-in-up transition-all duration-700 min-h-[50vh]">
             {/* Overlapping floating cards */}
@@ -2747,7 +2766,10 @@ export default function VideoStudio({
       </div>
 
       {/* ── BOTTOM PROMPT BAR ── */}
-      <PromptComposer>
+      <PromptComposer
+        positionClassName={realizoBrand ? "realizo-docked-composer relative w-full z-30 px-4 sm:px-6 pb-5 pt-2" : undefined}
+        panelClassName={realizoBrand ? "realizo-premium-composer" : ""}
+      >
           <div className="flex flex-col gap-3">
             {/* Inline list of uploaded media files */}
             <div className="flex items-start gap-2.5 flex-wrap">
@@ -2955,8 +2977,10 @@ export default function VideoStudio({
                 ref={textareaRef}
                 value={prompt}
                 onChange={handlePromptInput}
-                placeholder={promptPlaceholder}
+                placeholder={realizoBrand ? "Describe la escena y el movimiento que quieres crear…" : promptPlaceholder}
                 disabled={promptDisabled}
+                maxHeightMobile={realizoBrand ? 100 : 150}
+                maxHeightDesktop={realizoBrand ? 125 : 250}
               />
               )}
             </div>
