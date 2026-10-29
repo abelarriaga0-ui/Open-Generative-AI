@@ -1477,6 +1477,31 @@ export default function VideoStudio({
     applyUserSelectedVariant(variant,'i2v',family);
   },[generationReady,billableModelIds,preparedBrief?.revision,applyUserSelectedVariant]);
 
+  // The Realizo pilot must always show the same priced I2V preset that the
+  // server charges for; previously a restored t2v/8s selection stayed visible
+  // even after the wallet became ready and Generate remained disabled.
+  useEffect(() => {
+    if (!realizoBrand || !generationReady ||
+      !billableModelIds.includes("wan2.2-image-to-video")) return;
+    const id="wan2.2-image-to-video";
+    const variant=videoModelCatalog.variantById.get(id);
+    const family=videoModelCatalog.familyByVariantId.get(id);
+    if (!variant || !family || variant.mode!=="i2v") return;
+    if (selectedModel!==id || !imageMode) {
+      applyUserSelectedVariant(variant,"i2v",family);
+      const image=preparedBrief?.images?.[0];
+      if (typeof image==="string" && image.startsWith("https://"))
+        setUploadedImageUrls([image]);
+    }
+    if (Number(selectedDuration)!==5) setSelectedDuration(5);
+    if (selectedResolution!=="480p") setSelectedResolution("480p");
+    if (selectedQuality!=="medium") setSelectedQuality("medium");
+  }, [
+    realizoBrand,generationReady,billableModelIds,selectedModel,imageMode,
+    selectedDuration,selectedResolution,selectedQuality,preparedBrief?.revision,
+    applyUserSelectedVariant
+  ]);
+
   // ── Persistence: Save ────────────────────────────────────────────────────
   useEffect(() => {
     const timer = setTimeout(() => {
