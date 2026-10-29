@@ -781,13 +781,18 @@ export default function VideoStudio({
   droppedFiles,
   onFilesHandled,
   locale = "en",
+  // Native Realizo uses per-account browser scope, never a shared anonymous history.
+  persistenceScope,
+  // Sandbox displays the original model picker without opening legacy BYOK spending.
+  previewOnly = false,
 }) {
   const copy = useMemo(() => resolveCopy(en, zh, locale), [locale]);
   const LEGACY_PERSIST_KEY = "hg_video_studio_persistent";
-  const PERSIST_KEY = scopedPersistKey(LEGACY_PERSIST_KEY, apiKey);
+  const PERSIST_KEY = scopedPersistKey(LEGACY_PERSIST_KEY, persistenceScope ?? apiKey);
   useEffect(() => {
-    migrateLegacyPersistKey(LEGACY_PERSIST_KEY, PERSIST_KEY);
-  }, [PERSIST_KEY]);
+    // Never import unscoped historical items into another authenticated account.
+    if (!persistenceScope) migrateLegacyPersistKey(LEGACY_PERSIST_KEY, PERSIST_KEY);
+  }, [PERSIST_KEY, persistenceScope]);
 
   // ── generation state ──
   const [imageMode, setImageMode] = useState(false); // i2v
@@ -3397,7 +3402,7 @@ export default function VideoStudio({
             {/* Generate button */}
             <PromptAction
               onClick={handleGenerate}
-              disabled={generating || mediaUploading || (selectedTool?.group === "continueGenerated" && !hasContinuationSource) || (selectedVeoTool && !selectedVeoSource)}
+              disabled={previewOnly || generating || mediaUploading || (selectedTool?.group === "continueGenerated" && !hasContinuationSource) || (selectedVeoTool && !selectedVeoSource)}
             >
               {generating ? (
                 <>
