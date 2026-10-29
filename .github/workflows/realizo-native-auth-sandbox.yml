@@ -27,6 +27,11 @@ on:
       - 'lib/realizo-creative/**'
       - 'app/api/realizo/**'
       - 'components/RealizoCreator.jsx'
+      - 'lib/realizo-creative/**'
+      - 'tests/realizo-creator.test.mjs'
+      - 'tests/test_realizo_media_schema.py'
+      - 'packages/studio/src/components/VideoStudio.jsx'
+      - 'lib/wallet/request-policy.js'
   workflow_dispatch:
 permissions:
   contents: read
