@@ -1,4 +1,5 @@
 name: Realizo - securely connect Muapi one-generation pilot
+# Activation requested by user after storing REALIZO_MUAPI_API_KEY; safe one-video limit.
 on:
   push:
     branches: [feature/realizo-cloudflare-auth-videos]
