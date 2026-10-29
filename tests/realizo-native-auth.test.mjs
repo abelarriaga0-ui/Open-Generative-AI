@@ -48,7 +48,9 @@ test('new Worker is isolated and cannot use real money or provider credits',()=>
   assert.equal(c.name,'realizo-auth-sandbox');
   assert.equal(c.vars.REALIZO_AUTH_PROVIDER,'native');
   assert.equal(c.vars.PAYPAL_MODE,'sandbox');
-  assert.equal(c.vars.MUAPI_GENERATION_ENABLED,'false');
+  assert.equal(c.vars.MUAPI_GENERATION_ENABLED,'true');
+  assert.equal(c.vars.REALIZO_MUAPI_PILOT,'true');
+  assert.equal(c.vars.REALIZO_MUAPI_PILOT_ACCOUNT_ID,undefined);
   assert.equal(isMuapiGenerationEnabled(c.vars),false);
   assert.equal(c.vars.PAYPAL_CLIENT_SECRET,undefined);
   assert.equal(c.vars.MUAPI_API_KEY,undefined);
