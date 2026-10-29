@@ -788,6 +788,9 @@ export default function VideoStudio({
   realizoBrand = false,
   preparedBrief = null,
   uploadAsset = null,
+  onWalletGenerate = null,
+  generationReady = false,
+  billableModelIds = [],
 }) {
   const copy = useMemo(() => {
     const original = resolveCopy(en, zh, locale);
@@ -2240,7 +2243,7 @@ export default function VideoStudio({
         if (currentModel?.hasPrompt && trimmedPrompt) {
           v2vParams.prompt = trimmedPrompt;
         }
-        res = await processV2V(apiKey, v2vParams);
+        res = onWalletGenerate && generationReady ? await onWalletGenerate(v2vParams) : await processV2V(apiKey, v2vParams);
         if (!res?.url) throw new Error(copy.errors.noVideoUrlReturned);
 
         const genId = res.request_id || res.id || Date.now().toString();
@@ -2278,7 +2281,7 @@ export default function VideoStudio({
         if (!grouped && selectedQuality) i2vParams.quality = selectedQuality;
         if (showEffect && selectedEffect) i2vParams.name = selectedEffect;
 
-        res = await generateI2V(apiKey, i2vParams);
+        res = onWalletGenerate && generationReady ? await onWalletGenerate(i2vParams) : await generateI2V(apiKey, i2vParams);
         if (!res?.url) throw new Error(copy.errors.noVideoUrlReturned);
 
         const genId = res.request_id || res.id || Date.now().toString();
@@ -2328,7 +2331,7 @@ export default function VideoStudio({
         if (!grouped && resolutions.length > 0) params.resolution = selectedResolution;
         if (!grouped && !selectedVeoTool && selectedQuality) params.quality = selectedQuality;
 
-        res = await generateVideo(apiKey, params);
+        res = onWalletGenerate && generationReady ? await onWalletGenerate(params) : await generateVideo(apiKey, params);
         if (!res?.url) throw new Error(copy.errors.noVideoUrlReturned);
 
         const genId = res.request_id || res.id || Date.now().toString();
@@ -2368,6 +2371,8 @@ export default function VideoStudio({
     }
   }, [
     apiKey,
+    onWalletGenerate,
+    generationReady,
     copy,
     prompt,
     promptDisabled,
@@ -3440,7 +3445,7 @@ export default function VideoStudio({
             {/* Generate button */}
             <PromptAction
               onClick={handleGenerate}
-              disabled={previewOnly || generating || mediaUploading || (selectedTool?.group === "continueGenerated" && !hasContinuationSource) || (selectedVeoTool && !selectedVeoSource)}
+              disabled={(previewOnly && !(generationReady && billableModelIds.includes(selectedModel))) || generating || mediaUploading || (selectedTool?.group === "continueGenerated" && !hasContinuationSource) || (selectedVeoTool && !selectedVeoSource)}
             >
               {generating ? (
                 <>
