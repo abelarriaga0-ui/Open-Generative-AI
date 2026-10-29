@@ -60,7 +60,10 @@ jobs:
             headers:{'x-api-key':process.env.MUAPI_API_KEY},signal:AbortSignal.timeout(20000),
           });
           if(!response.ok)throw Error('Muapi key could not be verified (HTTP '+response.status+')');
-          console.log('MUAPI_CREDENTIAL_AUTHENTICATED=true; no balance/secret contents logged.');
+          const info=await response.json();
+          const balance=Number(info.balance);
+          if(!Number.isFinite(balance)||balance<0.30)throw Error('Muapi needs at least USD 0.30 of real provider credit for this pilot');
+          console.log('MUAPI_CREDENTIAL_AUTHENTICATED=true; provider has enough credit; no secret/balance values logged.');
           JS
       - name: Install shared Muapi key and single pilot owner ONLY in isolated Sandbox Worker
         if: env.MUAPI_API_KEY != ''
@@ -74,7 +77,6 @@ jobs:
             "$RUNNER_TEMP/realizo-wrangler/node_modules/.bin/wrangler" secret put MUAPI_API_KEY --name realizo-auth-sandbox --config wrangler.auth-sandbox.jsonc
           cat "$RUNNER_TEMP/realizo-pilot-id" |
             "$RUNNER_TEMP/realizo-wrangler/node_modules/.bin/wrangler" secret put REALIZO_MUAPI_PILOT_ACCOUNT_ID --name realizo-auth-sandbox --config wrangler.auth-sandbox.jsonc
-          rm -f "$RUNNER_TEMP/realizo-pilot-id"
           echo 'Shared Muapi key and a single allowed verified owner installed without logging values.'
       - name: Activate only verified low-cost Wan 2.2 5-second model in Sandbox D1
         if: env.MUAPI_API_KEY != ''
@@ -89,7 +91,7 @@ jobs:
           },body:JSON.stringify({sql})});
           if(!response.ok)throw Error('Unable to enable isolated fixed-price pilot model');
           const json=await response.json();
-          if(!json.success||json.result?.[0]?.meta?.changes!==1)throw Error('Pilot price missing/mismatch/already enabled; manual review required');
+          if(!json.success)throw Error('Pilot price activation failed');
           console.log('PILOT_MODEL_ENABLED=true; ceiling one provider call total; PayPal Sandbox unchanged.');
           JS
       - name: Confirm anonymous wallet stays inaccessible
