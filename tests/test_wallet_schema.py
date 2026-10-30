@@ -6,6 +6,7 @@ import uuid
 
 SCHEMA = Path(__file__).resolve().parents[1] / "migrations" / "0001_wallet.sql"
 PAYPAL_SCHEMA = Path(__file__).resolve().parents[1] / "migrations" / "0002_paypal.sql"
+LEGACY_SCHEMA = Path(__file__).resolve().parents[1] / "migrations" / "0003_legacy_muapi_credit.sql"
 
 
 class WalletSchemaTests(unittest.TestCase):
@@ -14,6 +15,7 @@ class WalletSchemaTests(unittest.TestCase):
         self.db.execute("PRAGMA foreign_keys=ON")
         self.db.executescript(SCHEMA.read_text(encoding="utf-8"))
         self.db.executescript(PAYPAL_SCHEMA.read_text(encoding="utf-8"))
+        self.db.executescript(LEGACY_SCHEMA.read_text(encoding="utf-8"))
         self.db.executemany(
             "INSERT INTO wallet_users (id, auth_provider, auth_subject) VALUES (?, 'test', ?)",
             [("user-a", "sub-a"), ("user-b", "sub-b")],
@@ -142,6 +144,62 @@ class WalletSchemaTests(unittest.TestCase):
             "AND payment_reference='CAP1'"
         ).fetchone()[0]
         self.assertEqual(rows, 1)
+
+
+    def test_legacy_muapi_prepaid_balance_is_isolated_and_spendable(self):
+        # Only a privileged one-time import credits the intended normal user.
+        self.assertEqual(self.balance("user-a"), (0, 0))
+        self.db.execute(
+            "INSERT INTO legacy_muapi_credit_imports "
+            "(id,user_id,amount_cents,import_reference) VALUES (?,?,?,?)",
+            ("legacy-20261029", "user-a", 775, "pre-realizo-provider-snapshot-20261029")
+        )
+        self.assertEqual(self.balance("user-a"), (775, 0))
+        self.assertEqual(self.balance("user-b"), (0, 0))
+        self.reserve("user-a", "job-legacy", 350)
+        self.assertEqual(self.balance("user-a"), (425, 350))
+        self.db.execute("UPDATE generation_jobs SET status='completed' WHERE id='job-legacy'")
+        self.assertEqual(self.balance("user-a"), (425, 0))
+        self.assertEqual(self.balance("user-b"), (0, 0))
+        row = self.db.execute(
+            "SELECT kind,external_reference FROM wallet_ledger "
+            "WHERE user_id='user-a' ORDER BY rowid ASC LIMIT 1"
+        ).fetchone()
+        self.assertEqual(row, ("deposit", "legacy-muapi:pre-realizo-provider-snapshot-20261029"))
+
+    def test_legacy_muapi_opening_credit_cannot_be_imported_twice(self):
+        self.db.execute(
+            "INSERT INTO legacy_muapi_credit_imports "
+            "(id,user_id,amount_cents,import_reference) VALUES (?,?,?,?)",
+            ("original-legacy", "user-a", 775, "muapi-opening-20261029")
+        )
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.db.execute(
+                "INSERT INTO legacy_muapi_credit_imports "
+                "(id,user_id,amount_cents,import_reference) VALUES (?,?,?,?)",
+                ("duplicate-legacy", "user-a", 775, "different-reference")
+            )
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.db.execute(
+                "INSERT INTO legacy_muapi_credit_imports "
+                "(id,user_id,amount_cents,import_reference) VALUES (?,?,?,?)",
+                ("duplicate-reference", "user-b", 775, "muapi-opening-20261029")
+            )
+        self.assertEqual(self.balance("user-a"), (775, 0))
+        self.assertEqual(self.balance("user-b"), (0, 0))
+
+    def test_legacy_muapi_import_does_not_forge_a_paypal_payment(self):
+        self.db.execute(
+            "INSERT INTO legacy_muapi_credit_imports "
+            "(id,user_id,amount_cents,import_reference) VALUES (?,?,?,?)",
+            ("legacy", "user-a", 775, "legacy-opening")
+        )
+        self.assertEqual(self.db.execute("SELECT COUNT(*) FROM verified_deposits").fetchone()[0], 0)
+        # This is NOT a verified PayPal top-up and first payment rules still apply.
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.deposit("user-a", 100)
+        self.deposit("user-a", 2000)
+        self.assertEqual(self.balance("user-a"), (2775, 0))
 
 
 if __name__ == "__main__":
