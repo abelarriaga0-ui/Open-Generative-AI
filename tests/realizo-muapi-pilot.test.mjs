@@ -56,6 +56,30 @@ test('the one-call quota is consumed once even when clients race',async()=>{
  assert.equal(await claimPilotSlot(guarded,user,'job-b'),false);
  assert.equal(await getPilotSlotsRemaining(guarded,user),0);
 });
+test('pilot slot proof works without D1 meta.changes but never authorizes a different job',async()=>{
+ let inserted=null;
+ const db={prepare(sql){
+   if(sql.includes('INSERT OR IGNORE INTO realizo_muapi_pilot_uses')){
+     return {bind(jobId,userId){return {run:async()=>{
+       if(!inserted)inserted={job_id:jobId,user_id:userId};
+       return {meta:{}};
+     }}}};
+   }
+   if(sql.includes('SELECT job_id,user_id FROM realizo_muapi_pilot_uses')){
+     return {first:async()=>inserted};
+   }
+   throw Error('Unexpected SQL');
+ }};
+ const guarded={...env,WALLETS_DB:db};
+ assert.equal(await claimPilotSlot(guarded,user,'first-job'),true);
+ assert.equal(await claimPilotSlot(guarded,user,'different-job'),false);
+ assert.deepEqual(inserted,{job_id:'first-job',user_id:user.id});
+});
+test('newly inserted D1 reservation must be recognized by its own UUID even without changes metadata',()=>{
+ const source=readFileSync('lib/wallet/server.js','utf8');
+ assert.match(source,/newlyCreated:\s*raceWinner\.id\s*===\s*jobId/);
+ assert.match(source,/!job\.newlyCreated|return \{ \.\.\.previous, newlyCreated: false \}/);
+});
 test('only owner can reference nonexpired correctly signed private input image',async()=>{
  const id='00000000-0000-4000-8000-000000000002';
  const expires=Math.floor(Date.now()/1000)+1200;
