@@ -50,4 +50,11 @@ BEGIN
   SET available_cents = available_cents - 35,
       updated_at = datetime('now')
   WHERE user_id = NEW.user_id;
+  -- An offsetting negative deposit restores the ledger-to-balance invariant.
+  -- Keep the original +35 entry as evidence of the initial pilot grant.
+  INSERT INTO wallet_ledger
+    (id,user_id,kind,available_delta_cents,reserved_delta_cents,external_reference)
+  VALUES
+    ('pilot-reversal:' || NEW.slot, NEW.user_id, 'deposit', -35, 0,
+     'pilot-bonus-reversed:' || NEW.slot);
 END;
