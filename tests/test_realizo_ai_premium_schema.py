@@ -18,7 +18,8 @@ class AIPremiumSchema(unittest.TestCase):
  def test_project_create_and_idempotence(self):
   self.create()
   with self.assertRaises(sqlite3.IntegrityError):self.create(key='request')
-  with self.assertRaises(sqlite3.IntegrityError):self.create(key='another') if False else self.db.execute(
+  with self.assertRaises(sqlite3.IntegrityError):
+   self.db.execute(
     "INSERT INTO realizo_ai_projects(id,user_id,primary_asset_id,description,market_code,request_key) VALUES (?,?,?,?,?,?)",
     ('other-project','other','missing','Example description','CO','other-key'))
   self.assertEqual(self.db.execute("SELECT COUNT(*) FROM realizo_ai_projects").fetchone()[0],1)
