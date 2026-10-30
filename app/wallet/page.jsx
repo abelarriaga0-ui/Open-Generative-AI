@@ -68,7 +68,7 @@ export default function WalletPage() {
             <ul className="divide-y divide-white/10">
               {data.activity.map((item, index) => (
                 <li key={index} className="flex justify-between py-3 gap-3">
-                  <span>{entryLabels[item.kind] || item.kind}
+                  <span>{item.external_reference?.startsWith('legacy-muapi:') ? 'Saldo anterior de Muapi' : (entryLabels[item.kind] || item.kind)}
                     <small className="block text-white/40">{item.created_at}</small>
                   </span>
                   <strong>{money(item.available_delta_cents)}</strong>
