@@ -41,3 +41,15 @@ CREATE TABLE IF NOT EXISTS realizo_ai_usage (
  web_calls INTEGER NOT NULL DEFAULT 0,
  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- Hard quota in D1, not just an HTTP precheck: concurrent requests may
+-- never create two premium research jobs for the pilot owner in 24 hours.
+CREATE TRIGGER IF NOT EXISTS realizo_ai_one_daily_project
+BEFORE INSERT ON realizo_ai_projects
+WHEN EXISTS (
+ SELECT 1 FROM realizo_ai_projects
+ WHERE user_id=NEW.user_id AND created_at>=datetime('now','-1 day')
+)
+BEGIN
+ SELECT RAISE(ABORT,'ai_premium_daily_limit');
+END;
