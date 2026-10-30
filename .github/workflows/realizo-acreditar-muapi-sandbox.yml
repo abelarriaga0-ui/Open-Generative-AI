@@ -1,6 +1,6 @@
-name: Realizo - acreditar USD 7.75 prepagados de Muapi en Sandbox
-# Manual only. This workflow lives on main only so GitHub Actions can dispatch it.
-# Checkout is pinned to reviewed feature commit. Never deploy production or process PayPal payments.
+name: Realizo - corregir saldo USD 8.10 a USD 7.75 (anular bono de prueba)
+# Manual only; cancel USD 0.35 unbacked test bonus in isolated D1. Do not subtract real Muapi funds.
+# Checkout pinned to audited Sandbox code. Never deploy production or process PayPal payments.
 
 on:
   workflow_dispatch:
@@ -9,11 +9,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: realizo-muapi-historical-credit-one-time
+  group: realizo-muapi-unfunded-bonus-reversal-one-time
   cancel-in-progress: false
 
 jobs:
-  credit-only-sandbox:
+  reconcile-only-sandbox:
     if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/main' && github.actor == 'abelarriaga0-ui'
     runs-on: ubuntu-latest
     timeout-minutes: 18
@@ -29,7 +29,7 @@ jobs:
       - name: Checkout audited Realizo Sandbox code pinned to fixed commit
         uses: actions/checkout@v4
         with:
-          ref: '2a364c572a1508707159bbea57acfba6ff55510a'
+          ref: 'bd2dfecf9a9360195127c72d7c893fe1c21ac8e6'
           persist-credentials: false
 
       - name: Prepare Node.js 22 and Python
@@ -44,8 +44,10 @@ jobs:
           node scripts/check-realizo-auth-sandbox.mjs
           npm run test:wallet
           python3 -m unittest discover -s tests -p 'test_realizo_muapi_historic_schema.py' -v
+          python3 -m unittest discover -s tests -p 'test_realizo_cancel_pilot_bonus.py' -v
           test -f migrations/0009_prepaid_muapi_import.sql
-          test -f scripts/import-realizo-prepaid-muapi.mjs
+          test -f migrations/0010_cancel_unfunded_pilot_bonus.sql
+          test -f scripts/reconcile-unfunded-muapi-bonus.mjs
 
       - name: Install isolated Wrangler CLI (no application deployment)
         shell: bash
@@ -62,14 +64,14 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN"
           wrangler d1 migrations apply WALLETS_DB --config wrangler.auth-sandbox.jsonc --remote
 
-      - name: Verify Muapi funds and single verified native user; record USD 7.75 once
+      - name: Verify real Muapi USD 7.75 and cancel only unfunded USD 0.35 Sandbox bonus
         shell: bash
         run: |
           set -euo pipefail
           test -n "$REALIZO_MUAPI_API_KEY"
-          node scripts/import-realizo-prepaid-muapi.mjs
+          node scripts/reconcile-unfunded-muapi-bonus.mjs
 
       - name: Confirm no video generation, production deploy or real PayPal payments
         run: |
-          echo 'Historical credit operation completed in isolated Realizo Sandbox D1.'
+          echo 'Reversal audited on isolated Sandbox D1; the real USD 7.75 historical credit is preserved.'
           echo 'The action did NOT call Muapi generation or PayPal capture.'
