@@ -53,3 +53,5 @@ jobs:
           console.log('No personal identifier, user email, secret, or balance was exported.');
           console.log('No database change and no Muapi generation.');
           JS
+
+# Read-only trigger check through Git ref update (no wallet mutation).
