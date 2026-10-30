@@ -55,31 +55,47 @@ if (!Number.isFinite(providerBalanceUsd) || Math.round(providerBalanceUsd * 100)
   throw new Error('Real Muapi balance is below USD 7.75; no internal credit was created');
 }
 
+async function verifyLedgerImport() {
+  const rows = (await query(
+    "SELECT user_id,amount_cents FROM realizo_prepaid_muapi_imports WHERE slot=1"
+  )).results;
+  const ledger = (await query(
+    "SELECT user_id,kind,available_delta_cents,reserved_delta_cents FROM wallet_ledger WHERE external_reference='historical-muapi-prepaid:1'"
+  )).results;
+  const wallet = (await query(
+    'SELECT available_cents,reserved_cents FROM wallets WHERE user_id=?', [userId]
+  )).results;
+  if (rows.length !== 1 || rows[0].user_id !== userId ||
+      Number(rows[0].amount_cents) !== IMPORT_CENTS ||
+      ledger.length !== 1 || ledger[0].user_id !== userId ||
+      ledger[0].kind !== 'deposit' ||
+      Number(ledger[0].available_delta_cents) !== IMPORT_CENTS ||
+      Number(ledger[0].reserved_delta_cents) !== 0 ||
+      wallet.length !== 1) {
+    throw new Error('Historical credit or ledger consistency verification failed');
+  }
+  return wallet[0];
+}
 const existing = (await query('SELECT user_id,amount_cents FROM realizo_prepaid_muapi_imports WHERE slot=1')).results;
 if (existing.length) {
-  if (existing[0].user_id !== userId || Number(existing[0].amount_cents) !== IMPORT_CENTS)
-    throw new Error('Historical Muapi credit already belongs to another user or amount');
-  console.log('HISTORIC_MUAPI_CREDIT=ALREADY_APPLIED; no duplicate credit.');
+  await verifyLedgerImport();
+  console.log('HISTORIC_MUAPI_CREDIT=ALREADY_APPLIED_AND_LEDGER_VERIFIED; no duplicate credit.');
   process.exit(0);
 }
 const beforeRows = (await query('SELECT available_cents,reserved_cents FROM wallets WHERE user_id=?', [userId])).results;
 if (beforeRows.length !== 1) throw new Error('Native account wallet missing');
 const before = beforeRows[0];
 // SQLite trigger credits balance atomically with the one-time import row and ledger.
-const inserted = await query(
+await query(
   "INSERT OR IGNORE INTO realizo_prepaid_muapi_imports(slot,user_id,amount_cents,source) VALUES(1,?,?,?)",
   [userId, IMPORT_CENTS, 'User prepaid Muapi directly before Realizo PayPal integration']
 );
-if (Number(inserted.meta?.changes) !== 1) {
-  throw new Error('Credit was not newly inserted; inspect existing import before retrying');
-}
-const afterRows = (await query('SELECT available_cents,reserved_cents FROM wallets WHERE user_id=?', [userId])).results;
-const after = afterRows[0];
-const ledger = (await query("SELECT available_delta_cents FROM wallet_ledger WHERE external_reference='historical-muapi-prepaid:1'")).results;
+// Cloudflare's REST D1 response may omit or vary meta.changes.
+// Trust the persisted import, trigger-generated ledger and wallet instead.
+const after = await verifyLedgerImport();
 if (Number(after.available_cents) - Number(before.available_cents) !== IMPORT_CENTS ||
-    Number(after.reserved_cents) !== Number(before.reserved_cents) ||
-    ledger.length !== 1 || Number(ledger[0].available_delta_cents) !== IMPORT_CENTS) {
-  throw new Error('Import executed but ledger verification is inconsistent: manual review required');
+    Number(after.reserved_cents) !== Number(before.reserved_cents)) {
+  throw new Error('Wallet balance delta differs from the one-time credit: manual review required');
 }
 console.log('HISTORIC_MUAPI_CREDIT=SUCCESS; +USD 7.75 to one existing native Realizo user.');
 console.log('Muapi provider balance was verified; no new payment or video generation executed.');
