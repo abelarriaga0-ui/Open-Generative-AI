@@ -29,7 +29,7 @@ jobs:
       - name: Checkout audited Realizo Sandbox code pinned to fixed commit
         uses: actions/checkout@v4
         with:
-          ref: '04d617c767f296c564daa9386f55c25a2aaf3d2e'
+          ref: '7490842a4b93803f1bdbdd932df53b3fb18cc8a6'
           persist-credentials: false
 
       - name: Prepare Node.js 22 and Python
