@@ -1,0 +1,50 @@
+name: Realizo - audit native user before historic Muapi credit
+
+on:
+  push:
+    branches: [feature/realizo-cloudflare-auth-videos]
+    paths: ['.github/workflows/realizo-historic-muapi-audit.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-sandbox-wallet:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/feature/realizo-cloudflare-auth-videos'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check Sandbox and read account counters only
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+          REALIZO_D1_SANDBOX: '2561f6c8-bfb2-4ea4-8527-7fec29188edf'
+        run: |
+          node scripts/check-realizo-auth-sandbox.mjs
+          node --input-type=module <<'JS'
+          const env=process.env;
+          if(!env.CLOUDFLARE_API_TOKEN) throw Error('Cloudflare token unavailable to workflow');
+          const url='https://api.cloudflare.com/client/v4/accounts/'+env.CLOUDFLARE_ACCOUNT_ID+
+            '/d1/database/'+env.REALIZO_D1_SANDBOX+'/query';
+          async function query(sql){
+            const r=await fetch(url,{method:'POST',
+              headers:{Authorization:'Bearer '+env.CLOUDFLARE_API_TOKEN,'Content-Type':'application/json'},
+              body:JSON.stringify({sql}),signal:AbortSignal.timeout(15000)});
+            const json=await r.json().catch(()=>({}));
+            if(!r.ok||!json.success)throw Error('D1 read-only query failed HTTP '+r.status);
+            return json.result?.[0]?.results||[];
+          }
+          const rows=await query("SELECT (SELECT COUNT(*) FROM wallet_users WHERE auth_provider='realizo') AS native_users, (SELECT COUNT(*) FROM wallets) AS wallet_rows, (SELECT COUNT(*) FROM realizo_muapi_pilot_grants) AS pilot_grants, (SELECT COUNT(*) FROM realizo_muapi_pilot_uses) AS pilot_uses, (SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='realizo_prepaid_muapi_imports') AS historic_table");
+          const row=rows[0];
+          if(!row)throw Error('Unexpected D1 query results');
+          for(const key of ['native_users','wallet_rows','pilot_grants','pilot_uses','historic_table']) {
+            console.log(key.toUpperCase()+'='+Number(row[key]));
+          }
+          console.log('No personal identifier, user email, secret, or balance was exported.');
+          console.log('No database change and no Muapi generation.');
+          JS
