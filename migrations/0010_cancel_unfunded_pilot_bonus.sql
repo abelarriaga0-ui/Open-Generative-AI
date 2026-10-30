@@ -56,5 +56,5 @@ BEGIN
     (id,user_id,kind,available_delta_cents,reserved_delta_cents,external_reference)
   VALUES
     ('pilot-reversal:' || NEW.slot, NEW.user_id, 'deposit', -35, 0,
-     'pilot-bonus-reversed:' || NEW.slot);
+     'pilot-credit:' || NEW.slot || ':reversed');
 END;
