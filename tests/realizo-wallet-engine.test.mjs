@@ -25,9 +25,9 @@ test('original multi-model picker remains available while paid requests require 
  const editor=readFileSync('packages/studio/src/components/VideoStudio.jsx','utf8');
  assert.match(editor,/previewOnly && !generationReady/);
  assert.match(editor,/onWalletGenerate && generationReady/);
- assert.doesNotMatch(editor,/selectedModel!==id \\|\\| !imageMode/);
+ assert.doesNotMatch(editor,/selectedModel!==id \|\| !imageMode/);
  const wrapper=readFileSync('components/RealizoStudio.jsx','utf8');
- assert.match(wrapper,/setGenerationReady\\(Boolean\\(x\\?\\.generation_enabled &&/);
+ assert.match(wrapper,/setGenerationReady\(Boolean\(x\?\.generation_enabled &&/);
  assert.match(wrapper,/Elige tu modelo, duración y resolución/);
  const flags=JSON.parse(readFileSync('wrangler.auth-sandbox.jsonc','utf8')).vars;
  assert.equal(flags.REALIZO_MULTI_MODEL_SANDBOX,'true');
@@ -35,14 +35,14 @@ test('original multi-model picker remains available while paid requests require 
 });
 test('dynamic quote must be accepted by user before creating an expense',()=>{
  const bridge=readFileSync('lib/realizo-creative/wallet-generation.js','utf8');
- assert.match(bridge,/\\/api\\/wallet\\/quote/);
- assert.match(bridge,/window\\.confirm/);
- assert.match(bridge,/max_price_cents:quote\\.price_cents/);
- assert.doesNotMatch(bridge,/Number\\(inputs\\.duration\\)!==5/);
+ assert.match(bridge,/\/api\/wallet\/quote/);
+ assert.match(bridge,/window\.confirm/);
+ assert.match(bridge,/max_price_cents:quote\.price_cents/);
+ assert.doesNotMatch(bridge,/Number\(inputs\.duration\)!==5/);
  assert.doesNotMatch(bridge,/MUAPI_API_KEY/);
  const server=readFileSync('app/api/wallet/generate/route.js','utf8');
  assert.match(server,/quoteLiveVideo/);
- assert.match(server,/quote\\.provider_cost_cents>body\\.max_price_cents/);
+ assert.match(server,/quote\.provider_cost_cents>body\.max_price_cents/);
  assert.match(server,/isOwnerMultiModelSandbox/);
  assert.match(server,/!multiModel/);
 });
