@@ -22,7 +22,8 @@
     "REALIZO_AUTH_ORIGIN": "https://realizo-auth-sandbox.abelarriaga0.workers.dev",
     "PAYPAL_MODE": "sandbox",
     "MUAPI_GENERATION_ENABLED": "true",
-    "REALIZO_MUAPI_PILOT": "true"
+    "REALIZO_MUAPI_PILOT": "true",
+    "REALIZO_MULTI_MODEL_SANDBOX": "true"
   },
   "d1_databases": [
     {
