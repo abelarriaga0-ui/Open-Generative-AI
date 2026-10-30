@@ -32,6 +32,7 @@ on:
       - 'packages/studio/src/components/VideoStudio.jsx'
       - 'tests/realizo-studio-routing.test.mjs'
       - 'migrations/**'
+      - 'scripts/import-realizo-prepaid-muapi.mjs'
       - 'wrangler.auth-sandbox.jsonc'
       - 'lib/realizo-creative/**'
       - 'app/api/realizo/**'
