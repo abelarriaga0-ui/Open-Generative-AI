@@ -52,13 +52,25 @@ if (users.length !== 1 || users[0].auth_provider !== 'realizo') {
   throw new Error('Pilot wallet does not belong to the verified Realizo user');
 }
 
+async function verifyReverseLedger() {
+  const rows = await query(
+    "SELECT user_id,kind,available_delta_cents,reserved_delta_cents FROM wallet_ledger WHERE external_reference='pilot-credit:1:reversed'"
+  );
+  if (rows.length !== 1 || rows[0].user_id !== owner ||
+      rows[0].kind !== 'deposit' ||
+      Number(rows[0].available_delta_cents) !== -AMOUNT_CENTS ||
+      Number(rows[0].reserved_delta_cents) !== 0) {
+    throw new Error('Audit ledger does not contain the exact pilot bonus reversal');
+  }
+}
 const existing = await query('SELECT user_id, amount_cents FROM realizo_pilot_grant_reversals WHERE slot=1');
 if (existing.length) {
   if (existing.length !== 1 || existing[0].user_id !== owner ||
       Number(existing[0].amount_cents) !== AMOUNT_CENTS) {
     throw new Error('Existing reversal does not match the authorized owner');
   }
-  console.log('UNFUNDED_PILOT_BONUS=ALREADY_REVERSED; no duplicate debit');
+  await verifyReverseLedger();
+  console.log('UNFUNDED_PILOT_BONUS=ALREADY_REVERSED_AND_AUDITED; no duplicate debit');
   process.exit(0);
 }
 const balanceResponse = await fetch('https://api.muapi.ai/api/v1/account/balance', {
@@ -82,7 +94,7 @@ if (before.length !== 1 || Number(before[0].available_cents) !== 810 ||
 // A single SQLite INSERT fires triggers that audit the reversal and subtract
 // exactly 35 cents atomically. Repeating cannot double-debit (unique slot).
 await query(
-  'INSERT OR IGNORE INTO realizo_pilot_grant_reversals (slot,user_id,amount_cents) VALUES (1,?,?)',
+  'INSERT INTO realizo_pilot_grant_reversals (slot,user_id,amount_cents) SELECT 1,?,? WHERE NOT EXISTS (SELECT 1 FROM realizo_pilot_grant_reversals WHERE slot=1)',
   [owner, AMOUNT_CENTS]
 );
 const [after, reversal, historical, grantsStillExist] = await Promise.all([
@@ -91,6 +103,7 @@ const [after, reversal, historical, grantsStillExist] = await Promise.all([
   query('SELECT user_id, amount_cents FROM realizo_prepaid_muapi_imports WHERE slot=1'),
   query('SELECT user_id, amount_cents FROM realizo_muapi_pilot_grants WHERE slot=1'),
 ]);
+await verifyReverseLedger();
 if (after.length !== 1 || Number(after[0].available_cents) !== REAL_CENTS ||
     Number(after[0].reserved_cents) !== 0 ||
     reversal.length !== 1 || reversal[0].user_id !== owner ||
