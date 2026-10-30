@@ -1,0 +1,110 @@
+name: Realizo Sandbox - deploy wallet and PayPal webhook
+
+on:
+  push:
+    branches:
+      - feature/wallet-compartida-muapi
+    paths:
+      - .github/workflows/realizo-sandbox-paypal-deploy.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: realizo-sandbox-wallet-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy-realizo-sandbox:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/feature/wallet-compartida-muapi'
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      CI: 'true'
+      NEXT_TELEMETRY_DISABLED: '1'
+      REALIZO_ENV: 'sandbox'
+      REALIZO_WALLET_ONLY: 'true'
+      PAYPAL_MODE: 'sandbox'
+      MUAPI_GENERATION_ENABLED: 'false'
+    steps:
+      - name: Checkout only wallet development branch
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Prepare Node 22 and Python 3
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Full wallet, PayPal and webhook safety test suite
+        run: npm run test:wallet
+
+      - name: Prohibit original D1, original Worker, Live PayPal, and paid Muapi
+        run: npm run wallet:preflight:sandbox
+
+      - name: Build isolated wallet-pilot Worker with OpenNext
+        run: npm run cloudflare:build:sandbox
+
+      - name: Validate compiled Worker before upload
+        run: |
+          test -s .open-next/worker.js
+          test -d .open-next/assets
+          npm run wallet:preflight:sandbox
+
+      - name: Deploy ONLY realizo-sandbox Worker, never the original
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+        run: npx --no-install opennextjs-cloudflare deploy --config wrangler.sandbox.jsonc
+
+      - name: Install PayPal Sandbox credentials directly as Worker secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run wallet:preflight:sandbox
+          node -e '
+            const id=process.env.PAYPAL_CLIENT_ID, secret=process.env.PAYPAL_CLIENT_SECRET;
+            if (!id || !secret) process.exit(1);
+            process.stdout.write(JSON.stringify({PAYPAL_CLIENT_ID:id,PAYPAL_CLIENT_SECRET:secret}));
+          ' | npx --no-install wrangler secret bulk --name realizo-sandbox --config wrangler.sandbox.jsonc
+          echo 'Credenciales Sandbox guardadas en Cloudflare; no se imprimieron los valores.'
+
+      - name: Verify real workers.dev hostname, blocked legacy routes and authenticated wallet
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node scripts/verify-sandbox-worker-url.mjs
+
+      - name: Create or reuse webhook in the existing PayPal Sandbox REST app
+        id: webhook
+        env:
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+        run: node scripts/register-paypal-sandbox-webhook.mjs
+
+      - name: Store PayPal Sandbox Webhook ID only on realizo-sandbox Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+          PAYPAL_WEBHOOK_ID: ${{ steps.webhook.outputs.webhook_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run wallet:preflight:sandbox
+          test -n "$PAYPAL_WEBHOOK_ID"
+          printf '%s' "$PAYPAL_WEBHOOK_ID" | npx --no-install wrangler secret put PAYPAL_WEBHOOK_ID --name realizo-sandbox --config wrangler.sandbox.jsonc
+
+      - name: Report Sandbox integration only
+        run: |
+          echo 'Realizo Sandbox Worker deployed, PayPal Sandbox credentials and webhook configured.'
+          echo 'No real payments, production Worker changes or Muapi generation.'
+          echo 'Cloudflare Access authentication is still required before buyer testing.'

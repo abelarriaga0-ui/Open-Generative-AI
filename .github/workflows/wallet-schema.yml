@@ -1,0 +1,40 @@
+name: Wallet schema checks
+on:
+  pull_request:
+    paths:
+      - "migrations/**"
+      - "lib/wallet/**"
+      - "app/api/wallet/**"
+      - "proxy.js"
+      - "wrangler*.jsonc"
+      - "tests/*wallet*"
+      - "tests/paypal-webhook-registration.test.mjs"
+      - "scripts/register-paypal-sandbox-webhook.mjs"
+      - "package.json"
+      - "scripts/check-wallet-syntax.mjs"
+      - ".github/workflows/wallet-schema.yml"
+  push:
+    branches:
+      - "feature/wallet-compartida-muapi"
+    paths:
+      - "migrations/**"
+      - "lib/wallet/**"
+      - "app/api/wallet/**"
+      - "proxy.js"
+      - "wrangler*.jsonc"
+      - "tests/*wallet*"
+      - "scripts/check-wallet-syntax.mjs"
+      - ".github/workflows/wallet-schema.yml"
+jobs:
+  sqlite-invariants:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Billeteras, Sandbox y sintaxis ESM (sin secretos ni servicios externos)
+        run: npm run test:wallet
