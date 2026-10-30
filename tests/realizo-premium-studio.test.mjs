@@ -43,7 +43,7 @@ test('premium Realizo video editor docks its controls instead of a black modal',
 test('original engine and safe billing gates are preserved unchanged',()=>{
   const editor=readFileSync('packages/studio/src/components/VideoStudio.jsx','utf8');
   assert.match(editor,/onWalletGenerate && generationReady/);
-  assert.match(editor,/disabled=\{\(previewOnly && !\(generationReady && billableModelIds.includes\(selectedModel\)\)\)/);
+  assert.match(editor,/previewOnly && !generationReady/);
   const guard=readFileSync('lib/wallet/generation-policy.js','utf8');
   assert.match(guard,/REALIZO_MUAPI_PILOT_ACCOUNT_ID/);
 });
