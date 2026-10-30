@@ -23,7 +23,9 @@
     "PAYPAL_MODE": "sandbox",
     "MUAPI_GENERATION_ENABLED": "true",
     "REALIZO_MUAPI_PILOT": "true",
-    "REALIZO_MULTI_MODEL_SANDBOX": "true"
+    "REALIZO_MULTI_MODEL_SANDBOX": "true",
+    "REALIZO_AI_PREMIUM_ENABLED": "false",
+    "OPENAI_PREMIUM_MODEL": "gpt-5.5"
   },
   "d1_databases": [
     {
