@@ -4,11 +4,6 @@ name: Realizo - corregir saldo USD 8.10 a USD 7.75 (anular bono de prueba)
 
 on:
   workflow_dispatch:
-  # Single review-controlled activation, restricted to this workflow file on main.
-  # The reconciliation itself is idempotent (D1 unique slot).
-  push:
-    branches: [main]
-    paths: ['.github/workflows/realizo-acreditar-muapi-sandbox.yml']
 
 permissions:
   contents: read
