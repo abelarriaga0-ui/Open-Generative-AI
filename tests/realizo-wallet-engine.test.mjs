@@ -21,36 +21,28 @@ test('native account only can view its videos; unknown APIs blocked by proxy',()
  assert.match(api,/requireWalletUser/);
  assert.doesNotMatch(api,/searchParams\.get\(['"]user_id/);
 });
-test('paid model unlock requires both wallet server readiness and matching model price',()=>{
+test('original multi-model picker remains available while paid requests require wallet readiness',()=>{
  const editor=readFileSync('packages/studio/src/components/VideoStudio.jsx','utf8');
- assert.match(editor,/previewOnly && !\(generationReady && billableModelIds.includes\(selectedModel\)\)/);
+ assert.match(editor,/previewOnly && !generationReady/);
  assert.match(editor,/onWalletGenerate && generationReady/);
+ assert.doesNotMatch(editor,/selectedModel!==id \\|\\| !imageMode/);
  const wrapper=readFileSync('components/RealizoStudio.jsx','utf8');
- assert.match(wrapper,/setGenerationReady\(Boolean\(x\?\.generation_enabled &&/);
+ assert.match(wrapper,/setGenerationReady\\(Boolean\\(x\\?\\.generation_enabled &&/);
+ assert.match(wrapper,/Elige tu modelo, duración y resolución/);
  const flags=JSON.parse(readFileSync('wrangler.auth-sandbox.jsonc','utf8')).vars;
- assert.equal(flags.MUAPI_GENERATION_ENABLED,'true');
- assert.equal(flags.REALIZO_MUAPI_PILOT,'true');
+ assert.equal(flags.REALIZO_MULTI_MODEL_SANDBOX,'true');
  assert.equal(flags.REALIZO_MUAPI_PILOT_ACCOUNT_ID,undefined);
 });
-
-test('Wan pilot maps raw original VideoStudio fields to a fixed-price billable payload',()=>{
+test('dynamic quote must be accepted by user before creating an expense',()=>{
  const bridge=readFileSync('lib/realizo-creative/wallet-generation.js','utf8');
- assert.match(bridge,/model==='wan2\.2-image-to-video'/);
- assert.match(bridge,/image_url:typeof inputs\.image_url/);
- assert.match(bridge,/aspect_ratio:inputs\.aspect_ratio==='9:16'/);
- assert.ok(bridge.includes('Number(inputs.duration)!==5'));
- assert.match(bridge,/calidad media/);
+ assert.match(bridge,/\\/api\\/wallet\\/quote/);
+ assert.match(bridge,/window\\.confirm/);
+ assert.match(bridge,/max_price_cents:quote\\.price_cents/);
+ assert.doesNotMatch(bridge,/Number\\(inputs\\.duration\\)!==5/);
  assert.doesNotMatch(bridge,/MUAPI_API_KEY/);
- const editor=readFileSync('packages/studio/src/components/VideoStudio.jsx','utf8');
- assert.match(editor,/videoModelCatalog\.variantById\.get\("wan2\.2-image-to-video"\)/);
-});
-
-test('after authentication Realizo always syncs the paid pilot to 5s 480p i2v',()=>{
- const editor=readFileSync('packages/studio/src/components/VideoStudio.jsx','utf8');
- assert.match(editor,/selectedModel!==id \|\| !imageMode/);
- assert.match(editor,/applyUserSelectedVariant\(variant,"i2v",family\)/);
- assert.match(editor,/setSelectedDuration\(5\)/);
- assert.match(editor,/setSelectedResolution\("480p"\)/);
- assert.match(editor,/setSelectedQuality\("medium"\)/);
- assert.match(editor,/if \(!realizoBrand \|\| !generationReady/);
+ const server=readFileSync('app/api/wallet/generate/route.js','utf8');
+ assert.match(server,/quoteLiveVideo/);
+ assert.match(server,/quote\\.provider_cost_cents>body\\.max_price_cents/);
+ assert.match(server,/isOwnerMultiModelSandbox/);
+ assert.match(server,/!multiModel/);
 });
