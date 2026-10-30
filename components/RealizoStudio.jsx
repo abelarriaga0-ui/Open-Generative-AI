@@ -5,6 +5,7 @@ import { optimizeImage } from '@/lib/realizo-creative/optimize-image';
 import { generateWithRealizoWallet } from '@/lib/realizo-creative/wallet-generation';
 import { VideoStudio } from 'studio';
 import RealizoCreator from '@/components/RealizoCreator';
+import RealizoPremium from '@/components/RealizoPremium';
 
 function Mark() {
   return <svg width="37" height="37" viewBox="0 0 56 56" fill="none" aria-hidden="true">
@@ -41,6 +42,7 @@ export default function RealizoStudio({accountId}){
  const [page,setPage]=useState('create');
  const [brief,setBrief]=useState(null);
  const [editorOpen,setEditorOpen]=useState(false);
+ const [creatorMode,setCreatorMode]=useState('automatic');
  const [sidebar,setSidebar]=useState(false);
  const uploadAsset=useCallback(async(file)=>{
     const compressed=await optimizeImage(file);
@@ -122,7 +124,25 @@ export default function RealizoStudio({accountId}){
         </div>
       </section>
 
-      {!editorOpen?<RealizoCreator accountId={accountId} onPrepare={setBrief} onOpenAdvanced={openEditor}/>:
+      {!editorOpen?<section className="max-w-[1230px] mx-auto space-y-6">
+        <div className="flex flex-wrap gap-3 rounded-[22px] border border-[#E5DAEA] bg-white p-3" aria-label="Modalidad de creación">
+          {[
+            ['automatic','Automático · sin costo IA'],
+            ['manual','Manual · tu prompt'],
+            ['premium','✦ Realizo AI Premium']
+          ].map(([id,label])=><button key={id} type="button"
+            onClick={()=>{setCreatorMode(id);if(id==='manual'){setBrief(null);openEditor();}}}
+            aria-pressed={creatorMode===id}
+            className={'rounded-2xl px-5 py-3 text-sm font-bold transition '+
+              (creatorMode===id?'bg-[#6E4BD2] text-white':'bg-[#F8F4FB] text-[#6B5092] hover:bg-[#EDE1FA]')}>
+            {label}
+          </button>)}
+        </div>
+        {creatorMode==='premium'?
+          <RealizoPremium onPrepare={setBrief} onOpenAdvanced={openEditor}
+            onUseAutomatic={()=>setCreatorMode('automatic')}/>:
+          <RealizoCreator accountId={accountId} onPrepare={setBrief} onOpenAdvanced={openEditor}/>}
+       </section>:
        <section className="max-w-[1550px] mx-auto space-y-4">
         {brief&&<div className="rounded-2xl bg-[#E9DDFB] px-5 py-3 flex flex-wrap items-center justify-between gap-3">
           <span className="text-[13px] text-[#624496] font-semibold">✓ Producto y ángulo de venta aplicados al editor</span>
