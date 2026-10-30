@@ -1,0 +1,39 @@
+name: Realizo - verificar catálogo público de modelos Muapi (solo lectura)
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/realizo-verificar-catalogo.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect-public-model-catalog:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read only public Muapi catalogue; no billing, API keys or generation
+        run: |
+          node --input-type=module <<'JS'
+          const r=await fetch('https://api.muapi.ai/api/v1/models',
+            {signal:AbortSignal.timeout(18000)});
+          if(!r.ok)throw Error('Public models endpoint HTTP '+r.status);
+          const j=await r.json();
+          if(!Array.isArray(j.models))throw Error('Catalog response has no models array');
+          const videos=j.models.filter(x=>/video/i.test((x.category||'')+' '+(x.group_of||'')));
+          const valid=videos.filter(x=>{
+            const ep=x.endpoint_url||x.endpoint;
+            return typeof ep==='string' &&
+              (/^\/api\/v1\/[a-z0-9._-]+$/.test(ep)||
+               /^https:\/\/api\.muapi\.ai\/api\/v1\/[a-z0-9._-]+$/.test(ep));
+          });
+          console.log('MUAPI_PUBLIC_MODEL_COUNT='+j.models.length);
+          console.log('MUAPI_VIDEO_MODEL_COUNT='+videos.length);
+          console.log('MUAPI_VIDEO_ENDPOINTS_COMPATIBLE='+valid.length);
+          const families=['wan','kling','veo','seedance','sora','minimax','pixverse','vidu'];
+          for(const family of families){
+            console.log('FAMILY_'+family.toUpperCase()+'='+videos.filter(x=>
+              String(x.name||'').toLowerCase().includes(family)).length);
+          }
+          console.log('PUBLIC_READ_ONLY=true; no API key, charges or account data');
+          JS
