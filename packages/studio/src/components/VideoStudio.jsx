@@ -1440,11 +1440,9 @@ export default function VideoStudio({
       let family = currentFamily;
       // When a priced model exists, select that exact catalog variant rather than
       // a nonbillable default. Provider parameters are still built by the engine.
-      const pilotVariant = (realizoBrand && previewOnly
-        ? videoModelCatalog.variantById.get("wan2.2-image-to-video")
-        : null) || billableModelIds
-          .map(id => videoModelCatalog.variantById.get(id))
-          .find(item => item?.mode === "i2v" && getModelMediaCapabilities(item.model).image.maxItems > 0);
+      const pilotVariant = billableModelIds
+        .map(id => videoModelCatalog.variantById.get(id))
+        .find(item => item?.mode === "i2v" && getModelMediaCapabilities(item.model).image.maxItems > 0);
       if (pilotVariant) {
         variant = pilotVariant;
         family = videoModelCatalog.familyByVariantId.get(pilotVariant.model.id);
@@ -1463,44 +1461,9 @@ export default function VideoStudio({
     }
   }, [preparedBrief?.revision, applyUserSelectedVariant, billableModelIds, realizoBrand]);
 
-  // Select the single safely priced pilot model when opening the advanced
-  // editor without a product brief; never unlock unpriced models.
-  const autoSelectedPaidModel = useRef(null);
-  useEffect(() => {
-    if (!generationReady || billableModelIds.length !== 1 || preparedBrief?.revision) return;
-    const id=billableModelIds[0];
-    if (autoSelectedPaidModel.current===id || selectionRef.current.selectedModel===id) return;
-    const variant=videoModelCatalog.variantById.get(id);
-    const family=videoModelCatalog.familyByVariantId.get(id);
-    if (!variant || !family || getModelMediaCapabilities(variant.model).image.maxItems===0) return;
-    autoSelectedPaidModel.current=id;
-    applyUserSelectedVariant(variant,'i2v',family);
-  },[generationReady,billableModelIds,preparedBrief?.revision,applyUserSelectedVariant]);
-
-  // The Realizo pilot must always show the same priced I2V preset that the
-  // server charges for; previously a restored t2v/8s selection stayed visible
-  // even after the wallet became ready and Generate remained disabled.
-  useEffect(() => {
-    if (!realizoBrand || !generationReady ||
-      !billableModelIds.includes("wan2.2-image-to-video")) return;
-    const id="wan2.2-image-to-video";
-    const variant=videoModelCatalog.variantById.get(id);
-    const family=videoModelCatalog.familyByVariantId.get(id);
-    if (!variant || !family || variant.mode!=="i2v") return;
-    if (selectedModel!==id || !imageMode) {
-      applyUserSelectedVariant(variant,"i2v",family);
-      const image=preparedBrief?.images?.[0];
-      if (typeof image==="string" && image.startsWith("https://"))
-        setUploadedImageUrls([image]);
-    }
-    if (Number(selectedDuration)!==5) setSelectedDuration(5);
-    if (selectedResolution!=="480p") setSelectedResolution("480p");
-    if (selectedQuality!=="medium") setSelectedQuality("medium");
-  }, [
-    realizoBrand,generationReady,billableModelIds,selectedModel,imageMode,
-    selectedDuration,selectedResolution,selectedQuality,preparedBrief?.revision,
-    applyUserSelectedVariant
-  ]);
+  // Realizo keeps the complete model selector and the user's selected
+  // duration, quality and resolution. A quote is shown before paid generation.
+  // Do not force a Wan 2.2 pilot choice when another model was selected.
 
   // ── Persistence: Save ────────────────────────────────────────────────────
   useEffect(() => {
@@ -3522,7 +3485,7 @@ export default function VideoStudio({
             <PromptAction
               className={realizoBrand ? "realizo-generation-action" : ""}
               onClick={handleGenerate}
-              disabled={(previewOnly && !(generationReady && billableModelIds.includes(selectedModel))) || generating || mediaUploading || (selectedTool?.group === "continueGenerated" && !hasContinuationSource) || (selectedVeoTool && !selectedVeoSource)}
+              disabled={(previewOnly && !generationReady) || generating || mediaUploading || (selectedTool?.group === "continueGenerated" && !hasContinuationSource) || (selectedVeoTool && !selectedVeoSource)}
             >
               {generating ? (
                 <>
