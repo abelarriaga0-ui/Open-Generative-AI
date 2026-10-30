@@ -54,7 +54,7 @@ export default function RealizoStudio({accountId}){
    const controller=new AbortController();
    fetch('/api/wallet',{credentials:'same-origin',cache:'no-store',signal:controller.signal})
      .then(r=>r.ok?r.json():null)
-     .then(x=>{setWallet(x?.wallet||null);setBillableModelIds((x?.models||[]).map(m=>m.model_id));setPilotPrice(x?.pilot_cost_cents??null);setPilotAvailable(Boolean(x?.generation_enabled));setGenerationReady(Boolean(x?.generation_enabled && (x?.wallet?.available_cents??0)>=(x?.models?.[0]?.customer_price_cents??Infinity)));}).catch(()=>{});
+     .then(x=>{setWallet(x?.wallet||null);setBillableModelIds((x?.models||[]).map(m=>m.model_id));setPilotPrice(x?.pilot_cost_cents??null);setPilotAvailable(Boolean(x?.generation_enabled));setGenerationReady(Boolean(x?.generation_enabled && (x?.wallet?.available_cents??0)>0));}).catch(()=>{});
    return ()=>controller.abort();
  },[]);
  const onWalletGenerate=useCallback(params=>generateWithRealizoWallet(params),[]);
@@ -138,7 +138,7 @@ export default function RealizoStudio({accountId}){
           <p className="text-[13px] text-[#7A5663] font-semibold">Para generar necesitas al menos {usd(pilotPrice||35)} en tu billetera.</p>
           <Link href="/wallet" className="font-bold text-[#6845AB] text-sm underline">Recargar créditos de prueba</Link>
         </div>}
-        {generationReady&&<p className="text-[13px] font-semibold text-[#6A4D9B]">Prueba con Wan 2.2 · 5 segundos · 480p · {usd(pilotPrice||35)} por video</p>}
+        {generationReady&&<p className="text-[13px] font-semibold text-[#6A4D9B]">Elige tu modelo, duración y resolución. Realizo te mostrará el precio de Muapi antes de confirmar cada video.</p>}
         {!pilotAvailable&&<p className="text-[12px] text-[#9A8B9B]">La generación se habilitará cuando la conexión con Muapi esté lista para tu cuenta.</p>}
        </section>}
      </>}
