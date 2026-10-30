@@ -52,6 +52,15 @@ class PilotBonusReversalTest(unittest.TestCase):
         self.reverse()
         self.assertEqual(self.balance("owner"), (775, 0))
         self.assertEqual(self.balance("other"), (0, 0))
+        correction = self.db.execute(
+            "SELECT available_delta_cents,reserved_delta_cents,kind "
+            "FROM wallet_ledger WHERE external_reference='pilot-credit:1:reversed'"
+        ).fetchone()
+        self.assertEqual(correction, (-35, 0, "deposit"))
+        ledger_sum = self.db.execute(
+            "SELECT SUM(available_delta_cents) FROM wallet_ledger WHERE user_id='owner'"
+        ).fetchone()[0]
+        self.assertEqual(ledger_sum, 775)
         self.assertEqual(self.db.execute(
             "SELECT amount_cents FROM realizo_prepaid_muapi_imports WHERE slot=1"
         ).fetchone()[0], 775)
