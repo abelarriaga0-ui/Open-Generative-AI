@@ -52,3 +52,5 @@ jobs:
         run: node scripts/import-realizo-prepaid-muapi.mjs
       - name: Confirm no real PayPal charge or Muapi generation was executed
         run: echo 'Only a ledger-backed historical Realizo Sandbox credit was created. PayPal Live untouched; Muapi generation not invoked.'
+
+        # Activar acreditacion inicial de 7.75 USD de Muapi
