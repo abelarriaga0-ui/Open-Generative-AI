@@ -25,7 +25,7 @@ async function query(sql, params = []) {
     signal: AbortSignal.timeout(20000),
   });
   const body = await response.json().catch(() => ({}));
-  if (!response.ok || !body.success || !body.result?.[0]?.success) {
+  if (!response.ok || !body.success || !body.result?.[0] || body.result[0].success === false) {
     throw new Error('Sandbox D1 operation rejected (HTTP ' + response.status + ')');
   }
   return body.result[0];
