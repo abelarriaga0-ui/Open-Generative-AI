@@ -1,0 +1,75 @@
+name: Realizo - acreditar USD 7.75 prepagados de Muapi en Sandbox
+# Manual only. This workflow lives on main only so GitHub Actions can dispatch it.
+# Checkout is pinned to reviewed feature commit. Never deploy production or process PayPal payments.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: realizo-muapi-historical-credit-one-time
+  cancel-in-progress: false
+
+jobs:
+  credit-only-sandbox:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/main' && github.actor == 'abelarriaga0-ui'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      REALIZO_ENV: sandbox
+      REALIZO_AUTH_PROVIDER: native
+      PAYPAL_MODE: sandbox
+      CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+      REALIZO_D1_SANDBOX: '2561f6c8-bfb2-4ea4-8527-7fec29188edf'
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      REALIZO_MUAPI_API_KEY: ${{ secrets.REALIZO_MUAPI_API_KEY }}
+    steps:
+      - name: Checkout audited Realizo Sandbox code pinned to fixed commit
+        uses: actions/checkout@v4
+        with:
+          ref: 'c0de040a4b46aec38021e4b76ca0110ec46f6f1f'
+          persist-credentials: false
+
+      - name: Prepare Node.js 22 and Python
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify Sandbox isolation and financial invariants offline
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/check-realizo-auth-sandbox.mjs
+          npm run test:wallet
+          python3 -m unittest discover -s tests -p 'test_realizo_muapi_historic_schema.py' -v
+          test -f migrations/0009_prepaid_muapi_import.sql
+          test -f scripts/import-realizo-prepaid-muapi.mjs
+
+      - name: Install isolated Wrangler CLI (no application deployment)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --prefix "$RUNNER_TEMP/realizo-wrangler" --no-save --no-audit --no-fund wrangler@4.151.3
+          echo "$RUNNER_TEMP/realizo-wrangler/node_modules/.bin" >> "$GITHUB_PATH"
+
+      - name: Apply only pending migrations to Realizo Sandbox D1
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/check-realizo-auth-sandbox.mjs
+          test -n "$CLOUDFLARE_API_TOKEN"
+          wrangler d1 migrations apply WALLETS_DB --config wrangler.auth-sandbox.jsonc --remote
+
+      - name: Verify Muapi funds and single verified native user; record USD 7.75 once
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$REALIZO_MUAPI_API_KEY"
+          node scripts/import-realizo-prepaid-muapi.mjs
+
+      - name: Confirm no video generation, production deploy or real PayPal payments
+        run: |
+          echo 'Historical credit operation completed in isolated Realizo Sandbox D1.'
+          echo 'The action did NOT call Muapi generation or PayPal capture.'
