@@ -1,9 +1,6 @@
 name: Realizo - release stuck pre-Muapi video reservation
 # One-time guarded Sandbox-only operation. No provider API, no new generation.
 on:
-  push:
-    branches: [main]
-    paths: ['.github/workflows/realizo-liberar-video-reservado.yml']
   workflow_dispatch:
 
 permissions:
