@@ -1,0 +1,34 @@
+name: Realizo AI Premium - validar beta sin proveedor ni despliegue
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/realizo-ai-premium-ci.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: '34ab5f9f5aba03dd4bd892b31613c2cf968a4601'
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate database, code and prompt research schemas without spending
+        run: |
+          python3 -m unittest discover -s tests -p test_realizo_ai_premium_schema.py -v
+          node --test tests/realizo-ai-premium.test.mjs
+          node --input-type=module --check < lib/realizo-creative/ai-premium.js
+          node --input-type=module --check < app/api/realizo/ai-premium/route.js
+          node --input-type=module --check < app/api/realizo/ai-premium/'[id]'/route.js
+          node --input-type=module --check < app/api/realizo/ai-premium/'[id]'/approve/route.js
+      - name: Confirm no billable providers used
+        run: echo 'Only offline tests. No Cloudflare D1 mutation, OpenAI call, Muapi generation or PayPal transaction.'
