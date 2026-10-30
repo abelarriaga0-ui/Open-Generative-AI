@@ -1,9 +1,6 @@
 name: Realizo - diagnose existing video without spending credits
 # Read-only one-time job audit. No generation calls, no balance modifications.
 on:
-  push:
-    branches: [main]
-    paths: ['.github/workflows/realizo-diagnostico-video-lectura.yml']
   workflow_dispatch:
 
 permissions:
