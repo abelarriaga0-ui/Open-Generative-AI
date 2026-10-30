@@ -4,6 +4,9 @@ on:
   push:
     branches: [feature/realizo-cloudflare-auth-videos]
     paths: ['.github/workflows/realizo-historic-muapi-audit.yml']
+  pull_request:
+    branches: [feature/realizo-cloudflare-auth-videos]
+    paths: ['docs/realizo-credit-audit-trigger.md']
   workflow_dispatch:
 
 permissions:
@@ -11,11 +14,13 @@ permissions:
 
 jobs:
   verify-sandbox-wallet:
-    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/feature/realizo-cloudflare-auth-videos'
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && ((github.event_name == 'push' && github.ref == 'refs/heads/feature/realizo-cloudflare-auth-videos') || (github.event_name == 'pull_request' && github.base_ref == 'feature/realizo-cloudflare-auth-videos' && github.event.pull_request.head.repo.full_name == github.repository))
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
