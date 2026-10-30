@@ -175,3 +175,5 @@ jobs:
           set -euo pipefail
           node scripts/check-realizo-auth-sandbox.mjs
           node scripts/import-realizo-prepaid-muapi.mjs
+
+          # Activar despliegue y acreditacion Muapi de 7.75 USD
