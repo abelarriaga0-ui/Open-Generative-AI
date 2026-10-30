@@ -1,0 +1,77 @@
+name: Realizo - release stuck pre-Muapi video reservation
+# One-time guarded Sandbox-only operation. No provider API, no new generation.
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/realizo-liberar-video-reservado.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: realizo-stuck-reservation-release
+  cancel-in-progress: false
+
+jobs:
+  release-orphaned-job:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Release only a confirmed reserved job never submitted to Muapi
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'JS'
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          if(!token)throw Error('Protected Cloudflare token missing');
+          const uri='https://api.cloudflare.com/client/v4/accounts/7e405c54c1a91abbdad537f7fec379a1/d1/database/2561f6c8-bfb2-4ea4-8527-7fec29188edf/query';
+          async function q(sql,params=[]){
+            const r=await fetch(uri,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({sql,params}),signal:AbortSignal.timeout(15000)});
+            const data=await r.json().catch(()=>({}));
+            if(!r.ok || data.success!==true || !data.result?.[0] || data.result[0].success===false)throw Error('D1 safe reconciliation failed HTTP '+r.status);
+            return data.result[0].results||[];
+          }
+          const ownerRows=await q("SELECT i.user_id FROM realizo_prepaid_muapi_imports i JOIN wallet_users u ON u.id=i.user_id WHERE i.slot=1 AND i.amount_cents=775 AND u.auth_provider='realizo'");
+          if(ownerRows.length!==1)throw Error('Historical owner mismatch');
+          const uid=ownerRows[0].user_id;
+          const wallet=await q('SELECT available_cents,reserved_cents FROM wallets WHERE user_id=?',[uid]);
+          const slots=await q('SELECT COUNT(*) AS n FROM realizo_muapi_pilot_uses');
+          const jobs=await q("SELECT id,status,price_cents,provider_request_id FROM generation_jobs WHERE user_id=? AND model_id='wan2.2-image-to-video' ORDER BY created_at DESC LIMIT 3",[uid]);
+          if(jobs.length===1 && jobs[0].status==='failed' &&
+             Number(walletsSafe(wallet,'available_cents'))===775 && Number(walletsSafe(wallet,'reserved_cents'))===0){
+            console.log('ORPHANED_WALLET_JOB=ALREADY_RELEASED; no additional debit or release');
+            process.exit(0);
+          }
+          function walletsSafe(rows,key){return rows.length===1?rows[0][key]:NaN;}
+          if(wallet.length!==1 || Number(wallet[0].available_cents)!==740 ||
+             Number(wallet[0].reserved_cents)!==35 ||
+             slots.length!==1 || Number(slots[0].n)!==0 ||
+             jobs.length!==1 || jobs[0].status!=='reserved' ||
+             Number(jobs[0].price_cents)!==35 || jobs[0].provider_request_id!==null){
+            throw Error('Job, pilot slot or wallet changed; no automatic release performed');
+          }
+          const id=jobs[0].id;
+          // Trigger in 0001_wallet.sql releases exactly 35 cents atomically.
+          await q("UPDATE generation_jobs SET status='failed',error_reason='not_sent_to_provider',updated_at=datetime('now') WHERE id=? AND user_id=? AND status='reserved' AND provider_request_id IS NULL AND price_cents=35 AND NOT EXISTS (SELECT 1 FROM realizo_muapi_pilot_uses)",[id,uid]);
+          const [after,done,release]=await Promise.all([
+            q('SELECT available_cents,reserved_cents FROM wallets WHERE user_id=?',[uid]),
+            q('SELECT status,error_reason,provider_request_id FROM generation_jobs WHERE id=? AND user_id=?',[id,uid]),
+            q("SELECT kind,available_delta_cents,reserved_delta_cents FROM wallet_ledger WHERE external_reference=?",
+              ['generation:'+id+':release'])
+          ]);
+          if(after.length!==1 || Number(after[0].available_cents)!==775 ||
+             Number(after[0].reserved_cents)!==0 ||
+             done.length!==1 || done[0].status!=='failed' ||
+             done[0].error_reason!=='not_sent_to_provider' || done[0].provider_request_id!==null ||
+             release.length!==1 || release[0].kind!=='release' ||
+             Number(release[0].available_delta_cents)!==35 ||
+             Number(release[0].reserved_delta_cents)!==-35){
+            throw Error('Post-release D1 ledger verification failed');
+          }
+          console.log('ORPHANED_WALLET_JOB=RELEASED; user balance USD 7.75 available, 0 reserved');
+          console.log('MUAPI_PILOT_SLOT=UNUSED; No provider request, no paid generation or PayPal transaction.');
+          JS
