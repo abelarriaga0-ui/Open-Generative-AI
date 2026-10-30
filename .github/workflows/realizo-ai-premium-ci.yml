@@ -14,8 +14,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: '34ab5f9f5aba03dd4bd892b31613c2cf968a4601'
+          ref: 'fec9e36f7eb55fdce60406a236eff9b0d60f968b'
           persist-credentials: false
+          submodules: recursive
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -30,5 +31,16 @@ jobs:
           node --input-type=module --check < app/api/realizo/ai-premium/route.js
           node --input-type=module --check < app/api/realizo/ai-premium/'[id]'/route.js
           node --input-type=module --check < app/api/realizo/ai-premium/'[id]'/approve/route.js
+      - name: Compile Premium UI and API for Cloudflare Sandbox only
+        env:
+          CI: 'true'
+          NEXT_TELEMETRY_DISABLED: '1'
+          REALIZO_ENV: sandbox
+          REALIZO_AUTH_PROVIDER: native
+          REALIZO_WALLET_ONLY: 'true'
+          PAYPAL_MODE: sandbox
+          MUAPI_GENERATION_ENABLED: 'false'
+          REALIZO_AUTH_ORIGIN: https://realizo-auth-sandbox.abelarriaga0.workers.dev
+        run: npm run cloudflare:build:realizo-auth-sandbox
       - name: Confirm no billable providers used
         run: echo 'Only offline tests. No Cloudflare D1 mutation, OpenAI call, Muapi generation or PayPal transaction.'
