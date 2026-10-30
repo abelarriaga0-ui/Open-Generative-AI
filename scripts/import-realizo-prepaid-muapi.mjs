@@ -30,6 +30,34 @@ async function query(sql, params = []) {
   }
   return body.result[0];
 }
+// Existing credit is immutable. On later deployments the Muapi provider
+// balance may have decreased due to VALID user video generations, and new
+// Realizo accounts may exist. Do not require $7.75 again or a unique user.
+const existingImportRows=(await query(
+  'SELECT user_id,amount_cents FROM realizo_prepaid_muapi_imports WHERE slot=1'
+)).results;
+if(existingImportRows.length){
+  if(existingImportRows.length!==1||Number(existingImportRows[0].amount_cents)!==775)
+    throw new Error('Historical import record inconsistent');
+  const owner=existingImportRows[0].user_id;
+  const account=(await query(
+    "SELECT auth_provider FROM wallet_users WHERE id=?", [owner]
+  )).results;
+  const ledger=(await query(
+    "SELECT user_id,kind,available_delta_cents,reserved_delta_cents FROM wallet_ledger WHERE external_reference='historical-muapi-prepaid:1'"
+  )).results;
+  const wallet=(await query(
+    'SELECT available_cents,reserved_cents FROM wallets WHERE user_id=?',[owner]
+  )).results;
+  if(account.length!==1||account[0].auth_provider!=='realizo'||
+     ledger.length!==1||ledger[0].user_id!==owner||
+     ledger[0].kind!=='deposit'||
+     Number(ledger[0].available_delta_cents)!==775||
+     Number(ledger[0].reserved_delta_cents)!==0||wallet.length!==1)
+    throw new Error('Historical Muapi import cannot be verified');
+  console.log('HISTORIC_MUAPI_CREDIT=ALREADY_APPLIED_AND_LEDGER_VERIFIED; no duplicate, no balance reimport');
+  process.exit(0);
+}
 function count(rows) {
   if (rows.length !== 1) throw new Error('Unexpected account count response');
   return Number(rows[0].n);
