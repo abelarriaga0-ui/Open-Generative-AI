@@ -1440,13 +1440,8 @@ export default function VideoStudio({
       let family = currentFamily;
       // When a priced model exists, select that exact catalog variant rather than
       // a nonbillable default. Provider parameters are still built by the engine.
-      const pilotVariant = billableModelIds
-        .map(id => videoModelCatalog.variantById.get(id))
-        .find(item => item?.mode === "i2v" && getModelMediaCapabilities(item.model).image.maxItems > 0);
-      if (pilotVariant) {
-        variant = pilotVariant;
-        family = videoModelCatalog.familyByVariantId.get(pilotVariant.model.id);
-      }
+      // Keep the current model family when a product brief adds image inputs.
+      // Only choose an i2v fallback if this family has no matching variant.
       if (!variant) {
         const selected = videoModelPickerEntries.find(entry => entry.variantsByMode.i2v);
         variant = selected?.variantsByMode.i2v;
