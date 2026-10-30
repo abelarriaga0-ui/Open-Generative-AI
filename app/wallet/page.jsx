@@ -83,7 +83,7 @@ export default function WalletPage(){
             {!data.activity.length?<p className="text-[#8A7C91]">Sin movimientos todavía.</p>:
               <ul className="divide-y divide-[#ECE5E1]">
                 {data.activity.map((item,i)=><li className="flex justify-between gap-3 py-3 text-sm" key={i}>
-                  <span>{item.external_reference?.startsWith('pilot-credit:')?'Bono de prueba':(entries[item.kind]||item.kind)}<small className="block mt-1 text-[#94889C]">{item.created_at}</small></span>
+                  <span>{item.external_reference?.startsWith('historical-muapi-prepaid:')?'Saldo anterior de Muapi':item.external_reference?.startsWith('pilot-credit:')?'Bono de prueba':(entries[item.kind]||item.kind)}<small className="block mt-1 text-[#94889C]">{item.created_at}</small></span>
                   <strong className="tabular-nums whitespace-nowrap">{money(item.available_delta_cents)}</strong>
                 </li>)}
               </ul>
