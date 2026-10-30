@@ -1,0 +1,78 @@
+name: Realizo - diagnose existing video without spending credits
+# Read-only one-time job audit. No generation calls, no balance modifications.
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/realizo-diagnostico-video-lectura.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: realizo-readonly-video-status-audit
+  cancel-in-progress: false
+
+jobs:
+  diagnose-existing-video:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      REALIZO_MUAPI_API_KEY: ${{ secrets.REALIZO_MUAPI_API_KEY }}
+    steps:
+      - name: Inspect only the Realizo historical-credit owner's current video state
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'JS'
+          const e=process.env;
+          if(!e.CLOUDFLARE_API_TOKEN || !e.REALIZO_MUAPI_API_KEY)
+            throw Error('Missing scoped GitHub secret for read-only diagnosis');
+          const d1='https://api.cloudflare.com/client/v4/accounts/7e405c54c1a91abbdad537f7fec379a1/d1/database/2561f6c8-bfb2-4ea4-8527-7fec29188edf/query';
+          async function read(sql,params=[]){
+            const r=await fetch(d1,{method:'POST',headers:{Authorization:'Bearer '+e.CLOUDFLARE_API_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({sql,params}),signal:AbortSignal.timeout(15000)});
+            const j=await r.json().catch(()=>({}));
+            if(!r.ok || j.success!==true || !j.result?.[0] || j.result[0].success===false)throw Error('D1 read error HTTP '+r.status);
+            return j.result[0].results||[];
+          }
+          const ownerRows=await read("SELECT i.user_id FROM realizo_prepaid_muapi_imports i JOIN wallet_users u ON u.id=i.user_id WHERE i.slot=1 AND i.amount_cents=775 AND u.auth_provider='realizo'");
+          if(ownerRows.length!==1)throw Error('Exactly one verified historical owner required');
+          const owner=ownerRows[0].user_id;
+          const wallets=await read('SELECT available_cents,reserved_cents FROM wallets WHERE user_id=?',[owner]);
+          const jobs=await read('SELECT id,model_id,status,price_cents,provider_request_id,error_reason,created_at,updated_at FROM generation_jobs WHERE user_id=? ORDER BY created_at DESC,id DESC LIMIT 5',[owner]);
+          const slots=await read('SELECT COUNT(*) AS n FROM realizo_muapi_pilot_uses WHERE user_id=?',[owner]);
+          console.log('WALLET_AVAILABLE_CENTS='+Number(wallets[0]?.available_cents));
+          console.log('WALLET_RESERVED_CENTS='+Number(wallets[0]?.reserved_cents));
+          console.log('PILOT_USED_SLOTS='+Number(slots[0]?.n));
+          console.log('OWNER_JOB_COUNT_LAST5='+jobs.length);
+          for(let i=0;i<jobs.length;i++){
+            const job=jobs[i];
+            console.log('JOB_'+(i+1)+'_MODEL='+String(job.model_id).slice(0,60));
+            console.log('JOB_'+(i+1)+'_STATUS='+String(job.status));
+            console.log('JOB_'+(i+1)+'_PRICE_CENTS='+Number(job.price_cents));
+            console.log('JOB_'+(i+1)+'_HAS_PROVIDER_REQUEST_ID='+Boolean(job.provider_request_id));
+            console.log('JOB_'+(i+1)+'_ERROR_REASON='+String(job.error_reason||'none').replace(/[^a-z0-9_-]/gi,'').slice(0,80));
+            console.log('JOB_'+(i+1)+'_CREATED='+String(job.created_at||'').slice(0,32));
+          }
+          const recent=jobs[0];
+          if(recent?.provider_request_id && ['submitted','unknown','reserved'].includes(recent.status)){
+            const id=String(recent.provider_request_id);
+            if(!/^[\w.-]{5,256}$/.test(id))throw Error('Unexpected provider request id format');
+            const res=await fetch('https://api.muapi.ai/api/v1/predictions/'+encodeURIComponent(id)+'/result',{
+              headers:{'x-api-key':e.REALIZO_MUAPI_API_KEY},signal:AbortSignal.timeout(20000)
+            });
+            console.log('MUAPI_POLL_HTTP='+res.status);
+            if(res.ok){
+              const json=await res.json().catch(()=>({}));
+              const st=String(json.status||'unknown').slice(0,32);
+              console.log('MUAPI_POLL_STATUS='+st.replace(/[^a-z0-9_-]/gi,''));
+              const outputs=Array.isArray(json.outputs)?json.outputs:[];
+              console.log('MUAPI_OUTPUT_AVAILABLE='+Boolean(outputs.length || json.url || json.output || json.video));
+            }
+          }else{
+            console.log('MUAPI_POLL_SKIPPED='+(!recent?'NO_EXISTING_JOB':'NO_PROVIDER_REQUEST_ID'));
+          }
+          console.log('READ_ONLY_DIAGNOSIS_COMPLETE=true; no user IDs, provider IDs, prompts, keys, or URLs printed.');
+          JS
