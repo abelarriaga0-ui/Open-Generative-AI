@@ -1,0 +1,53 @@
+name: Realizo - import historical Muapi credit into native Sandbox user
+
+on:
+  push:
+    branches: [feature/realizo-cloudflare-auth-videos]
+    paths: ['.github/workflows/realizo-historic-muapi-credit.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: realizo-one-time-muapi-credit-sandbox
+  cancel-in-progress: false
+
+jobs:
+  credit-historical-balance:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/feature/realizo-cloudflare-auth-videos'
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    env:
+      REALIZO_ENV: sandbox
+      PAYPAL_MODE: sandbox
+      REALIZO_AUTH_PROVIDER: native
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      REALIZO_MUAPI_API_KEY: ${{ secrets.REALIZO_MUAPI_API_KEY }}
+      CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+      REALIZO_D1_SANDBOX: '2561f6c8-bfb2-4ea4-8527-7fec29188edf'
+    steps:
+      - name: Checkout ONLY the authorized isolated branch
+        uses: actions/checkout@v4
+      - name: Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify isolation and current wallet code before touching D1
+        run: |
+          node scripts/check-realizo-auth-sandbox.mjs
+          npm run test:wallet
+      - name: Install Wrangler for the isolated D1 only
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --prefix "$RUNNER_TEMP/realizo-wrangler" --no-save --no-audit --no-fund wrangler@4.151.3
+          echo "$RUNNER_TEMP/realizo-wrangler/node_modules/.bin" >> "$GITHUB_PATH"
+      - name: Apply pending migrations to Sandbox D1 (never production)
+        run: |
+          node scripts/check-realizo-auth-sandbox.mjs
+          wrangler d1 migrations apply WALLETS_DB --config wrangler.auth-sandbox.jsonc --remote
+      - name: Verify provider prepaid balance, identify one native user, credit USD 7.75 ONCE
+        run: node scripts/import-realizo-prepaid-muapi.mjs
+      - name: Confirm no real PayPal charge or Muapi generation was executed
+        run: echo 'Only a ledger-backed historical Realizo Sandbox credit was created. PayPal Live untouched; Muapi generation not invoked.'
