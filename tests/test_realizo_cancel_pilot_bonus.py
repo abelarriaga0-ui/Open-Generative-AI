@@ -9,6 +9,7 @@ SCHEMAS = [
     "0008_muapi_pilot_grant.sql",
     "0009_prepaid_muapi_import.sql",
     "0010_cancel_unfunded_pilot_bonus.sql",
+    "0011_account_for_pilot_bonus_reversal.sql",
 ]
 
 class PilotBonusReversalTest(unittest.TestCase):
