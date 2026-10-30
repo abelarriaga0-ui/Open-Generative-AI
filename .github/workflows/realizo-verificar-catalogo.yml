@@ -30,6 +30,10 @@ jobs:
           console.log('MUAPI_PUBLIC_MODEL_COUNT='+j.models.length);
           console.log('MUAPI_VIDEO_MODEL_COUNT='+videos.length);
           console.log('MUAPI_VIDEO_ENDPOINTS_COMPATIBLE='+valid.length);
+          console.log('PUBLIC_SAMPLE_MODELS='+JSON.stringify(videos.slice(0,5).map(m=>({
+            name:m.name,category:m.category,endpoint:m.endpoint,endpoint_url:m.endpoint_url,
+            dynamic_pricing:m.dynamic_pricing,cost:m.cost,estimate_endpoint:m.estimate_endpoint
+          }))).slice(0,2800));
           const families=['wan','kling','veo','seedance','sora','minimax','pixverse','vidu'];
           for(const family of families){
             console.log('FAMILY_'+family.toUpperCase()+'='+videos.filter(x=>
