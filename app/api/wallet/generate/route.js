@@ -6,6 +6,8 @@ import { enforceSameOrigin } from '@/lib/wallet/access-auth';
 import { isMuapiGenerationEnabled } from '@/lib/wallet/generation-policy';
 import {isPilotAccount,claimPilotSlot,isPilotPriceConfigValid,isOwnedSignedProductImage,PILOT_MODEL_ID} from '@/lib/wallet/muapi-pilot';
 import { isAllowedMuapiEndpoint } from '@/lib/wallet/muapi-endpoint';
+import {isOwnerMultiModelSandbox} from '@/lib/wallet/multi-model-access';
+import {quoteLiveVideo,ensureOwnedMedia,userFacingQuoteError} from '@/lib/wallet/live-video-models';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,12 +45,46 @@ export async function POST(request) {
       return Response.json({ error: 'invalid_generation_request' }, { status: 400 });
     }
     phase='model-lookup';
-    const model = await getPricedModel(env.WALLETS_DB, body.model_id);
-    if (!model) return Response.json({ error: 'model_not_available' }, { status: 404 });
-    phase='model-authorization';
     const pilot=env.REALIZO_ENV==='sandbox';
-    if (pilot && (!isPilotAccount(env,user)||!isPilotPriceConfigValid(model) ||
-      body.model_id!==PILOT_MODEL_ID)) {
+    const multiModel=pilot && await isOwnerMultiModelSandbox(env,user);
+    let model;
+    if (multiModel) {
+      // Recalculate the price from the provider for this exact payload.
+      // Never accept a client-supplied price or an arbitrary provider endpoint.
+      let quote;
+      try {
+        await ensureOwnedMedia(env,user,body.input);
+        quote=await quoteLiveVideo(body.model_id,body.input);
+      } catch(err) {
+        return Response.json({error:userFacingQuoteError(err)},{status:422});
+      }
+      if(!Number.isSafeInteger(body.max_price_cents) ||
+         body.max_price_cents<=0 || quote.provider_cost_cents>body.max_price_cents) {
+        return Response.json({error:'price_changed_confirm_again'},{status:409});
+      }
+      // The foreign key for generation_jobs requires a catalog model row.
+      // Price for THIS job is exclusively the current live estimate, not an
+      // old shared catalog price that could be changed by another request.
+      await env.WALLETS_DB.prepare(
+        'INSERT OR IGNORE INTO model_prices (model_id,muapi_endpoint,customer_price_cents,enabled,allowed_input_keys_json,fixed_options_json) VALUES (?,?,?,1,?,?)'
+      ).bind(quote.model_id,quote.endpoint,quote.provider_cost_cents,
+        JSON.stringify(Object.keys(body.input)), '{}').run();
+      const recorded=await env.WALLETS_DB.prepare(
+        'SELECT muapi_endpoint FROM model_prices WHERE model_id=?'
+      ).bind(quote.model_id).first();
+      if(recorded?.muapi_endpoint!==quote.endpoint)
+        return Response.json({error:'model_endpoint_conflict'},{status:409});
+      model={model_id:quote.model_id,muapi_endpoint:quote.endpoint,
+        customer_price_cents:quote.provider_cost_cents,
+        allowed_input_keys_json:JSON.stringify(Object.keys(body.input)),
+        fixed_options_json:'{}'};
+    } else {
+      model=await getPricedModel(env.WALLETS_DB,body.model_id);
+      if (!model) return Response.json({error:'model_not_available'},{status:404});
+    }
+    phase='model-authorization';
+    if (pilot && !multiModel && (!isPilotAccount(env,user) ||
+       !isPilotPriceConfigValid(model) || body.model_id!==PILOT_MODEL_ID)) {
       return Response.json({error:'pilot_model_not_allowed'},{status:403});
     }
     if (!isAllowedMuapiEndpoint(model.muapi_endpoint)) {
@@ -72,7 +108,7 @@ export async function POST(request) {
       return Response.json({ error: 'model_input_not_allowed' }, { status: 400 });
     }
     phase='image-ownership';
-    if(pilot){
+    if(pilot && !multiModel){
       const url=body.input.image_url;
       if(!await isOwnedSignedProductImage(env,user,url) ||
          typeof body.input.prompt!=='string'||body.input.prompt.trim().length<5||
@@ -93,7 +129,7 @@ export async function POST(request) {
     if (!job.newlyCreated) {
       return Response.json({ job_id: job.id, status: job.status, idempotent: true });
     }
-    if(pilot){
+    if(pilot && !multiModel){
       // A single D1 primary-key slot prevents concurrent requests from
       // spending provider credits more than once (including ambiguous retries).
       phase='pilot-slot';
