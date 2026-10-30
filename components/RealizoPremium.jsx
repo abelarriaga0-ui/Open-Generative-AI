@@ -30,7 +30,19 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic}
  useEffect(()=>{
   let active=true;
   fetch('/api/realizo/ai-premium',{cache:'no-store',credentials:'same-origin'})
-   .then(r=>r.ok?r.json():Promise.reject()).then(v=>{if(active)setConfig(v)})
+   .then(r=>r.ok?r.json():Promise.reject()).then(async v=>{
+     if(!active)return;
+     setConfig(v);
+     const latest=v.projects?.[0];
+     if(latest?.id){
+       try {
+         const response=await fetch('/api/realizo/ai-premium/'+encodeURIComponent(latest.id),{
+           cache:'no-store',credentials:'same-origin'
+         });
+         if(response.ok&&active)setProject(await response.json());
+       }catch{}
+     }
+   })
    .catch(()=>{if(active)setConfig({enabled:false,message:'No disponible en este momento.'})});
   return()=>{active=false};
  },[]);
