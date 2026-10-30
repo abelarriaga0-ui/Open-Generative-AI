@@ -37,6 +37,7 @@ jobs:
         run: |
           node scripts/check-realizo-auth-sandbox.mjs
           npm run test:wallet
+          python3 -m unittest discover -s tests -p test_realizo_muapi_historic_schema.py -v
       - name: Install Wrangler for the isolated D1 only
         shell: bash
         run: |
