@@ -1,0 +1,35 @@
+name: Realizo AI Premium - conectar secreto OpenAI solo Sandbox
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  install-sandbox-secret:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/main' && github.actor == 'abelarriaga0-ui'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+      REALIZO_OPENAI_API_KEY: ${{ secrets.REALIZO_OPENAI_API_KEY }}
+    steps:
+      - name: Checkout exact isolated Sandbox setup (never production)
+        uses: actions/checkout@v4
+        with:
+          ref: 'feature/realizo-ai-premium'
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify required secrets and isolation without logging values
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || (echo "Cloudflare connection missing" && exit 1)
+          test -n "$REALIZO_OPENAI_API_KEY" || (echo "Set REALIZO_OPENAI_API_KEY in GitHub Actions secrets first" && exit 1)
+          node scripts/check-realizo-auth-sandbox.mjs
+      - name: Install OpenAI key only to realizo-auth-sandbox Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --prefix "$RUNNER_TEMP/wrangler" --no-save --no-audit --no-fund wrangler@4.151.3
+          printf '%s' "$REALIZO_OPENAI_API_KEY" | "$RUNNER_TEMP/wrangler/node_modules/.bin/wrangler" secret put OPENAI_API_KEY --name realizo-auth-sandbox --config wrangler.auth-sandbox.jsonc
+          echo 'OpenAI key installed only in Realizo Sandbox; premium stays disabled until budget approval.'
