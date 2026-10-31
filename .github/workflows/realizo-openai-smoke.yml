@@ -1,8 +1,5 @@
-name: Realizo - prueba controlada OpenAI Premium (<0.02 USD estimados)
+name: Realizo - prueba controlada OpenAI Premium
 on:
-  push:
-    branches: [main]
-    paths: ['.github/workflows/realizo-openai-smoke.yml']
   workflow_dispatch:
 permissions:
   contents: read
