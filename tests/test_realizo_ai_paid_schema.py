@@ -7,7 +7,7 @@ class PaidPremiumWalletTest(unittest.TestCase):
   self.db.execute('PRAGMA foreign_keys=ON')
   for n in ['0001_wallet.sql','0004_realizo_media.sql',
             '0009_prepaid_muapi_import.sql',
-            '0012_realizo_ai_premium.sql','0013_realizo_ai_premium_pricing.sql']:
+            '0012_realizo_ai_premium.sql','0013_realizo_ai_premium_pricing.sql','0014_paypal_live_provenance.sql']:
    self.db.executescript((ROOT/'migrations'/n).read_text())
   for u in ['owner','customer','other']:
    self.db.execute("INSERT INTO wallet_users(id,auth_provider,auth_subject) VALUES (?, 'realizo', ?)",(u,u))
@@ -64,6 +64,13 @@ class PaidPremiumWalletTest(unittest.TestCase):
   with self.assertRaises(sqlite3.IntegrityError):self.create('customer','project3')
   self.create('owner','sponsor','sponsored',0)
   with self.assertRaises(sqlite3.IntegrityError):self.create('owner','sponsor2','sponsored',0)
+ def test_paypal_live_provenance_is_explicit(self):
+  self.db.execute("INSERT INTO verified_deposits (id,user_id,payment_provider,payment_reference,amount_cents) VALUES ('sandbox','customer','paypal','fake',2000)")
+  self.assertEqual(self.db.execute("SELECT provider_environment FROM verified_deposits WHERE id='sandbox'").fetchone()[0],'unknown')
+  self.db.execute("INSERT INTO verified_deposits (id,user_id,payment_provider,payment_reference,amount_cents,provider_environment) VALUES ('real','other','paypal','real-ref',2000,'live')")
+  self.assertEqual(self.db.execute("SELECT provider_environment FROM verified_deposits WHERE id='real'").fetchone()[0],'live')
+  with self.assertRaises(sqlite3.IntegrityError):
+   self.db.execute("UPDATE verified_deposits SET provider_environment='unverified' WHERE id='real'")
  def test_nonowners_and_unfunded_wallets_cannot_reserve(self):
   self.create('customer','p2')
   with self.assertRaises(sqlite3.IntegrityError):self.reserve('p2','other')
