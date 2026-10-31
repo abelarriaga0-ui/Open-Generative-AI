@@ -17,7 +17,7 @@ test('subtitle timeline follows a spoken script; no extra API or charges',()=>{
  assert.match(original.prompt,/first 0\.3 seconds/);
  assert.match(original.prompt,/speech gaps longer than 0\.35 seconds/);
  assert.equal(scriptFromPrompt(original.prompt),'Hola, mira este producto. Lo necesitas hoy. Pídelo ahora.');
- const timeline=createSubtitleTimeline('Hola, mira este producto. Lo necesitas hoy. Pídelo ahora.',12);
+ const timeline=createSubtitleTimeline('Hola, mira este producto. Lo necesitas hoy. Pídelo ahora.',12,{maxWords:3});
  assert.equal(timeline.length,lines.length);
  assert.ok(timeline.every(x=>x.start>=0&&x.end<=12&&x.end>x.start));
 });
