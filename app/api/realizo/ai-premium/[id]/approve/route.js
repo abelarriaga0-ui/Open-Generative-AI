@@ -46,7 +46,7 @@ export async function POST(request,{params}){
   const director=buildCommercialDirectorPackage({
     concept:directorConcept,productName:normalizeProductCopy(project.product_name),
     description:normalizeProductCopy(project.description),cta:project.cta||concept.cta,
-    market:project.market_code,style,shotPreference,duration:8,
+    market:project.market_code,videoLanguage:project.video_language||'es',style,shotPreference,duration:8,
     imageProvided:true,modelId:'seedance-2.5-omni-reference',
   });
   // Preserve the seller's commercial intent while keeping unverified product
@@ -68,7 +68,7 @@ export async function POST(request,{params}){
     ...safeResearchResponse(project),ready_for_editor:{
       prompt:finalPrompt,images:[image],productName:normalizeProductCopy(project.product_name),
       productDescription:normalizeProductCopy(project.description),
-      market:project.market_code,
+      market:project.market_code,video_language:project.video_language||'es',
       revision:crypto.randomUUID(),project_id:id,approved_concept:selection,
       media_role:'reference_only',creative_style:style,
       shot_preference:shotPreference,creative_concept:directorConcept,
