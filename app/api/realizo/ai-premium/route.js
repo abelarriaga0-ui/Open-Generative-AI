@@ -1,4 +1,5 @@
 import {getWalletEnvironment,requireWalletUser,jsonError} from '@/lib/wallet/server';
+import {premiumVideoOptions} from '@/lib/realizo-creative/video-specs';
 import {enforceSameOrigin} from '@/lib/wallet/access-auth';
 import {
   validatePremiumInput,premiumAccess,premiumPublicEnabled,ownedAsset,
@@ -27,6 +28,8 @@ export async function GET(request){
    general_available_cents:aiFunds,
    video_charge_separate:true,
    pricing_version:PREMIUM_PRICING_VERSION,
+   video_options:premiumVideoOptions(),
+   cost_tracking:'provider_usage_estimate; provider invoice reconciliation required',
    research_scope:'Foto y mercado + tres propuestas de venta. Video aparte.',
    projects:list.results??[],
    message:access.enabled?
@@ -76,10 +79,11 @@ export async function POST(request){
   }
   const projectId=crypto.randomUUID(), orderId=crypto.randomUUID();
   const ins=db.prepare(
-   'INSERT INTO realizo_ai_projects (id,user_id,primary_asset_id,product_name,description,audience,sales_angle,market_code,cta,request_key,status,research_model,billing_type,premium_price_cents,research_fingerprint,pricing_version,video_language) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+   'INSERT INTO realizo_ai_projects (id,user_id,primary_asset_id,product_name,description,audience,sales_angle,market_code,cta,request_key,status,research_model,billing_type,premium_price_cents,research_fingerprint,pricing_version,video_language,video_model_id,video_duration_seconds,video_workflow_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
   ).bind(projectId,user.id,data.assetId,data.productName,data.description,data.audience,
     data.angle,data.market,data.cta,data.requestKey,'created',env.OPENAI_PREMIUM_MODEL,
-    access.mode,access.price_cents,fp,PREMIUM_PRICING_VERSION,data.videoLanguage);
+    access.mode,access.price_cents,fp,PREMIUM_PRICING_VERSION,data.videoLanguage,
+    data.modelId,data.duration,data.workflowId);
   try{
    // D1 batch is transactional: both the project and its premium reservation
    // succeed together, or neither succeeds. Never call OpenAI first.
@@ -129,7 +133,7 @@ export async function POST(request){
    .bind(projectId,user.id).first();
   return Response.json(safeResearchResponse(project),{status:202,headers});
  }catch(e){
-  if(e?.message==='invalid_request')return error('invalid_request',400);
+  if(['invalid_request','invalid_video_configuration'].includes(e?.message))return error(e.message,400);
   return jsonError(e);
  }
 }
