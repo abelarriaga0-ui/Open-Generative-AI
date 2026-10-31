@@ -31,7 +31,7 @@ export async function GET(request){
    projects:list.results??[],
    message:access.enabled?
     access.mode==='paid'?'Análisis Premium de pago; el video Muapi se cotiza por separado.':
-      'La cuenta piloto tiene una investigación diaria patrocinada por Realizo, no por Muapi.':
+      'La cuenta piloto puede investigar hasta cinco productos cada 24 horas, patrocinados por Realizo y sin consumir saldo de Muapi.':
       'AI Premium necesita conexión y facturación real verificadas para habilitar investigaciones.',
   },{headers});
  }catch(e){return jsonError(e)}
