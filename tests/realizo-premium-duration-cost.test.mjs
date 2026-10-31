@@ -33,7 +33,7 @@ test('research prompt is created ONCE for selected model, duration and language'
  assert.match(prompt.instructions,new RegExp('Duración obligatoria: '+selected+' segundos'));
  assert.ok(prompt.instructions.includes(pick.id));
  assert.doesNotMatch(prompt.instructions,/7-8 segundos|maximo 17 palabras|7-8 s por defecto/i);
- assert.equal(prompt.max_tool_calls,2);
+ assert.equal(prompt.max_tool_calls,5);
  assert.equal(prompt.tools[0].type,'web_search');
 });
 test('fingerprint changes with model/duration to prevent reusing a wrong paid script',async()=>{
