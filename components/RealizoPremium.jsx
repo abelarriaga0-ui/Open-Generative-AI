@@ -178,7 +178,9 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
      shot_preference:shotPreference,acknowledged_responsibility:acknowledged}),
    });
    const json=await r.json().catch(()=>({}));
-   if(!r.ok)throw Error(json.error==='review_product_responsibility'?
+   if(!r.ok)throw Error(json.error==='ugc_speech_timing_invalid'?
+    'Ajusta el diálogo UGC para que encaje en los segundos elegidos. No se cobrará otra investigación.':
+    json.error==='review_product_responsibility'?
     'Acepta la declaración de responsabilidad comercial antes de aprobar.':
     'No se pudo aprobar: '+(json.error||r.status));
    if(!json.ready_for_editor)throw Error('El editor no recibió el proyecto.');
@@ -191,6 +193,10 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
  const videoOptions=config?.video_options||[];
  const selectedModel=videoOptions.find(m=>m.id===product.video_model_id);
  const availableDurations=selectedModel?.durations||[];
+ const spokenWords=editedSpeech.trim()?editedSpeech.trim().split(/\s+/).length:0;
+ const durationSpeech=Number(project?.video_duration_seconds)||8;
+ const speechMin=Math.max(5,Math.floor(durationSpeech*1.4));
+ const speechMax=Math.floor(durationSpeech*2.4);
  const selectedProvider=selectedModel?.provider||'';
  const selectedFamily=selectedModel?.family_id||'';
  const providerOptions=Array.from(new Map(videoOptions.map(m=>[
@@ -445,7 +451,9 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
          <textarea value={editedSpeech} onChange={e=>setEditedSpeech(e.target.value)}
           aria-label="Editar guion hablado sin costo adicional"
           className={field+' mt-2 min-h-[95px] text-sm'} maxLength={650}/>
-         <p className="text-xs text-[#816D8F] mt-1">Puedes mejorar el gancho, la explicación y el cierre manualmente sin pagar otra investigación. El guion debe caber en {project.video_duration_seconds||8} segundos.</p>
+         <p className="text-xs text-[#816D8F] mt-1">Edita el gancho, la explicación y el cierre sin pagar otra investigación. {style==='ugc'?
+           spokenWords+' palabras · objetivo '+speechMin+'–'+speechMax+' para '+durationSpeech+' s.':
+           'El guion debe caber en '+durationSpeech+' segundos.'}</p>
          <details className="mt-3 text-xs text-[#7A6988]">
           <summary className="cursor-pointer">Mostrar los planos</summary>
           <ul className="list-disc pl-4 mt-2 space-y-1">
@@ -493,7 +501,8 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
        <input type="checkbox" checked={acknowledged} onChange={e=>setAcknowledged(e.target.checked)} className="mt-1"/>
        <span>Confirmo que soy responsable de las afirmaciones comerciales de mi anuncio y he revisado las observaciones. Realizo corregirá erratas sin cambiar la intención del producto.</span>
       </label>
-      <button type="button" onClick={approve} disabled={busy}
+      <button type="button" onClick={approve}
+       disabled={busy||(style==='ugc'&&(spokenWords<speechMin||spokenWords>speechMax))}
         className="rounded-2xl bg-[#6D48CB] text-white font-bold py-3.5 px-6 disabled:opacity-50">
         {busy?'Guardando…':'Aprobar concepto y elegir modelo de video'}
       </button>
