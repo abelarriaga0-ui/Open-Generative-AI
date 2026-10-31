@@ -2208,6 +2208,7 @@ export default function VideoStudio({
         description:preparedBrief.productDescription,
         cta:preparedBrief.overlay_cta,
         market:preparedBrief.market||'EC',
+        videoLanguage:preparedBrief.video_language||'es',
         modelId:selectedModel,
         workflowId:selectedWorkflowId,
         duration:selectedDuration,
