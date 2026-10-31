@@ -51,6 +51,10 @@ export async function POST(request,{params}){
   const directorConcept={...concept,video_prompt:userPrompt,spoken_script:userSpeech};
   const modelId=project.video_model_id||'seedance-2.5-omni-reference';
   const duration=Number(project.video_duration_seconds)||8;
+  const spokenWords=userSpeech.split(/\s+/).filter(Boolean).length;
+  if(finalStyle==='ugc' && (spokenWords<Math.max(5,Math.floor(duration*1.4)) ||
+     spokenWords>Math.floor(duration*2.4)))
+    return Response.json({error:'ugc_speech_timing_invalid'},{status:422});
   const workflowId=project.video_workflow_id||null;
   const director=buildCommercialDirectorPackage({
     concept:directorConcept,productName:normalizeProductCopy(project.product_name),
