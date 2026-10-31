@@ -117,13 +117,14 @@ export async function POST(request){
      "UPDATE realizo_ai_projects SET provider_response_id=?,updated_at=datetime('now') WHERE id=? AND user_id=? AND status='researching'"
    ).bind(launched.id,projectId,user.id).run();
   }catch(e){
-   const definitelyRejected=e?.message==='openai_start_rejected';
+   const definitelyRejected=String(e?.message||'').startsWith('openai_start_rejected_');
+   const safeCode=definitelyRejected?String(e.message).replace('openai_start_rejected_','openai_rejected_'):null;
    // 4xx/5xx provider rejection did not return a valid job: release paid
    // reservation; an ambiguous network failure needs manual reconciliation.
    await db.prepare(
      "UPDATE realizo_ai_projects SET status=?,error_code=?,updated_at=datetime('now') WHERE id=? AND user_id=? AND status='researching'"
    ).bind(definitelyRejected?'failed':'needs_review',
-     definitelyRejected?'openai_rejected':'research_launch_unconfirmed',projectId,user.id).run();
+     definitelyRejected?safeCode:'research_launch_unconfirmed',projectId,user.id).run();
    if(definitelyRejected && access.mode==='paid')
     await db.prepare(
      "UPDATE realizo_ai_premium_orders SET status='released',updated_at=datetime('now') WHERE project_id=? AND user_id=? AND status='reserved'"
