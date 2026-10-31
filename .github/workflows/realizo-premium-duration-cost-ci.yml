@@ -24,11 +24,11 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - name: Install project dependencies, no secrets
-        run: npm install --no-save --package-lock=false --ignore-scripts
       - name: Validate premium plan, price accounting and existing behavior
         run: |
           node --test tests/realizo-premium-duration-cost.test.mjs tests/realizo-ai-premium.test.mjs tests/realizo-premium-paid-languages.test.mjs tests/realizo-sales-director.test.mjs
+      - name: Install dependencies for JSX validation, no secrets
+        run: npm install --no-save --package-lock=false --ignore-scripts
       - name: Check JSX syntax, no deployment
         run: |
           ./node_modules/.bin/babel components/RealizoPremium.jsx --out-file /tmp/realizo-premium.jsx.js --presets @babel/preset-react
