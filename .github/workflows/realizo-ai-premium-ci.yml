@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 'f3531d57ba8b7b3dcdee240b59dcb0267ab9b5e1'
+          ref: '7a5ff5ab3b2dd67f8a754095b0424888e19a3301'
           persist-credentials: false
           submodules: recursive
       - uses: actions/setup-node@v4
@@ -29,6 +29,14 @@ jobs:
           python3 -m unittest discover -s tests -p test_realizo_ai_paid_schema.py -v
           node --test tests/paypal-settlement-collision.test.mjs
           node --test tests/realizo-ai-premium.test.mjs
+          node --input-type=module <<'JS'
+          import {readFileSync} from 'node:fs';
+          const jsx=readFileSync('components/RealizoPremium.jsx','utf8');
+          if(jsx.length>26000 || jsx.split('const start=async').length!==2 ||
+             jsx.split('Tu agencia creativa con IA').length!==2)
+            throw Error('Premium UI appears duplicated or incomplete');
+          console.log('AI_PREMIUM_UI_STRUCTURAL_CHECK=PASS');
+          JS
           node --input-type=module --check < lib/realizo-creative/ai-premium.js
           node --input-type=module --check < app/api/realizo/ai-premium/route.js
           node --input-type=module --check < app/api/realizo/ai-premium/'[id]'/route.js
