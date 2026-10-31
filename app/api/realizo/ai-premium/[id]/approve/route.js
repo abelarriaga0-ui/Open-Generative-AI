@@ -2,6 +2,7 @@ import {getWalletEnvironment,requireWalletUser,jsonError} from '@/lib/wallet/ser
 import {enforceSameOrigin} from '@/lib/wallet/access-auth';
 import {safeResearchResponse} from '@/lib/realizo-creative/ai-premium';
 import {signedMediaUrl} from '@/lib/realizo-creative/media';
+import {buildCommercialDirectorPackage,normalizeProductCopy} from '@/lib/realizo-creative/sales-director';
 
 export const dynamic='force-dynamic';
 export async function POST(request,{params}){
@@ -32,23 +33,25 @@ export async function POST(request,{params}){
   const conflicts=Array.isArray(findings.description_conflicts)?findings.description_conflicts:[];
   const claimsToVerify=Array.isArray(findings.claims_to_verify)?findings.claims_to_verify:[];
   const correction=String(body.correction||'').trim().slice(0,700);
-  if(claimsToVerify.length && body.acknowledged_claims!==true)
-    return Response.json({error:'review_unverified_claims'},{status:422});
-  if(conflicts.length && (!body.acknowledged_conflicts||correction.length<10))
-    return Response.json({error:'resolve_product_conflict_first'},{status:422});
+  // One concise seller responsibility acknowledgement, not a spelling
+  // correction form. Material photo/fact discrepancies remain visible.
+  if((conflicts.length||claimsToVerify.length) && body.acknowledged_responsibility!==true)
+    return Response.json({error:'review_product_responsibility'},{status:422});
   const userPrompt=String(body.prompt||concept.video_prompt).trim();
   if(userPrompt.length<60||userPrompt.length>5500)
     return Response.json({error:'invalid_prompt'},{status:400});
-  const finalPrompt=[
-    'Anuncio de video comercial. Mantener fielmente forma, marca, color y etiqueta visibles en la fotografía principal.',
-    'Usa la foto principal como referencia dominante; no rediseñar el envase.',
-    'Concepto: '+String(concept.name).slice(0,120)+'.',
-    'Dirección creativa: '+userPrompt,
-    correction?'Corrección confirmada por el vendedor: '+correction+'.':'',
-    claimsToVerify.length?'No afirmar ni representar como comprobados estos datos pendientes de validar: '+claimsToVerify.slice(0,8).join('; ')+'.':'',
-    'No inventar promociones, propiedades clínicas, etiquetas, testimonios o beneficios no confirmados.',
-    'Evitar texto escrito directamente por el modelo; el CTA se añadirá como superposición.',
-  ].filter(Boolean).join(' ');
+  const style=['auto','ugc','cinematic','premium','demo'].includes(body.style)?body.style:'auto';
+  const shotPreference=['auto','single','multi'].includes(body.shot_preference)?body.shot_preference:'auto';
+  const directorConcept={...concept,video_prompt:userPrompt};
+  const director=buildCommercialDirectorPackage({
+    concept:directorConcept,productName:normalizeProductCopy(project.product_name),
+    description:normalizeProductCopy(project.description),cta:project.cta||concept.cta,
+    market:project.market_code,style,shotPreference,duration:8,
+    imageProvided:true,modelId:'seedance-2.5-omni-reference',
+  });
+  // Preserve the seller's commercial intent while keeping unverified product
+  // statements visibly distinguishable from claims substantiated by sources.
+  const finalPrompt=director.prompt.slice(0,5500);
   await db.prepare(
     "UPDATE realizo_ai_projects SET status='approved',selected_concept=?,approved_prompt=?,updated_at=datetime('now') WHERE id=? AND user_id=?"
   ).bind(selection,finalPrompt,id,user.id).run();
@@ -63,9 +66,14 @@ export async function POST(request,{params}){
     Number(asset.expires_at),Math.floor(Date.now()/1000)+3600));
   return Response.json({
     ...safeResearchResponse(project),ready_for_editor:{
-      prompt:finalPrompt,images:[image],productName:project.product_name,
+      prompt:finalPrompt,images:[image],productName:normalizeProductCopy(project.product_name),
+      productDescription:normalizeProductCopy(project.description),
       revision:crypto.randomUUID(),project_id:id,approved_concept:selection,
-      overlay_cta:project.cta||concept.cta,
+      media_role:'reference_only',creative_style:style,
+      shot_preference:shotPreference,creative_concept:directorConcept,
+      overlay_cta:director.cta,spoken_script:director.spoken_script,
+      product_claims_to_verify:claimsToVerify,
+      creative_director_version:director.quality_version,
     },
   },{headers:{'Cache-Control':'private,no-store'}});
  }catch(e){return jsonError(e)}
