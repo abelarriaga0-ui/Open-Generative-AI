@@ -10,7 +10,7 @@ test('failed Premium research exposes diagnostic reason and accurate payment sta
  assert.match(source,/response\.research_payment_status=order\?\.status/);
  assert.match(source,/quality\.billable/);
  assert.match(source,/quality\.needsReview/);
- assert.match(source,/quality\.reasons/);
+ assert.match(ui,/research_quality\.reasons/);
  assert.match(ui,/research_output_incomplete/);
  assert.match(ui,/research_web_not_performed/);
  assert.match(ui,/project\.research_payment_status==='released'/);
