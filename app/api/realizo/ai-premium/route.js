@@ -66,7 +66,7 @@ export async function POST(request){
    // partner provider balances or self-reported topups cannot pay for OpenAI.
    if(!premiumPublicEnabled(env))return error('real_billing_required',503);
    const deposits=await db.prepare(
-    "SELECT COUNT(*) AS n FROM verified_deposits WHERE user_id=? AND payment_provider='paypal' AND status='paid'"
+    "SELECT COUNT(*) AS n FROM verified_deposits WHERE user_id=? AND payment_provider='paypal' AND status='paid' AND provider_environment='live'"
    ).bind(user.id).first();
    if(!Number(deposits?.n))return error('verified_real_topup_required',402);
    if(await availableAIFunds(env,user.id)<access.price_cents)
