@@ -1,7 +1,9 @@
 import {getWalletEnvironment,requireWalletUser,jsonError} from '@/lib/wallet/server';
 import {
-  premiumAccess,readOpenAIResearch,parseResearchResult,safeResearchResponse,
+  premiumAccess,premiumSandboxPaidOwner,readOpenAIResearch,parseResearchResult,safeResearchResponse,
 } from '@/lib/realizo-creative/ai-premium';
+
+import {estimateOpenAIResearchCost} from '@/lib/realizo-creative/openai-costs';
 
 export const dynamic='force-dynamic';
 const headers={'Cache-Control':'private, no-store'};
@@ -43,10 +45,15 @@ export async function GET(request,{params}){
           }),JSON.stringify(report.concepts),JSON.stringify(sources),id,user.id,'researching').run();
           const used=(response.output||[]).filter(o=>o.type==='web_search_call').length;
           const input=Number(response.usage?.input_tokens||0),output=Number(response.usage?.output_tokens||0);
+          const cached=Number(response.usage?.input_tokens_details?.cached_tokens||0);
+          const cost=estimateOpenAIResearchCost({
+            model:response.model||project.research_model||env.OPENAI_PREMIUM_MODEL,
+            usage:response.usage,webCalls:used,
+          });
           await db.prepare(
-            'INSERT OR IGNORE INTO realizo_ai_usage (project_id,user_id,model,input_tokens,output_tokens,web_calls) VALUES (?,?,?,?,?,?)'
+            'INSERT OR IGNORE INTO realizo_ai_usage (project_id,user_id,model,input_tokens,output_tokens,web_calls,cached_input_tokens,estimated_cost_micro_usd,cost_status,cost_pricing_snapshot) VALUES (?,?,?,?,?,?,?,?,?,?)'
           ).bind(id,user.id,project.research_model||env.OPENAI_PREMIUM_MODEL,
-            input,output,used).run();
+            input,output,used,cached,cost.microUsd,cost.status,cost.pricingSnapshot).run();
           // Capture exactly once only when valid research and 3 concepts have
           // been persisted; Sandbox-sponsored work has no order at all.
           if(project.billing_type==='paid'){
@@ -81,6 +88,14 @@ export async function GET(request,{params}){
         .bind(id,user.id).first();
     }
   }
-  return Response.json(safeResearchResponse(project),{headers});
+  const response=safeResearchResponse(project);
+  // Provider cost is private business accounting, not an exact charge to the customer.
+  if(await premiumSandboxPaidOwner(env,user)){
+   const audit=await db.prepare(
+     'SELECT model,input_tokens,output_tokens,cached_input_tokens,web_calls,estimated_cost_micro_usd,cost_status,cost_pricing_snapshot FROM realizo_ai_usage WHERE project_id=? AND user_id=?'
+   ).bind(id,user.id).first();
+   if(audit)response.owner_cost_audit={...audit,disclaimer:'Estimación por tarifas publicadas; conciliar contra costos facturados de OpenAI.'};
+  }
+  return Response.json(response,{headers});
  }catch(e){return jsonError(e)}
 }
