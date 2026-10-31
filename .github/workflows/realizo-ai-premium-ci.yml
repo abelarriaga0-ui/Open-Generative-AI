@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: '7b8cce806f05e651e7acad4fec16a921faeecb2f'
+          ref: '69a4b8d997cfc06d11ffa7fd4ade4a968ec75f43'
           persist-credentials: false
           submodules: recursive
       - uses: actions/setup-node@v4
@@ -30,6 +30,8 @@ jobs:
           node --test tests/paypal-settlement-collision.test.mjs
           node --test tests/realizo-ai-premium.test.mjs
           node --test tests/realizo-sales-director.test.mjs
+          node --test tests/realizo-creation-history.test.mjs
+          python3 -m unittest discover -s tests -p test_realizo_premium_owner_quota.py -v
           node --input-type=module <<'JS'
           import {readFileSync} from 'node:fs';
           const jsx=readFileSync('components/RealizoPremium.jsx','utf8');
