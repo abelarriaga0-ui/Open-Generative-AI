@@ -19,10 +19,16 @@ WHEN (
   )>=1)
   OR
   (NEW.billing_type='paid' AND (
-    SELECT COUNT(*) FROM realizo_ai_projects
-    WHERE user_id=NEW.user_id AND created_at>=datetime('now','-1 day')
-      AND billing_type='paid'
-  )>=3)
+    (SELECT COUNT(*) FROM realizo_ai_projects
+     WHERE user_id=NEW.user_id AND created_at>=datetime('now','-1 day')
+       AND billing_type='paid')>=3
+    OR
+    (SELECT COUNT(*) FROM realizo_ai_projects
+     WHERE billing_type='paid' AND created_at>=datetime('now','-1 day'))>=40
+    OR
+    (SELECT COUNT(*) FROM realizo_ai_projects
+     WHERE billing_type='paid' AND created_at>=datetime('now','-30 days'))>=500
+  ))
 )
 BEGIN SELECT RAISE(ABORT,'ai_premium_daily_limit'); END;
 
