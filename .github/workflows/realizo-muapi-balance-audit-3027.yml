@@ -1,0 +1,59 @@
+name: Realizo - auditar saldo Muapi y billetera 30.27 (solo lectura)
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/realizo-muapi-balance-audit-3027.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      REALIZO_MUAPI_API_KEY: ${{ secrets.REALIZO_MUAPI_API_KEY }}
+    steps:
+      - name: Verify actual Muapi provider balance and the matching Realizo owner wallet without modifying them
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          const key=process.env.REALIZO_MUAPI_API_KEY,token=process.env.CLOUDFLARE_API_TOKEN;
+          if(!key||!token)throw Error('Required protected secret not installed');
+          const provider=await fetch('https://api.muapi.ai/api/v1/account/balance',{
+            headers:{'x-api-key':key},signal:AbortSignal.timeout(18000)});
+          if(!provider.ok)throw Error('Provider balance unavailable HTTP '+provider.status);
+          const info=await provider.json();
+          const usd=Number(info.balance);
+          if(!Number.isFinite(usd)||usd<0)throw Error('Invalid Muapi balance');
+          const cents=Math.round(usd*100);
+          const endpoint='https://api.cloudflare.com/client/v4/accounts/7e405c54c1a91abbdad537f7fec379a1/d1/database/2561f6c8-bfb2-4ea4-8527-7fec29188edf/query';
+          async function sql(query){
+            const r=await fetch(endpoint,{method:'POST',
+              headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+              body:JSON.stringify({sql:query}),signal:AbortSignal.timeout(18000)});
+            const j=await r.json().catch(()=>({}));
+            if(!r.ok||!j.success||!j.result?.[0]?.success)throw Error('Sandbox database read failed HTTP '+r.status);
+            return j.result[0].results||[];
+          }
+          const rows=await sql("SELECT w.available_cents AS available,w.reserved_cents AS reserved,i.amount_cents AS imported FROM realizo_prepaid_muapi_imports i JOIN wallets w ON w.user_id=i.user_id WHERE i.slot=1");
+          if(rows.length!==1)throw Error('One verified owner account not found');
+          const grants=await sql("SELECT COALESCE(SUM(amount_cents),0) AS total FROM realizo_muapi_pilot_grants");
+          const liabilities=await sql("SELECT COALESCE(SUM(available_cents+reserved_cents),0) AS total, COUNT(*) AS accounts FROM wallets");
+          const deposits=await sql("SELECT COALESCE(SUM(amount_cents),0) AS total, COUNT(*) AS n FROM verified_deposits WHERE provider_environment='sandbox'");
+          const orders=await sql("SELECT status,COUNT(*) AS n,COALESCE(SUM(price_cents),0) AS cents FROM generation_jobs GROUP BY status");
+          const hasNewFunds=cents>Number(rows[0].imported||0);
+          console.log('PROVIDER_BALANCE_USD='+ (cents/100).toFixed(2));
+          console.log('OWNER_WALLET_AVAILABLE_USD='+ (Number(rows[0].available)/100).toFixed(2));
+          console.log('OWNER_WALLET_RESERVED_USD='+ (Number(rows[0].reserved)/100).toFixed(2));
+          console.log('HISTORICAL_MUAPI_IMPORTED_USD='+ (Number(rows[0].imported)/100).toFixed(2));
+          console.log('TOTAL_WALLET_LIABILITIES_USD='+ (Number(liabilities[0].total)/100).toFixed(2));
+          console.log('WALLET_ACCOUNT_COUNT='+Number(liabilities[0].accounts));
+          console.log('SANDBOX_FAKE_DEPOSITS_USD='+ (Number(deposits[0].total)/100).toFixed(2));
+          console.log('SANDBOX_PILOT_GRANTS_USD='+ (Number(grants[0].total)/100).toFixed(2));
+          console.log('PROVIDER_ABOVE_HISTORIC_IMPORTED='+hasNewFunds);
+          console.log('JOB_COUNTS='+orders.map(x=>x.status+':'+x.n).join(','));
+          console.log('AUDIT_READ_ONLY=PASS; no wallet writes, provider spending or production changes');
+          JS
