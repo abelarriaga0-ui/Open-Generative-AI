@@ -34,12 +34,14 @@ class PaidResearchNoArtificialDailyCap(unittest.TestCase):
         return p
     def apply(self):
         self.db.executescript((ROOT/'0020_realizo_paid_research_without_daily_cap.sql').read_text())
-    def test_existing_owner_cap_is_removed_after_migration(self):
-        for i in range(5):self.project(i)
+    def test_existing_customer_cap_is_removed_after_migration(self):
+        for i in range(3):self.project(i,user='customer')
         with self.assertRaisesRegex(sqlite3.IntegrityError,'ai_premium_daily_limit'):
-            self.project(5)
+            self.project(3,user='customer')
         self.apply()
-        for i in range(5,17):self.project(i)
+        for i in range(3,17):self.project(i,user='customer')
+        for i in range(17):self.project(i,user='owner')
+        self.assertEqual(self.db.execute("SELECT count(*) FROM realizo_ai_projects WHERE user_id='customer' AND billing_type='paid'").fetchone()[0],17)
         self.assertEqual(self.db.execute("SELECT count(*) FROM realizo_ai_projects WHERE user_id='owner' AND billing_type='paid'").fetchone()[0],17)
     def test_paid_customer_can_reserve_and_capture_without_limit_but_requires_balance(self):
         self.apply()
