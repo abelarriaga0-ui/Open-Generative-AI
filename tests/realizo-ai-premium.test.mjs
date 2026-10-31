@@ -37,6 +37,7 @@ test('vision and web research are bounded and never use a Muapi customer balance
  assert.equal(request.store,true);
  assert.equal(request.reasoning.effort,'low');
  assert.equal(request.input[0].content[1].type,'input_image');
+ assert.equal(request.input[0].content[1].detail,'high');
  assert.equal(request.tools[0].type,'web_search');
  assert.equal(request.text.format.strict,true);
  assert.equal(request.text.format.schema.required.length,Object.keys(researchSchema().properties).length);
