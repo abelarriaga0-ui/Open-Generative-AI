@@ -98,9 +98,14 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic}
   const price=config.customer_charge_cents;
   if(!Number.isInteger(price)||price<0)return setError('La cotización Premium no está disponible.');
   if(config.billing_mode==='paid' && config.general_available_cents<price)
-   return setError('Necesitas fondos de Realizo respaldados por pagos reales; tu saldo histórico de Muapi no sirve para OpenAI.');
+   return setError('Necesitas fondos Realizo de pagos reales: los créditos prepagados en Muapi no sirven para financiar OpenAI.');
+  const displayedPrice=(price/100).toFixed(2);
   const message=price>0?
-   'Investigación Premium + tres conceptos: 
+   'La investigación Premium y 3 conceptos costarán USD '+displayedPrice+
+   '. La generación Muapi se cotiza por separado. ¿Confirmar investigación?':
+   'Esta investigación Premium estará patrocinada por Realizo. ¿Iniciar sin descontar créditos Muapi?';
+  if(!window.confirm(message))return;
+  setBusy(true);setError('');
   if(!keyRef.current)keyRef.current=crypto.randomUUID();
   try{
    const r=await fetch('/api/realizo/ai-premium',{
@@ -110,7 +115,12 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic}
    });
    const json=await r.json().catch(()=>({}));
    if(!r.ok)throw Error(json.error==='ai_premium_daily_limit'?
-     'Ya usaste la investigación de prueba disponible hoy.':'No se pudo iniciar la investigación: '+(json.error||r.status));
+     'Ya utilizaste el cupo disponible de investigaciones de hoy.':
+     json.error==='insufficient_general_funds'||json.error==='verified_real_topup_required'?
+     'Saldo Realizo insuficiente o sin recarga real verificada.':
+     json.error==='price_changed_confirm_again'?
+     'El precio cambió. Actualiza la página para volver a confirmar.':
+     'No se pudo iniciar la investigación: '+(json.error||r.status));
    setProject(json);
   }catch(e){setError(e.message)}
   finally{setBusy(false)}
