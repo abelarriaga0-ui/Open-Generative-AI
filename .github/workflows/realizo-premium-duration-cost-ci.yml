@@ -25,7 +25,7 @@ jobs:
           node-version: '22'
           cache: npm
       - name: Install project dependencies, no secrets
-        run: npm ci --ignore-scripts
+        run: npm install --no-save --package-lock=false --ignore-scripts
       - name: Validate premium plan, price accounting and existing behavior
         run: |
           node --test tests/realizo-premium-duration-cost.test.mjs tests/realizo-ai-premium.test.mjs tests/realizo-premium-paid-languages.test.mjs tests/realizo-sales-director.test.mjs
