@@ -1453,6 +1453,17 @@ export default function VideoStudio({
       applyUserSelectedVariant(researchedVariant,researchedVariant.mode,researchedFamily,workflowId);
       if(Number(preparedBrief.video_duration_seconds)>0)
         setSelectedDuration(Number(preparedBrief.video_duration_seconds));
+      // Prompt text alone cannot enforce orientation. Configure the actual
+      // model parameter for social vertical where the endpoint supports it.
+      const commonRatios=getVideoCommonOptions(researchedVariant.model,{
+        duration:Number(preparedBrief.video_duration_seconds)||8,
+      }).aspectRatios||[];
+      const availableRatios=researchedVariant.mode==='i2v'
+        ?getAspectRatiosForI2VModel(researchedModel)
+        :getAspectRatiosForVideoModel(researchedModel);
+      if(commonRatios.includes('9:16') || availableRatios.includes('9:16')){
+        setSelectedAr('9:16');
+      }
       if(preparedBrief.media_role==='reference_only'&&workflowId==='references'){
         const key=getVideoWorkflowDraftKey(researchedFamily.id,'references');
         setWorkflowMediaDrafts(prev=>({...prev,[key]:{...prev[key],referenceImages:images}}));
