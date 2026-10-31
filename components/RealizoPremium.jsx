@@ -302,7 +302,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
      </div>}
      {variantsForMode.length>1&&<details className="rounded-xl border border-[#E4D8ED] bg-white p-3">
       <summary className="text-xs font-bold text-[#6B4C94] cursor-pointer">
-       Opciones avanzadas del motor · {variantsForMode.length} versiones
+       Opciones avanzadas del motor · {variantsForMode.length} variantes
       </summary>
       <label className="block text-xs font-bold mt-3">Variante específica
        <select className={field+' mt-2 text-sm'} value={product.video_model_id}
