@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 'a835442d49e22b89d3771654a50ea3705417db7a'
+          ref: 'f3531d57ba8b7b3dcdee240b59dcb0267ab9b5e1'
           persist-credentials: false
           submodules: recursive
       - uses: actions/setup-node@v4
@@ -27,6 +27,7 @@ jobs:
         run: |
           python3 -m unittest discover -s tests -p test_realizo_ai_premium_schema.py -v
           python3 -m unittest discover -s tests -p test_realizo_ai_paid_schema.py -v
+          node --test tests/paypal-settlement-collision.test.mjs
           node --test tests/realizo-ai-premium.test.mjs
           node --input-type=module --check < lib/realizo-creative/ai-premium.js
           node --input-type=module --check < app/api/realizo/ai-premium/route.js
