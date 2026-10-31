@@ -455,10 +455,23 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
         </div>
         <div className="space-y-2">
          <p className="text-sm font-bold">¿Cómo quieres que se vea el anuncio?</p>
-         <p className="text-sm font-semibold rounded-xl bg-[#F4EBFB] px-4 py-3">
-          {creativeStyles.find(([id])=>id===style)?.[2]||'Automático'} · definido en la investigación.
-          {style==='ugc'?' La voz es lo principal; los planos son apoyo.':''}
-         </p>
+         {project.creative_style==='auto'
+          ?<div className="space-y-2">
+            <p className="text-xs text-[#7E658B]">Proyecto anterior o estilo automático: puedes ajustar la presentación sin nueva consulta IA. Revisa y edita el guion hablado.</p>
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+             {creativeStyles.map(([id,icon,label])=><button type="button" key={id}
+              aria-pressed={style===id} onClick={()=>setStyle(id)}
+              className={'rounded-xl border-2 px-2 py-3 text-center '+(style===id
+               ?'border-[#7650C6] bg-[#F2EAFE]':'border-[#E7DEEC] bg-white')}>
+              <span className="block text-xl" aria-hidden="true">{icon}</span>
+              <span className="block mt-1 text-xs font-bold">{label}</span>
+             </button>)}
+            </div>
+           </div>
+          :<p className="text-sm font-semibold rounded-xl bg-[#F4EBFB] px-4 py-3">
+            {creativeStyles.find(([id])=>id===style)?.[2]||'Automático'} · elegido antes de investigar.
+            {style==='ugc'?' La voz es lo principal; los planos son apoyo.':''}
+           </p>}
          <label className="block text-xs font-bold">Tomas
           <select className={field+' mt-2'} value={shotPreference} onChange={e=>setShotPreference(e.target.value)}>
            <option value="auto">La IA decide</option>
