@@ -1,9 +1,6 @@
 name: Realizo AI Premium - conectar secreto OpenAI solo Sandbox
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths: ['.github/workflows/realizo-ai-premium-configure-openai.yml']
 permissions:
   contents: read
 jobs:
