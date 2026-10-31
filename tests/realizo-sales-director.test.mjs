@@ -22,10 +22,13 @@ test('Seedance 2.5 references are distinct from first-frame animation',()=>{
  assert.match(plan.prompt,/SPOKEN SCRIPT/);
  assert.match(plan.prompt,/CTA/);
  assert.match(plan.prompt,/SHOT 1/);
- assert.match(plan.prompt,/APPROVED CREATIVE DIRECTION/);
- assert.match(plan.prompt,/RESEARCHED SHOT IDEAS/);
- assert.match(plan.prompt,/Adult speaks to camera with product in bathroom/);
- assert.equal(plan.shot_count,3);
+ assert.match(plan.prompt,/UGC SALES REVIEW/);
+ assert.match(plan.prompt,/VOICE-FIRST EDITING/);
+ assert.match(plan.prompt,/voice NEVER stops/i);
+ // Research visuals may be edited for other formats, but must not override
+ // dialogue continuity for UGC.
+ assert.doesNotMatch(plan.prompt,/RESEARCHED SHOT IDEAS/);
+ assert.equal(plan.shot_count,2);
  assert.equal(plan.media_role,'reference_only');
  assert.equal(plan.warning,null);
  const i2v=buildCommercialDirectorPackage({concept,modelId:'seedance-2.5-image-to-video'});
@@ -62,4 +65,25 @@ test('Premium approved brief actually selects provider reference workflow and ch
  const bridge=readFileSync('lib/realizo-creative/wallet-generation.js','utf8');
  assert.match(bridge,/\/api\/wallet\/quote/);
  assert.match(bridge,/window\.confirm/);
+});
+
+test('12-second UGC prioritizes a spoken buyer review over a five-shot silent montage',()=>{
+ const source={name:'Combo NOIL + GODA',angle:'beneficio directo',
+  hook:'¿Listo para salir?',spoken_script:'¿Te falta el toque final? NOIL para tu rutina capilar y GODA como esencia perfumada. Elige tu combo y pídelo hoy.',
+  cta:'Pide el combo hoy',
+  shots:['0–3 s hombre en espejo','3–6 s shampoo','6–9 s perfume','9–12 s mostrando envases'],
+  video_prompt:'Mostrar 4 acciones separadas y 5 planos comerciales silenciosos'};
+ const result=buildCommercialDirectorPackage({
+   concept:source,productName:'Combo NOIL + GODA',
+   description:'Shampoo perfumado NOIL más esencia concentrada de perfume GODA',
+   style:'ugc',shotPreference:'multi',duration:12,modelId:'seedance-2.5-intl-omni-reference'
+ });
+ assert.equal(result.shot_count,2);
+ assert.match(result.prompt,/0-1\.6s speaker says a compelling hook/i);
+ assert.match(result.prompt,/70-85%/);
+ assert.match(result.prompt,/SPOKEN SCRIPT \(Spanish, target market EC\)/);
+ assert.match(result.prompt,/no standalone product montage/i);
+ assert.doesNotMatch(result.prompt,/Mostrar 4 acciones separadas/);
+ assert.doesNotMatch(result.prompt,/0–3 s hombre en espejo/);
+ assert.match(result.prompt,/CTA/);
 });
