@@ -61,8 +61,8 @@ export async function POST(request){
   ).bind(user.id,fp).first();
   if(reusable)return Response.json({...safeResearchResponse(reusable),reused:true},{headers});
   if(access.mode==='paid'){
-   // Server-verified real payment is mandatory. Fake PayPal Sandbox money,
-   // partner provider balances or self-reported topups cannot pay for OpenAI.
+   // Verified funding is mandatory. Sandbox test money is excluded; only
+   // live PayPal deposits or the owner's independently reconciled real funds qualify.
    const sandboxOwner=await premiumSandboxPaidOwner(env,user);
    if(!premiumPublicEnabled(env) && !sandboxOwner)return error('real_billing_required',503);
    if(!sandboxOwner){
