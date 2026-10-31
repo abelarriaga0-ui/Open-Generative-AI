@@ -2253,6 +2253,7 @@ export default function VideoStudio({
         duration:selectedDuration,
         style:preparedBrief.creative_style,
         shotPreference:preparedBrief.shot_preference,
+        productGeometry:preparedBrief.product_visual_geometry||null,
         imageProvided:true,
       }):null;
     const trimmedPrompt=promptDisabled?"":(dynamicDirection?.prompt||prompt.trim());
