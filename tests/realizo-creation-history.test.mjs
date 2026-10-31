@@ -33,4 +33,8 @@ test('New project resets only UI state, not balance or saved research',()=>{
  assert.match(reset,/setEditorOpen\(false\)/);
  assert.doesNotMatch(reset,/fetch|DELETE|\/api\/wallet/);
  assert.match(premium,/\['created','researching'\]/);
+ const editor=readFileSync('packages/studio/src/components/VideoStudio.jsx','utf8');
+ assert.match(editor,/if\(freshCreation\)\{hasRestored\.current=true;return;\}/);
+ assert.match(editor,/if\(freshCreation\)return;/);
+ assert.match(studio,/realizoBrand previewOnly freshCreation/);
 });
