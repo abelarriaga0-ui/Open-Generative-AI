@@ -28,7 +28,7 @@ const fmt=status=>({
  approved:'Concepto aprobado',failed:'Investigación no completada',
 })[status]||status;
 
-export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,onCreateNew,initialProjectId=null}){
+export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,onCreateNew,onWalletRefresh,initialProjectId=null}){
  const [config,setConfig]=useState(null),[image,setImage]=useState(null);
  const [product,setProduct]=useState({product_name:'',description:'',audience:'',
   angle:'auto',market:'EC',video_language:'es',cta:''});
@@ -69,12 +69,15 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
     const r=await fetch('/api/realizo/ai-premium/'+encodeURIComponent(project.id),{cache:'no-store'});
     if(!r.ok)return;
     const result=await r.json();
-    if(active)setProject(result);
+    if(active){
+      setProject(result);
+      if(!['created','researching'].includes(result.status))onWalletRefresh?.();
+    }
    }catch{}
   };
   const timer=setInterval(poll,5500);
   return()=>{active=false;clearInterval(timer)};
- },[project?.id,project?.status]);
+ },[project?.id,project?.status,onWalletRefresh]);
  useEffect(()=>{
   if(project?.concepts?.length===3){
    const i=Number.isInteger(project.findings?.recommended_index)?
@@ -127,6 +130,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
      json.error==='price_changed_confirm_again'?'El precio cambió. Actualiza y confírmalo nuevamente.':
      'No se pudo iniciar la investigación: '+(json.error||r.status));
    setProject(json);
+   onWalletRefresh?.();
   }catch(e){setError(e.message)}
   finally{setBusy(false)}
  };
