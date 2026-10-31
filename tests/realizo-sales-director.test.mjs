@@ -21,7 +21,7 @@ test('Seedance 2.5 references are distinct from first-frame animation',()=>{
  assert.match(plan.prompt,/NOT the first frame/);
  assert.match(plan.prompt,/SPOKEN SCRIPT/);
  assert.match(plan.prompt,/CTA/);
- assert.match(plan.prompt,/SHOT 1/);
+ assert.match(plan.prompt,/UGC TALKING-HEAD SCHEDULE/);
  assert.match(plan.prompt,/UGC SALES REVIEW/);
  assert.match(plan.prompt,/VOICE-FIRST EDITING/);
  assert.match(plan.prompt,/voice NEVER stops/i);
