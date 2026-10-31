@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: '7a5ff5ab3b2dd67f8a754095b0424888e19a3301'
+          ref: '62c8f138a3f41db4fe60e1600e5a3bb442c18b5b'
           persist-credentials: false
           submodules: recursive
       - uses: actions/setup-node@v4
@@ -29,6 +29,7 @@ jobs:
           python3 -m unittest discover -s tests -p test_realizo_ai_paid_schema.py -v
           node --test tests/paypal-settlement-collision.test.mjs
           node --test tests/realizo-ai-premium.test.mjs
+          node --test tests/realizo-sales-director.test.mjs
           node --input-type=module <<'JS'
           import {readFileSync} from 'node:fs';
           const jsx=readFileSync('components/RealizoPremium.jsx','utf8');
