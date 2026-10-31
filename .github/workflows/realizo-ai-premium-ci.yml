@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: '8e70fbaafe162922f6e69821add8bc10986a1e2c'
+          ref: '78ba78dd39c2d46e25d746b9addd974ae3e80ff2'
           persist-credentials: false
           submodules: recursive
       - uses: actions/setup-node@v4
@@ -30,6 +30,8 @@ jobs:
           node --test tests/paypal-settlement-collision.test.mjs
           node --test tests/realizo-ai-premium.test.mjs
           node --test tests/realizo-sales-director.test.mjs
+          node --test tests/realizo-premium-paid-languages.test.mjs
+          python3 -m unittest discover -s tests -p test_realizo_paid_languages_schema.py -v
           node --test tests/realizo-creation-history.test.mjs
           python3 -m unittest discover -s tests -p test_realizo_premium_owner_quota.py -v
           node --input-type=module <<'JS'
