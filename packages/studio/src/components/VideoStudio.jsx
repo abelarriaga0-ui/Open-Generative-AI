@@ -1452,6 +1452,11 @@ export default function VideoStudio({
       }
       if(variant&&family){
         applyUserSelectedVariant(variant,"i2v",family,"references");
+        const availableRatios=getVideoCommonOptions(variant.model,{duration:selectedDuration}).aspectRatios||[];
+        if(availableRatios.includes("9:16") ||
+           getAspectRatiosForI2VModel(variant.model.id).includes("9:16")){
+          setSelectedAr("9:16");
+        }
         const key=getVideoWorkflowDraftKey(family.id,"references");
         setWorkflowMediaDrafts(prev=>({...prev,[key]:{
           ...prev[key],referenceImages:images}}));
