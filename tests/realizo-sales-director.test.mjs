@@ -43,7 +43,7 @@ test('cinematic mode and multi-shot selection are constrained by time not invent
 });
 test('Premium approved brief actually selects provider reference workflow and charges only after quote',()=>{
  const editor=readFileSync('packages/studio/src/components/VideoStudio.jsx','utf8');
- assert.match(editor,/preparedBrief\.media_role === 'reference_only'/);
+ assert.match(editor,/preparedBrief\.media_role\s*===\s*'reference_only'/);
  assert.match(editor,/getVideoWorkflowFamily\(item\.id\)\?\.workflowById\.get\("references"\)/);
  assert.match(editor,/referenceImages:images/);
  assert.match(editor,/allowAnimationInsteadOfReference/);
