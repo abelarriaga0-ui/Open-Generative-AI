@@ -31,10 +31,11 @@ test('vision and web research are bounded and never use a Muapi customer balance
  const p={...form,id:'00000000-0000-4000-8000-000000000002',product_name:'NOIL',
   market_code:'EC',sales_angle:'premium',signedImage:'https://example.test/signed-image',cta:'Paga al recibir'};
  const request=buildResearchRequest({OPENAI_PREMIUM_MODEL:'gpt-5.5'},p);
- assert.equal(request.max_tool_calls,3);
- assert.ok(request.max_output_tokens<=3100);
+ assert.equal(request.max_tool_calls,2);
+ assert.ok(request.max_output_tokens<=2800);
  assert.equal(request.background,true);
  assert.equal(request.store,true);
+ assert.equal(request.reasoning.effort,'low');
  assert.equal(request.input[0].content[1].type,'input_image');
  assert.equal(request.tools[0].type,'web_search');
  assert.equal(request.text.format.strict,true);
@@ -71,4 +72,21 @@ test('native route guard keeps Premium API private and the UI exposes all three 
  for(const option of ['automatic','manual','premium'])assert.ok(studio.includes("'"+option+"'"));
  const schema=readFileSync('migrations/0012_realizo_ai_premium.sql','utf8');
  assert.doesNotMatch(schema,/UPDATE wallets|INSERT INTO wallet_ledger/);
+});
+
+test('general paid eligibility is strictly live-funded and price fixed at 49 cents',async()=>{
+ const {premiumPublicEnabled,premiumAccess,PREMIUM_PRICE_CENTS,availableAIFunds,researchFingerprint}=await import('../lib/realizo-creative/ai-premium.js');
+ const env={REALIZO_ENV:'production',PAYPAL_MODE:'live',REALIZO_AUTH_PROVIDER:'native',
+  REALIZO_AI_PREMIUM_ENABLED:'true',REALIZO_AI_PREMIUM_PUBLIC_ENABLED:'true',
+  OPENAI_API_KEY:'private',OPENAI_PREMIUM_MODEL:'gpt-6-luna'};
+ assert.equal(premiumPublicEnabled(env),true);
+ assert.equal((await premiumAccess(env,{id:'new-user'})).mode,'paid');
+ assert.equal(PREMIUM_PRICE_CENTS,49);
+ assert.equal(premiumPublicEnabled({...env,PAYPAL_MODE:'sandbox'}),false);
+ assert.equal(premiumPublicEnabled({...env,REALIZO_AI_PREMIUM_PUBLIC_ENABLED:'false'}),false);
+ const db={prepare(){return {bind(){return {first:async()=>({amount:140})}}}}};
+ assert.equal(await availableAIFunds({WALLETS_DB:db},'new-user'),140);
+ const id={assetId:'a',productName:'NOIL',description:'x',market:'EC',angle:'auto',audience:'',cta:''};
+ assert.equal(await researchFingerprint(id),await researchFingerprint(id));
+ assert.notEqual(await researchFingerprint(id),await researchFingerprint({...id,assetId:'b'}));
 });
