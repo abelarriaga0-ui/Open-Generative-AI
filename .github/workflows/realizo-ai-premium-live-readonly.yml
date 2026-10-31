@@ -1,8 +1,5 @@
 name: Realizo - verificar AI Premium después del despliegue
 on:
-  push:
-    branches: [main]
-    paths: ['.github/workflows/realizo-ai-premium-live-readonly.yml']
   workflow_dispatch:
 permissions:
   contents: read
