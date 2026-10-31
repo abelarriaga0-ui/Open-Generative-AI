@@ -157,7 +157,9 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic}
    <p className="mt-4 inline-block rounded-full bg-white/15 px-4 py-2 text-xs font-bold">
     {config?.enabled?
       config.customer_charge_cents>0?
-        'Investigación + 3 conceptos · 
+        'Investigación y 3 conceptos · USD '+(config.customer_charge_cents/100).toFixed(2)+' · video aparte':
+        'Investigación patrocinada en tu cuenta · video aparte':
+      'Investigación IA pendiente de configurar · sin cargos'}
    </p>
   </div>
   {error&&<div role="alert" className="rounded-2xl border border-[#EEB9AB] bg-[#FFF0E9] px-5 py-3 text-sm text-[#914F40]">{error}</div>}
