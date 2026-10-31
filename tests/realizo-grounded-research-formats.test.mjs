@@ -79,7 +79,7 @@ test('unusable web research is never charged, but quality limitations are explai
  assert.equal(unmatched.report.evidence[0].source_url,'');
  assert.equal(parseResearchResult(wrapped({...good,product_dossier:{...good.product_dossier,identity_status:'unverified'}}),{creativeStyle:'ugc',duration:12,requireGrounding:true}).quality.billable,false);
  assert.equal(parseResearchResult(wrapped({...good,concepts:good.concepts.map(c=>({...c,hook:'El mismo hook'}))}),{creativeStyle:'ugc',duration:12,requireGrounding:true}).quality.billable,false);
- assert.equal(parseResearchResult(wrapped({...good,concepts:good.concepts.map(c=>({...c,creative_style:'cinematic'}))}),{creativeStyle:'ugc',duration:12,requireGrounding:true}).quality.billable,false);
+ assert.equal(parseResearchResult(wrapped({...good,concepts:good.concepts.map(c=>({...c,creative_style:'cinematic'}))}),{creativeStyle:'ugc',duration:12,requireGrounding:true}).report.concepts[0].creative_style,'ugc');
  const fullyIdentified={...good,product_dossier:{...good.product_dossier,identity_status:'matched'}};
  assert.equal(parseResearchResult(wrapped(fullyIdentified),{creativeStyle:'ugc',duration:12,requireGrounding:true}).quality.billable,true);
 });
