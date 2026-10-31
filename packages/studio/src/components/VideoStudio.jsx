@@ -99,6 +99,7 @@ import usePromptMenu from "./prompt/usePromptMenu.js";
 import en from "../messages/en/videoStudio.json";
 import zh from "../messages/zh/videoStudio.json";
 import { resolveCopy } from "../i18nUtils";
+import {buildCommercialDirectorPackage} from "../../../../lib/realizo-creative/sales-director.js";
 
 async function downloadFile(url, filename) {
   try {
@@ -883,6 +884,7 @@ export default function VideoStudio({
 
   // ── prompt ──
   const [prompt, setPrompt] = useState("");
+  const [allowAnimationInsteadOfReference, setAllowAnimationInsteadOfReference] = useState(false);
 
   // ── refs ──
   const containerRef = useRef(null);
@@ -1426,35 +1428,52 @@ export default function VideoStudio({
     }
   }, [applyControlsForModel, defaultModel.id]);
 
-  // Apply the prepared product brief after the normal account-scoped draft restore.
+  // Product photos are identity references, not first frames, in Premium.
   const appliedBriefRevision = useRef(null);
   useEffect(() => {
-    if (!preparedBrief?.revision || appliedBriefRevision.current === preparedBrief.revision) return;
-    appliedBriefRevision.current = preparedBrief.revision;
-    const briefImages = Array.isArray(preparedBrief.images) ?
-      preparedBrief.images.filter(url => typeof url === "string" && /^https:\/\//.test(url)).slice(0,4) : [];
-    setPrompt(String(preparedBrief.prompt || "").slice(0,6000));
-    if (briefImages.length) {
-      const currentFamily = videoModelCatalog.familyById.get(selectionRef.current.selectedFamilyId);
-      let variant = getFamilyVariant(videoModelCatalog, currentFamily, "i2v", selectionRef.current.selectedModel);
-      let family = currentFamily;
-      // When a priced model exists, select that exact catalog variant rather than
-      // a nonbillable default. Provider parameters are still built by the engine.
-      // Keep the current model family when a product brief adds image inputs.
-      // Only choose an i2v fallback if this family has no matching variant.
-      if (!variant) {
-        const selected = videoModelPickerEntries.find(entry => entry.variantsByMode.i2v);
-        variant = selected?.variantsByMode.i2v;
-        family = selected?.family;
+    if(!preparedBrief?.revision || appliedBriefRevision.current===preparedBrief.revision)return;
+    appliedBriefRevision.current=preparedBrief.revision;
+    setAllowAnimationInsteadOfReference(false);
+    const images=Array.isArray(preparedBrief.images)?
+      preparedBrief.images.filter(url=>typeof url==="string" && /^https:\/\//.test(url)).slice(0,4):[];
+    setPrompt(String(preparedBrief.prompt||"").slice(0,6000));
+    if(!images.length)return;
+    if(preparedBrief.media_role==='reference_only'){
+      const selectedFamily=videoModelCatalog.familyById.get(selectionRef.current.selectedFamilyId);
+      const choices=[selectedFamily,videoModelCatalog.familyById.get("seedance-2.5"),
+        videoModelCatalog.familyById.get("seedance-2"),
+        videoModelCatalog.familyById.get("kling-o1")].filter(Boolean);
+      let variant=null,family=null;
+      for(const item of choices){
+        const workflow=getVideoWorkflowFamily(item.id)?.workflowById.get("references");
+        const available=workflow?.variants?.find(v=>v?.model&&!v.model.requiresRequestId &&
+          getModelMediaCapabilities(v.model).image.maxItems>0);
+        if(available){variant=available;family=item;break;}
       }
-      if (variant && family) {
-        applyUserSelectedVariant(variant, "i2v", family);
-        // Reconcile inside applyUserSelectedVariant acts on old state; inject after it.
-        const cap = getModelMediaCapabilities(variant.model).image;
-        setUploadedImageUrls(briefImages.slice(0, Math.max(1, cap.maxItems || 1)));
+      if(variant&&family){
+        applyUserSelectedVariant(variant,"i2v",family,"references");
+        const key=getVideoWorkflowDraftKey(family.id,"references");
+        setWorkflowMediaDrafts(prev=>({...prev,[key]:{
+          ...prev[key],referenceImages:images}}));
+        setUploadedImageUrls([]);
+        return;
       }
+      // No supported reference variant: never force image animation.
+      setUploadedImageUrls(images.slice(0,1));
+      return;
     }
-  }, [preparedBrief?.revision, applyUserSelectedVariant, billableModelIds, realizoBrand]);
+    const existingFamily=videoModelCatalog.familyById.get(selectionRef.current.selectedFamilyId);
+    let candidate=getFamilyVariant(videoModelCatalog,existingFamily,"i2v",selectionRef.current.selectedModel);
+    let family=existingFamily;
+    if(!candidate){
+      const entry=videoModelPickerEntries.find(item=>item.variantsByMode.i2v);
+      candidate=entry?.variantsByMode.i2v;family=entry?.family;
+    }
+    if(candidate&&family){
+      applyUserSelectedVariant(candidate,"i2v",family);
+      setUploadedImageUrls(images.slice(0,Math.max(1,getModelMediaCapabilities(candidate.model).image.maxItems||1)));
+    }
+  },[preparedBrief?.revision,applyUserSelectedVariant,billableModelIds,realizoBrand]);
 
   // Realizo keeps the complete model selector and the user's selected
   // duration, quality and resolution. A quote is shown before paid generation.
