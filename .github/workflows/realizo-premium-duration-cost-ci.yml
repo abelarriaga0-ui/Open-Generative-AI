@@ -28,7 +28,7 @@ jobs:
           cache: npm
       - name: Validate premium plan, price accounting and existing behavior
         run: |
-          node --test tests/realizo-local-subtitles.test.mjs tests/realizo-product-geometry.test.mjs tests/realizo-premium-recovery.test.mjs tests/realizo-grounded-research-formats.test.mjs tests/realizo-ugc-review-conversion.test.mjs tests/realizo-premium-hierarchical-picker.test.mjs tests/realizo-premium-duration-cost.test.mjs tests/realizo-ai-premium.test.mjs tests/realizo-premium-paid-languages.test.mjs tests/realizo-sales-director.test.mjs
+          node --test tests/realizo-nmf-sales-storyboard.test.mjs tests/realizo-local-subtitles.test.mjs tests/realizo-product-geometry.test.mjs tests/realizo-premium-recovery.test.mjs tests/realizo-grounded-research-formats.test.mjs tests/realizo-ugc-review-conversion.test.mjs tests/realizo-premium-hierarchical-picker.test.mjs tests/realizo-premium-duration-cost.test.mjs tests/realizo-ai-premium.test.mjs tests/realizo-premium-paid-languages.test.mjs tests/realizo-sales-director.test.mjs
       - name: Check paid research has no artificial daily cap, wallet still protected
         run: python3 -m unittest discover -s tests -p 'test_realizo_paid_without_daily_limit.py' -v
       - name: Install dependencies for JSX validation, no secrets
