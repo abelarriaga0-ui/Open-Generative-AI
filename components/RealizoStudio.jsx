@@ -129,7 +129,7 @@ export default function RealizoStudio({accountId}){
           {[
             ['automatic','Automático · sin costo IA'],
             ['manual','Manual · tu prompt'],
-            ['premium','✦ Realizo AI Premium']
+            ['premium','✦ La IA decide todo · Premium']
           ].map(([id,label])=><button key={id} type="button"
             onClick={()=>{setCreatorMode(id);if(id==='manual'){setBrief(null);openEditor();}}}
             aria-pressed={creatorMode===id}
