@@ -45,7 +45,7 @@ export async function POST(request,{params}){
   const directorConcept={...concept,video_prompt:userPrompt};
   const director=buildCommercialDirectorPackage({
     concept:directorConcept,productName:normalizeProductCopy(project.product_name),
-    description:normalizeProductCopy(project.description),cta:project.cta||concept.cta,
+    description:normalizeProductCopy(project.description),cta:concept.cta||project.cta,
     market:project.market_code,videoLanguage:project.video_language||'es',style,shotPreference,duration:8,
     imageProvided:true,modelId:'seedance-2.5-omni-reference',
   });
