@@ -1,0 +1,58 @@
+name: Realizo - acreditar diferencia real Muapi USD 30.00 para saldo USD 30.27
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/realizo-muapi-reconcile-3027.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: realizo-muapi-real-balance-reconcile-3027-once
+  cancel-in-progress: false
+jobs:
+  reconcile-backed-owner-funds:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      REALIZO_ENV: sandbox
+      REALIZO_AUTH_PROVIDER: native
+      PAYPAL_MODE: sandbox
+      CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+      REALIZO_D1_SANDBOX: '2561f6c8-bfb2-4ea4-8527-7fec29188edf'
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      REALIZO_MUAPI_API_KEY: ${{ secrets.REALIZO_MUAPI_API_KEY }}
+    steps:
+      - name: Checkout audited reconciliation code, pinned to immutable commit
+        uses: actions/checkout@v4
+        with:
+          ref: '6031ee9e58122dcd2c48d4df0ffb3f5485c6fc84'
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test exact D1 wallet and idempotency restrictions offline
+        run: |
+          python3 -m unittest discover -s tests -p test_realizo_muapi_3027_reconciliation.py -v
+          node --check scripts/reconcile-muapi-provider-3027.mjs
+          node scripts/check-realizo-auth-sandbox.mjs
+      - name: Prepare isolated Wrangler without deploying Worker
+        run: |
+          npm install --prefix "$RUNNER_TEMP/realizo-wrangler" --no-save --no-audit --no-fund wrangler@4.151.3
+          echo "$RUNNER_TEMP/realizo-wrangler/node_modules/.bin" >> "$GITHUB_PATH"
+      - name: Apply only pending additive migrations in isolated Realizo D1
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          wrangler d1 migrations apply WALLETS_DB --config wrangler.auth-sandbox.jsonc --remote
+      - name: Read verified Muapi funds and atomically credit USD 30.00 to owner only
+        run: |
+          test -n "$REALIZO_MUAPI_API_KEY"
+          node scripts/reconcile-muapi-provider-3027.mjs
+      - name: Verify exact receipt and no duplicate credit
+        run: |
+          node scripts/reconcile-muapi-provider-3027.mjs
+          echo "Realizo wallet reconciled using pre-existing real provider funds; no provider generation, production deploy or PayPal transaction."
