@@ -6,29 +6,18 @@ import {parseResearchResult} from '../lib/realizo-creative/ai-premium.js';
 const source=readFileSync('app/api/realizo/ai-premium/[id]/route.js','utf8');
 const ui=readFileSync('components/RealizoPremium.jsx','utf8');
 const model=readFileSync('lib/realizo-creative/ai-premium.js','utf8');
-test('failed Premium research exposes diagnostic reason and accurate payment state',()=>{
+test('three researched concepts are delivered without extra recovery buttons',()=>{
  assert.match(source,/response\.research_payment_status=order\?\.status/);
  assert.match(source,/quality\.billable/);
- assert.match(source,/quality\.needsReview/);
- assert.match(ui,/research_quality\.reasons/);
- assert.match(ui,/research_output_incomplete/);
- assert.match(ui,/research_web_not_performed/);
- assert.match(ui,/project\.research_payment_status==='released'/);
- assert.match(ui,/Investigación parcial/);
-});
-test('recovery reuses the original provider response, never POSTs to OpenAI twice',()=>{
- const segment=source.slice(source.indexOf('export async function POST(request,{params})'));
- assert.match(segment,/enforceSameOrigin\(request\)/);
- assert.match(segment,/requireWalletUser\(request,env\)/);
- assert.match(segment,/user_id=\?/);
- assert.match(segment,/status='failed'/);
- assert.match(segment,/error_code='unusable_research'/);
- assert.match(segment,/provider_response_id IS NOT NULL/);
- assert.match(segment,/recovery_existing_response/);
- assert.doesNotMatch(segment,/startOpenAIResearch|openai\.com|payment.*captured/i);
- assert.match(ui,/Recuperar respuesta existente/);
- assert.match(ui,/recovery_available/);
- assert.match(model,/recovery_available:project\.status==='failed'/);
+ assert.match(source,/status='ready'/);
+ assert.match(source,/error_code='unusable_research'/);
+ assert.match(source,/recovery_existing_response/);
+ assert.match(source,/readOpenAIResearch\(env,project\.provider_response_id\)/);
+ assert.doesNotMatch(source,/export async function POST\(/);
+ assert.doesNotMatch(ui,/Recuperar respuesta existente|onClick=\{recover\}/);
+ assert.doesNotMatch(ui,/acknowledged_responsibility:acknowledged/);
+ const approval=readFileSync('app/api/realizo/ai-premium/[id]/approve/route.js','utf8');
+ assert.doesNotMatch(approval,/review_product_responsibility|ugc_speech_timing_invalid/);
 });
 test('strict web research checks actual tool usage but limited results remain honest and unbilled',()=>{
  const partial={
