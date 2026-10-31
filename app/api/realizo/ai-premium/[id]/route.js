@@ -54,6 +54,7 @@ export async function GET(request,{params}){
             research_limitations:report.research_limitations,
             recommended_index:report.recommended_index,
             product_dossier:report.product_dossier,
+            product_visual_geometry:report.product_visual_geometry,
             research_evidence:report.evidence,
             angle_analysis:report.angle_analysis,
             selected_sales_angle:report.selected_sales_angle,
