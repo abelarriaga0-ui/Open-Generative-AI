@@ -1,0 +1,59 @@
+name: Realizo - prueba controlada OpenAI Premium (<0.02 USD estimados)
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/realizo-openai-smoke.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      OPENAI_KEY: ${{ secrets.REALIZO_OPENAI_API_KEY || secrets.OPENAI_API_KEY }}
+    steps:
+      - name: Test GPT-6 Luna structured response plus maximum one public web search
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          const key=process.env.OPENAI_KEY;
+          if(!key)throw Error('OpenAI credential missing');
+          const schema={type:'object',additionalProperties:false,properties:{
+            idea:{type:'string'},risk:{type:'string'},
+          },required:['idea','risk']};
+          const payload={
+            model:'gpt-6-luna',background:true,store:true,
+            reasoning:{effort:'low'},max_output_tokens:450,max_tool_calls:1,
+            tools:[{type:'web_search',search_context_size:'low'}],
+            input:'Investiga brevemente una recomendación pública para crear un anuncio honesto de un producto genérico. No inventes ventas ni cifras. Responde con una idea y un riesgo.',
+            text:{format:{type:'json_schema',name:'realizo_smoke_v1',strict:true,schema}},
+          };
+          async function api(path,init={}){
+            const r=await fetch('https://api.openai.com/v1/'+path,{
+              ...init,headers:{Authorization:'Bearer '+key,'Content-Type':'application/json',...(init.headers||{})},
+              signal:AbortSignal.timeout(22000),
+            });
+            if(!r.ok)throw Error('OpenAI request failed HTTP '+r.status+' at '+path);
+            return r.json();
+          }
+          const start=await api('responses',{method:'POST',body:JSON.stringify(payload)});
+          if(!/^resp_[A-Za-z0-9_-]+$/.test(start.id||''))throw Error('No response ID');
+          let result=start;
+          for(let i=0;i<25 && !['completed','failed','cancelled','incomplete'].includes(result.status);i++){
+            await new Promise(resolve=>setTimeout(resolve,3000));
+            result=await api('responses/'+encodeURIComponent(start.id));
+          }
+          if(result.status!=='completed')throw Error('Structured research did not complete: '+String(result.status));
+          const out=(result.output||[]).flatMap(x=>x.type==='message'?x.content||[]:[])
+            .filter(x=>x.type==='output_text').map(x=>x.text).join('');
+          const parsed=JSON.parse(out);
+          if(typeof parsed.idea!=='string'||typeof parsed.risk!=='string')throw Error('Invalid structured output');
+          const calls=(result.output||[]).filter(x=>x.type==='web_search_call').length;
+          if(calls>1)throw Error('Web search cap exceeded');
+          console.log('OPENAI_PREMIUM_SMOKE=SUCCESS; model=gpt-6-luna; web_calls='+calls);
+          console.log('INPUT_TOKENS='+Number(result.usage?.input_tokens||0)+
+           '; OUTPUT_TOKENS='+Number(result.usage?.output_tokens||0));
+          console.log('No user photo, Muapi credits, PayPal charge, prompt details, source text or API key exposed.');
+          JS
