@@ -25,7 +25,7 @@ const fmt=status=>({
  approved:'Concepto aprobado',failed:'Investigación no completada',
 })[status]||status;
 
-export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic}){
+export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,onCreateNew,initialProjectId=null}){
  const [config,setConfig]=useState(null),[image,setImage]=useState(null);
  const [product,setProduct]=useState({product_name:'',description:'',audience:'',
   angle:'auto',market:'EC',cta:''});
@@ -40,19 +40,24 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic}
    .then(r=>r.ok?r.json():Promise.reject()).then(async v=>{
      if(!active)return;
      setConfig(v);
-     const latest=v.projects?.[0];
-     if(latest?.id){
-       try {
-         const response=await fetch('/api/realizo/ai-premium/'+encodeURIComponent(latest.id),{
+     // Fresh creation is the default. Only restore a previous investigation
+     // after the owner explicitly selects it from "Mis videos".
+     if(initialProjectId){
+       try{
+         const response=await fetch('/api/realizo/ai-premium/'+encodeURIComponent(initialProjectId),{
            cache:'no-store',credentials:'same-origin'
          });
-         if(response.ok&&active)setProject(await response.json());
-       }catch{}
+         if(!response.ok)throw new Error('No se pudo recuperar la investigación');
+         const saved=await response.json();
+         if(active)setProject(saved);
+       }catch{
+         if(active)setError('No se pudo abrir el proyecto guardado. Puedes comenzar uno nuevo.');
+       }
      }
    })
    .catch(()=>{if(active)setConfig({enabled:false,message:'No disponible en este momento.'})});
   return()=>{active=false};
- },[]);
+ },[initialProjectId]);
  useEffect(()=>{
   if(!project?.id || !['created','researching'].includes(project.status))return;
   let active=true;
@@ -228,7 +233,13 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic}
     <div className="flex flex-wrap justify-between items-center gap-3">
       <div><p className="text-xs font-bold tracking-widest text-[#7F5FB1]">PROYECTO PREMIUM</p>
         <h3 className="text-2xl font-extrabold mt-2">{project.product_name||'Tu producto'}</h3></div>
-      <span className="rounded-full bg-[#EEE4FA] text-[#673E9A] font-bold text-xs px-4 py-2">{fmt(project.status)}</span>
+      <div className="flex flex-wrap items-center gap-2">
+       <span className="rounded-full bg-[#EEE4FA] text-[#673E9A] font-bold text-xs px-4 py-2">{fmt(project.status)}</span>
+       <button type="button" disabled={busy} onClick={onCreateNew}
+         className="rounded-2xl bg-[#6D48CB] text-white px-4 py-2 text-xs font-bold hover:bg-[#5B37BA] disabled:opacity-50">
+         + Crear otro video
+       </button>
+      </div>
     </div>
     {['created','researching'].includes(project.status)&&<div className="p-6 rounded-2xl bg-[#F8F4FC]">
       <p className="font-semibold">Estamos analizando la imagen y fuentes de mercado.</p>
