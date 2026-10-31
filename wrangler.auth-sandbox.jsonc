@@ -24,8 +24,9 @@
     "MUAPI_GENERATION_ENABLED": "true",
     "REALIZO_MUAPI_PILOT": "true",
     "REALIZO_MULTI_MODEL_SANDBOX": "true",
-    "REALIZO_AI_PREMIUM_ENABLED": "false",
-    "OPENAI_PREMIUM_MODEL": "gpt-5.5"
+    "REALIZO_AI_PREMIUM_ENABLED": "true",
+    "OPENAI_PREMIUM_MODEL": "gpt-6-luna",
+    "REALIZO_AI_PREMIUM_PUBLIC_ENABLED": "false"
   },
   "d1_databases": [
     {
