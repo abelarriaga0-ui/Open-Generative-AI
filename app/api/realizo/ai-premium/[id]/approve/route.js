@@ -68,6 +68,7 @@ export async function POST(request,{params}){
     ...safeResearchResponse(project),ready_for_editor:{
       prompt:finalPrompt,images:[image],productName:normalizeProductCopy(project.product_name),
       productDescription:normalizeProductCopy(project.description),
+      market:project.market_code,
       revision:crypto.randomUUID(),project_id:id,approved_concept:selection,
       media_role:'reference_only',creative_style:style,
       shot_preference:shotPreference,creative_concept:directorConcept,
