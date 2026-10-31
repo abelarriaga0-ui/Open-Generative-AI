@@ -66,14 +66,22 @@ test('investigation must search online, inspect image and return auditable produ
  assert.equal(schema.properties.angle_analysis.type,'array');
  assert.ok(schema.properties.concepts.items.required.includes('creative_style'));
 });
-test('grounded research rejects no web call, mismatched sources, unsupported identity, repetitive hooks, and wrong formats',()=>{
+test('unusable web research is never charged, but quality limitations are explained without discarding concepts',()=>{
  const good=report();
- assert.equal(parseResearchResult(wrapped(good),{creativeStyle:'ugc',duration:12,requireGrounding:true}).report.concepts.length,3);
- assert.throws(()=>parseResearchResult(wrapped(good,{withWeb:false}),{creativeStyle:'ugc',duration:12,requireGrounding:true}),/research_invalid_content/);
- assert.throws(()=>parseResearchResult(wrapped(good,{urlOverride:'https://unrelated.example'}),{creativeStyle:'ugc',duration:12,requireGrounding:true}),/research_invalid_content/);
- assert.throws(()=>parseResearchResult(wrapped({...good,product_dossier:{...good.product_dossier,identity_status:'unverified'}}),{creativeStyle:'ugc',duration:12,requireGrounding:true}),/research_invalid_content/);
- assert.throws(()=>parseResearchResult(wrapped({...good,concepts:good.concepts.map(c=>({...c,hook:'El mismo hook'}))}),{creativeStyle:'ugc',duration:12,requireGrounding:true}),/research_invalid_content/);
- assert.throws(()=>parseResearchResult(wrapped({...good,concepts:good.concepts.map(c=>({...c,creative_style:'cinematic'}))}),{creativeStyle:'ugc',duration:12,requireGrounding:true}),/research_invalid_content/);
+ const original=parseResearchResult(wrapped(good),{creativeStyle:'ugc',duration:12,requireGrounding:true});
+ assert.equal(original.report.concepts.length,3);
+ assert.equal(original.quality.needsReview,true);
+ assert.equal(original.quality.billable,false); // photo/product identity only partial
+ assert.throws(()=>parseResearchResult(wrapped(good,{withWeb:false}),{creativeStyle:'ugc',duration:12,requireGrounding:true}),/research_web_not_performed/);
+ const unmatched=parseResearchResult(wrapped(good,{urlOverride:'https://unrelated.example'}),{creativeStyle:'ugc',duration:12,requireGrounding:true});
+ assert.equal(unmatched.quality.billable,false);
+ assert.equal(unmatched.report.evidence[0].basis,'unverified');
+ assert.equal(unmatched.report.evidence[0].source_url,'');
+ assert.equal(parseResearchResult(wrapped({...good,product_dossier:{...good.product_dossier,identity_status:'unverified'}}),{creativeStyle:'ugc',duration:12,requireGrounding:true}).quality.billable,false);
+ assert.equal(parseResearchResult(wrapped({...good,concepts:good.concepts.map(c=>({...c,hook:'El mismo hook'}))}),{creativeStyle:'ugc',duration:12,requireGrounding:true}).quality.billable,false);
+ assert.equal(parseResearchResult(wrapped({...good,concepts:good.concepts.map(c=>({...c,creative_style:'cinematic'}))}),{creativeStyle:'ugc',duration:12,requireGrounding:true}).quality.billable,false);
+ const fullyIdentified={...good,product_dossier:{...good.product_dossier,identity_status:'matched'}};
+ assert.equal(parseResearchResult(wrapped(fullyIdentified),{creativeStyle:'ugc',duration:12,requireGrounding:true}).quality.billable,true);
 });
 test('UGC, cinematic, premium, demo are differentiated in research AND final video direction',()=>{
  for(const style of Object.keys(FORMAT_GUIDES)){
