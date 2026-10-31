@@ -419,6 +419,11 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
        research_provider_failed:'El proveedor interrumpió la investigación.',
        unusable_research:'OpenAI devolvió datos que no permiten validar los anuncios.',
        openai_rejected:'El proveedor rechazó la configuración de investigación.',
+       openai_rejected_schema:'OpenAI no admitió el formato estructurado configurado.',
+       openai_rejected_search:'OpenAI no admitió la herramienta de búsqueda solicitada.',
+       openai_rejected_model:'El modelo OpenAI configurado no está disponible o no admite esta operación.',
+       openai_rejected_quota:'OpenAI alcanzó un límite de solicitudes. No se capturó el pago.',
+       openai_rejected_request:'OpenAI rechazó uno de los parámetros de la investigación.',
        research_launch_unconfirmed:'No se pudo confirmar el inicio; no se volverá a enviar automáticamente.',
       })[project.error]||'No fue posible obtener los tres conceptos válidos.'}</p>
       <p>{project.research_payment_status==='released'?
