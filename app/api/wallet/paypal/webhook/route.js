@@ -42,7 +42,7 @@ export async function POST(request) {
     }
     const order = await paypalRequest(env, '/v2/checkout/orders/' + orderId);
     if (!order.ok) return Response.json({ error: 'paypal_order_not_ready' }, { status: 503 });
-    const result = await settlePaypalOrder(env.WALLETS_DB, orderId, order.data);
+    const result = await settlePaypalOrder(env.WALLETS_DB, orderId, order.data, env.PAYPAL_MODE||'sandbox');
     if (result.status === 'pending') {
       return Response.json({ error: 'capture_not_final' }, { status: 503 });
     }
