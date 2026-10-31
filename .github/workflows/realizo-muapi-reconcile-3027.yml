@@ -1,9 +1,5 @@
 name: Realizo - acreditar diferencia real Muapi USD 30.00 para saldo USD 30.27
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/realizo-muapi-reconcile-3027.yml'
   workflow_dispatch:
 permissions:
   contents: read
