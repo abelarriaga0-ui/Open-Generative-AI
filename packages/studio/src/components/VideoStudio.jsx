@@ -1443,6 +1443,27 @@ export default function VideoStudio({
     const images=Array.isArray(preparedBrief.images)?
       preparedBrief.images.filter(url=>typeof url==="string" && /^https:\/\//.test(url)).slice(0,4):[];
     setPrompt(String(preparedBrief.prompt||"").slice(0,6000));
+    // A Premium investigation is already tailored to this exact provider variant
+    // and duration. Apply it instead of silently reverting to another motor.
+    const researchedModel=preparedBrief.video_model_id;
+    const researchedVariant=researchedModel&&videoModelCatalog.variantById.get(researchedModel);
+    const researchedFamily=researchedVariant&&videoModelCatalog.familyByVariantId.get(researchedModel);
+    if(researchedVariant&&researchedFamily){
+      const workflowId=preparedBrief.video_workflow_id||null;
+      applyUserSelectedVariant(researchedVariant,researchedVariant.mode,researchedFamily,workflowId);
+      if(Number(preparedBrief.video_duration_seconds)>0)
+        setSelectedDuration(Number(preparedBrief.video_duration_seconds));
+      if(preparedBrief.media_role==='reference_only'&&workflowId==='references'){
+        const key=getVideoWorkflowDraftKey(researchedFamily.id,'references');
+        setWorkflowMediaDrafts(prev=>({...prev,[key]:{...prev[key],referenceImages:images}}));
+        setUploadedImageUrls([]);
+      }else if(researchedVariant.mode==='i2v'){
+        setUploadedImageUrls(images.slice(0,Math.max(1,getModelMediaCapabilities(researchedVariant.model).image.maxItems||1)));
+      }else{
+        setUploadedImageUrls([]);
+      }
+      return;
+    }
     if(!images.length)return;
     if(preparedBrief.media_role==='reference_only'){
       const selectedFamily=videoModelCatalog.familyById.get(selectionRef.current.selectedFamilyId);
@@ -2170,6 +2191,13 @@ export default function VideoStudio({
   const handleGenerate = useCallback(async () => {
     if (mediaUploading || workflowUploadSlotRef.current) {
       toast.error(copy.errors.waitForCurrentUpload);
+      return;
+    }
+    if(preparedBrief?.project_id && preparedBrief.video_model_id &&
+      (selectedModel!==preparedBrief.video_model_id ||
+       Number(selectedDuration)!==Number(preparedBrief.video_duration_seconds))){
+      alert('El guion fue preparado para '+preparedBrief.video_model_id+
+        ' y '+preparedBrief.video_duration_seconds+' segundos. Vuelve al proyecto para revisar la configuración; no se consulta ni cobra otra IA automáticamente.');
       return;
     }
     if(preparedBrief?.media_role==='reference_only' &&

@@ -43,11 +43,14 @@ export async function POST(request,{params}){
   const style=['auto','ugc','cinematic','premium','demo'].includes(body.style)?body.style:'auto';
   const shotPreference=['auto','single','multi'].includes(body.shot_preference)?body.shot_preference:'auto';
   const directorConcept={...concept,video_prompt:userPrompt};
+  const modelId=project.video_model_id||'seedance-2.5-omni-reference';
+  const duration=Number(project.video_duration_seconds)||8;
+  const workflowId=project.video_workflow_id||null;
   const director=buildCommercialDirectorPackage({
     concept:directorConcept,productName:normalizeProductCopy(project.product_name),
     description:normalizeProductCopy(project.description),cta:concept.cta||project.cta,
-    market:project.market_code,videoLanguage:project.video_language||'es',style,shotPreference,duration:8,
-    imageProvided:true,modelId:'seedance-2.5-omni-reference',
+    market:project.market_code,videoLanguage:project.video_language||'es',style,shotPreference,duration,
+    imageProvided:true,modelId,workflowId,
   });
   // Preserve the seller's commercial intent while keeping unverified product
   // statements visibly distinguishable from claims substantiated by sources.
@@ -66,11 +69,14 @@ export async function POST(request,{params}){
     Number(asset.expires_at),Math.floor(Date.now()/1000)+3600));
   return Response.json({
     ...safeResearchResponse(project),ready_for_editor:{
-      prompt:finalPrompt,images:[image],productName:normalizeProductCopy(project.product_name),
+      prompt:finalPrompt,images:director.model_capabilities.imageRole==='none'?[]:[image],
+      productName:normalizeProductCopy(project.product_name),
       productDescription:normalizeProductCopy(project.description),
       market:project.market_code,video_language:project.video_language||'es',
+      video_model_id:modelId,video_duration_seconds:duration,video_workflow_id:workflowId,
       revision:crypto.randomUUID(),project_id:id,approved_concept:selection,
-      media_role:'reference_only',creative_style:style,
+      media_role:director.model_capabilities.imageRole==='product_reference'?'reference_only':
+        director.model_capabilities.imageRole==='start_frame'?'start_frame':'none',creative_style:style,
       shot_preference:shotPreference,creative_concept:directorConcept,
       overlay_cta:director.cta,spoken_script:director.spoken_script,
       product_claims_to_verify:claimsToVerify,

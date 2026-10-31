@@ -32,7 +32,7 @@ const fmt=status=>({
 export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,onCreateNew,onWalletRefresh,initialProjectId=null}){
  const [config,setConfig]=useState(null),[image,setImage]=useState(null);
  const [product,setProduct]=useState({product_name:'',description:'',audience:'',
-  angle:'auto',market:'EC',video_language:'es',cta:''});
+  angle:'auto',market:'EC',video_language:'es',cta:'',video_model_id:'',video_duration_seconds:''});
  const [project,setProject]=useState(null),[selection,setSelection]=useState(0);
  const [editedPrompt,setEditedPrompt]=useState('');
  const [style,setStyle]=useState('auto'),[shotPreference,setShotPreference]=useState('auto');
@@ -108,12 +108,15 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
   if(!config?.enabled)return setError('Realizo AI Premium necesita una conexión autorizada y saldo real cuando corresponde.');
   if(!image?.id || product.description.trim().length<15)
     return setError('Sube una foto y describe el producto en al menos 15 caracteres.');
+  const chosen=(config.video_options||[]).find(m=>m.id===product.video_model_id);
+  if(!chosen || !chosen.durations.includes(Number(product.video_duration_seconds)))
+    return setError('Selecciona un motor de video y una duración compatible antes de investigar.');
   const price=config.customer_charge_cents;
   if(!Number.isInteger(price)||price<0)return setError('No se pudo cotizar la investigación.');
   if(config.billing_mode!=='paid'||price<=0||config.general_available_cents<price)
     return setError('Saldo real insuficiente para pagar la investigación. Necesitas fondos verificados.');
   const message='Investigación IA: USD '+(price/100).toFixed(2)+
-    '. Se reservará de tu billetera ahora y se cobrará al entregar los 3 conceptos. El video se cotiza aparte. ¿Confirmas el pago?';
+    '. Modelo '+chosen.name+', duración '+product.video_duration_seconds+' segundos. Se reservará de tu billetera ahora y se cobrará al entregar los 3 conceptos. El video se cotiza aparte. ¿Confirmas el pago?';
   if(!window.confirm(message))return;
   setBusy(true);setError('');
   if(!keyRef.current)keyRef.current=crypto.randomUUID();
@@ -129,6 +132,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
      json.error==='insufficient_general_funds'||json.error==='verified_real_topup_required'?
      'Necesitas saldo de una recarga real verificada.':
      json.error==='price_changed_confirm_again'?'El precio cambió. Actualiza y confírmalo nuevamente.':
+     json.error==='invalid_video_configuration'?'El modelo o duración elegidos ya no están disponibles. Selecciona otra combinación.':
      'No se pudo iniciar la investigación: '+(json.error||r.status));
    setProject(json);
    onWalletRefresh?.();
@@ -154,6 +158,8 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
  };
  const findings=project?.findings||{};
  const concepts=project?.concepts||[];
+ const selectedModel=(config?.video_options||[]).find(m=>m.id===product.video_model_id);
+ const availableDurations=selectedModel?.durations||[];
  const ready=concepts.length===3 && ['ready','needs_review','approved'].includes(project?.status);
  return <div className="max-w-[1160px] mx-auto space-y-5">
   <div className="rounded-[25px] bg-gradient-to-r from-[#38244E] to-[#6D47AE] p-6 sm:p-8 text-white">
@@ -210,6 +216,31 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
       {languages.map(([code,name])=><option key={code} value={code}>{name}</option>)}
      </select>
     </label>
+    <div className="rounded-2xl border border-[#D8C5EF] bg-[#F9F5FF] p-4 space-y-3">
+     <p className="text-sm font-extrabold">3. Configura el video antes de investigar</p>
+     <p className="text-xs text-[#765E90]">Elegir modelo y duración es gratuito. Los tres conceptos se escribirán una sola vez para esta configuración.</p>
+     <label className="block text-sm font-bold">Modelo de generación *
+      <select className={field+' mt-2'} value={product.video_model_id} onChange={e=>{
+       const next=(config?.video_options||[]).find(m=>m.id===e.target.value);
+       setProduct(p=>({...p,video_model_id:e.target.value,
+        video_duration_seconds:next?.durations?.[0]??''}));keyRef.current=null;
+      }}>
+       <option value="">Escoge el motor de video</option>
+       {(config?.video_options||[]).map(model=><option key={model.id} value={model.id}>
+        {model.family} · {model.name} ({model.image_role==='product_reference'?'Referencia':model.image_role==='start_frame'?'Animar foto':'Solo texto'})
+       </option>)}
+      </select>
+     </label>
+     {selectedModel&&<>
+      <label className="block text-sm font-bold">Duración compatible *
+       <select className={field+' mt-2'} value={product.video_duration_seconds}
+        onChange={e=>change('video_duration_seconds',Number(e.target.value))}>
+        {availableDurations.map(n=><option key={n} value={n}>{n} segundos</option>)}
+       </select>
+      </label>
+      <p className="text-xs text-[#71588B]">{selectedModel.note}</p>
+     </>}
+    </div>
     <label className="block text-sm font-bold">Público objetivo (opcional)
      <input className={field+' mt-2'} maxLength={180} value={product.audience}
       onChange={e=>change('audience',e.target.value)} placeholder="Ej. Hombres de 18 a 40 años"/>
@@ -222,7 +253,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
      Precio fijo: <strong>USD {((config?.customer_charge_cents||0)/100).toFixed(2)}</strong> por investigar y crear 3 conceptos. El video se cobra aparte.
     </p>
     <div className="flex flex-wrap gap-3">
-     <button type="button" disabled={busy||!config?.enabled||!image}
+     <button type="button" disabled={busy||!config?.enabled||!image||!selectedModel||!product.video_duration_seconds}
       onClick={start} className="rounded-2xl bg-[#704CD4] disabled:opacity-45 text-white px-6 py-3 font-bold">
       {busy?'Investigando…':'✦ Investigar y pagar $'+((config?.customer_charge_cents||0)/100).toFixed(2)}
      </button>
@@ -253,7 +284,16 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
     {project.status==='failed'&&<p className="text-sm text-[#9A6257]">La investigación no pudo completarse. No se ha cobrado al cliente. Puedes utilizar el modo automático sin costo adicional.</p>}
     {project.status==='needs_review'&&!ready&&<p className="text-sm text-[#9A6257]">La investigación necesita revisión técnica antes de volver a intentarse. No se volverá a cobrar automáticamente.</p>}
     {ready&&<>
+      <p className="text-sm font-semibold text-[#6B4B8C] rounded-xl bg-[#F3EBFA] p-3">Configuración investigada: {project.video_model_id} · {project.video_duration_seconds||8} segundos. No se vuelve a consultar la IA al elegir concepto.</p>
 
+      {project.owner_cost_audit&&<div className="rounded-xl border border-[#C9DAE5] bg-[#F1F7FD] p-4 text-xs text-[#496079] space-y-1">
+       <p className="font-bold">Auditoría privada · costo de OpenAI</p>
+       <p>{project.owner_cost_audit.cost_status==='estimated'&&Number.isInteger(project.owner_cost_audit.estimated_cost_micro_usd)?
+         'Estimación por esta investigación: USD '+(project.owner_cost_audit.estimated_cost_micro_usd/1_000_000).toFixed(6):
+         'Costo de proveedor no calculable con las tarifas disponibles.'}</p>
+       <p>{project.owner_cost_audit.input_tokens} tokens de entrada · {project.owner_cost_audit.output_tokens} de salida · {project.owner_cost_audit.web_calls} búsquedas.</p>
+       <p>Importe orientativo, NO factura final. Contrastar con el reporte de costos de OpenAI. El precio cobrado al cliente sigue siendo USD 0,49.</p>
+      </div>}
       <div className="rounded-2xl bg-[#F8F5F0] p-4 space-y-2">
        <p className="font-bold">Análisis comercial</p>
        <p className="text-sm text-[#6B5878]">

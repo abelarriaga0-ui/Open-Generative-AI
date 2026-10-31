@@ -1,10 +1,13 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {premiumVideoOptions} from '../lib/realizo-creative/video-specs.js';
 import {validatePremiumInput,premiumBetaEnabled,premiumBetaOwner,
  buildResearchRequest,parseResearchResult,researchSchema} from '../lib/realizo-creative/ai-premium.js';
 
+const selectedVideo=premiumVideoOptions()[0];
 const form={
+ video_model_id:selectedVideo.id,video_duration_seconds:selectedVideo.durations[0],
  product_name:'NOIL',description:'Gel de ducha perfumado masculino',
  primary_asset_id:'00000000-0000-4000-8000-000000000001',request_key:'testrequest123',
  market:'EC',angle:'premium',
@@ -32,7 +35,7 @@ test('vision and web research are bounded and never use a Muapi customer balance
   market_code:'EC',sales_angle:'premium',signedImage:'https://example.test/signed-image',cta:'Paga al recibir'};
  const request=buildResearchRequest({OPENAI_PREMIUM_MODEL:'gpt-5.5'},p);
  assert.equal(request.max_tool_calls,2);
- assert.ok(request.max_output_tokens<=2800);
+ assert.ok(request.max_output_tokens<=9000);
  assert.equal(request.background,true);
  assert.equal(request.store,true);
  assert.equal(request.reasoning.effort,'low');

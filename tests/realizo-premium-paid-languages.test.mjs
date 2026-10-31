@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {premiumVideoOptions} from '../lib/realizo-creative/video-specs.js';
 import {premiumAccess,premiumSandboxPaidOwner,validatePremiumInput,
  buildResearchRequest,researchFingerprint,PREMIUM_PRICE_CENTS} from '../lib/realizo-creative/ai-premium.js';
 import {buildCommercialDirectorPackage} from '../lib/realizo-creative/sales-director.js';
@@ -18,7 +19,9 @@ test('Verified sandbox owner gets PAID $0.49, never sponsored or fictional PayPa
  assert.equal((await premiumAccess(noRec,{id:'owner'})).enabled,false);
 });
 test('Video speech locale validated and included in the paid research fingerprint',async()=>{
+ const selectedVideo=premiumVideoOptions()[0];
  const form={description:'Perfume masculino en gotero',market:'EC',angle:'auto',
+ video_model_id:selectedVideo.id,video_duration_seconds:selectedVideo.durations[0],
  primary_asset_id:'00000000-0000-4000-8000-000000000001',request_key:'0123456789abcdef'};
  for(const lang of ['es','en','pt','fr','de','it'])assert.equal(validatePremiumInput({...form,video_language:lang}).videoLanguage,lang);
  assert.throws(()=>validatePremiumInput({...form,video_language:'invalid'}),/invalid_request/);
