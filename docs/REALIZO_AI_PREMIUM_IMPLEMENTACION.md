@@ -51,3 +51,17 @@ El acceso beta está restringido a una única cuenta de Realizo cuyo `user_id` c
 - https://developers.openai.com/api/docs/guides/tools-web-search
 - https://developers.openai.com/api/docs/guides/structured-outputs
 - https://developers.openai.com/api/docs/guides/images-vision
+
+## Actualización general y optimización (30 oct 2026)
+- **Modelo predeterminado:** `gpt-6-luna` ($0.10 / 1M tokens de entrada, $0.50 / 1M salida en modalidad estándar según tarifas verificadas). Se puede sustituir por uno de más calidad únicamente ajustando `OPENAI_PREMIUM_MODEL`, tras medir costos y resultados.
+- **Presupuesto por investigación:** máximo 2 tool calls de búsqueda web, contexto `low`, 2.800 tokens máximos de salida, una imagen en `detail:low`, esfuerzo `low`, una generación de 3 conceptos. Máximo externo por búsquedas estimado: $0.02 por investigación antes de tokens (la herramienta puede elegir menos). No inferir costo real sin el objeto `usage`.
+- **Reutilización:** los proyectos del mismo usuario con igual imagen, ficha, mercado y ángulo recuperan la investigación reciente y no crean un segundo cargo.
+- **Precio de venta inicial configurable en próxima versión:** `PREMIUM_PRICE_CENTS=49` (USD 0.49) por paquete Premium de 3 conceptos. El video Muapi es otra operación y otra cotización.
+- **Cobro general:** un pedido en `realizo_ai_premium_orders` reserva fondos en la billetera Realizo, con triggers SQL de captura tras entregar resultados válidos, o liberación cuando OpenAI rechaza o falla. Acceso público solo con `REALIZO_ENV=production`, `PAYPAL_MODE=live`, `REALIZO_AI_PREMIUM_PUBLIC_ENABLED=true`, secreto válido y pago real previamente verificado.
+- **Protección de fondos externos:** el saldo histórico de USD 7.75 depositado directamente en Muapi NO puede pagar OpenAI. La cantidad original se conserva como reserva conservadora al calcular fondos disponibles para investigaciones.
+- **Límites económicos atómicos:** 3 trabajos pagados por usuario/24 h, 40 globales/24 h y 500 globales/30 días. En Sandbox, solo un trabajo patrocinado/24 h para la cuenta de propietario verificada.
+- **Modo gratuito:** el creador por código y el modo Manual siguen habilitados sin costo OpenAI.
+- **Seguridad:** jamás agregar el secreto OpenAI a `wrangler.jsonc`, `package.json`, JS de navegador o historial de GitHub. Se instala como secreto Cloudflare. El test de integración no debe usar los fondos de Muapi.
+- **Activación:** la clave se instala mediante `.github/workflows/realizo-ai-premium-configure-openai.yml` en el Worker *solo de Sandbox*. El despliegue con `REALIZO_AI_PREMIUM_ENABLED=true` activa únicamente el piloto patrocinado, porque `REALIZO_AI_PREMIUM_PUBLIC_ENABLED=false` y PayPal permanece Sandbox.
+- **Producción:** `wrangler.jsonc` pertenece a `open-generative-ai`, no al nuevo Realizo con identidad nativa. No desplegar ahí por accidente. Requiere Worker Realizo separado, webhook PayPal Live verificado, D1/R2 propios, ingresos reales y autorización de un primer cargo real.
+- **Fuentes:** https://developers.openai.com/api/docs/pricing , https://developers.openai.com/api/docs/models/gpt-6-luna y https://developers.openai.com/api/docs/guides/tools-web-search .
