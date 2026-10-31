@@ -30,8 +30,9 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic}
  const [product,setProduct]=useState({product_name:'',description:'',audience:'',
   angle:'auto',market:'EC',cta:''});
  const [project,setProject]=useState(null),[selection,setSelection]=useState(0);
- const [editedPrompt,setEditedPrompt]=useState(''),[correction,setCorrection]=useState('');
- const [ack,setAck]=useState(false),[ackClaims,setAckClaims]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ const [editedPrompt,setEditedPrompt]=useState('');
+ const [style,setStyle]=useState('auto'),[shotPreference,setShotPreference]=useState('auto');
+ const [acknowledged,setAcknowledged]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const fileRef=useRef(null),keyRef=useRef(null);
  useEffect(()=>{
   let active=true;
@@ -128,13 +129,12 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic}
   try{
    const r=await fetch('/api/realizo/ai-premium/'+encodeURIComponent(project.id)+'/approve',{
     method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({index:selection,prompt:editedPrompt,acknowledged_conflicts:ack,
-     acknowledged_claims:ackClaims,correction}),
+    body:JSON.stringify({index:selection,prompt:editedPrompt,style,
+     shot_preference:shotPreference,acknowledged_responsibility:acknowledged}),
    });
    const json=await r.json().catch(()=>({}));
-   if(!r.ok)throw Error(json.error==='resolve_product_conflict_first'?
-    'Confirma la información correcta del producto antes de aprobar.':
-    json.error==='review_unverified_claims'?'Revisa las afirmaciones no confirmadas antes de aprobar.':
+   if(!r.ok)throw Error(json.error==='review_product_responsibility'?
+    'Acepta la declaración de responsabilidad comercial antes de aprobar.':
     'No se pudo aprobar: '+(json.error||r.status));
    if(!json.ready_for_editor)throw Error('El editor no recibió el proyecto.');
    setProject(json);onPrepare(json.ready_for_editor);onOpenAdvanced();
@@ -243,25 +243,13 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic}
        <p className="text-sm text-[#6A5C74]">{findings.market_summary}</p>
        {(findings.claims_to_verify||[]).length>0&&<p className="text-xs text-[#995E4A]">
         Por verificar: {findings.claims_to_verify.join(' · ')}</p>}
-       {(findings.claims_to_verify||[]).length>0&&<label className="block text-xs font-semibold text-[#885F3C]">
-        <span>Estas afirmaciones deben verificarse antes de anunciarse.</span>
-        <span className="flex gap-2 items-center mt-2">
-          <input type="checkbox" checked={ackClaims} onChange={e=>setAckClaims(e.target.checked)}/>
-          He revisado las afirmaciones pendientes y no las presentaré como confirmadas sin evidencia.
-        </span>
-       </label>}
        {(findings.research_limitations||[]).length>0&&<p className="text-xs text-[#796C7F]">
         Alcance: {findings.research_limitations.join(' · ')}</p>}
       </div>
-      {(findings.description_conflicts||[]).length>0&&<div className="rounded-2xl border border-[#EBC8A8] bg-[#FFF8EC] p-4 space-y-3">
-        <p className="font-extrabold text-[#805D42]">Debes confirmar información del producto</p>
-        {(findings.description_conflicts||[]).map((x,i)=><p className="text-sm" key={i}>• {x}</p>)}
-        <textarea className={field} value={correction} maxLength={700}
-          onChange={e=>setCorrection(e.target.value)} placeholder="Escribe cuál es el producto real y la característica correcta…"/>
-        <label className="flex gap-2 items-center text-sm">
-          <input type="checkbox" checked={ack} onChange={e=>setAck(e.target.checked)}/>
-          Confirmo que revisé la fotografía y corregí la ficha antes de publicar.
-        </label>
+      {(findings.description_conflicts||[]).length>0&&<div className="rounded-2xl border border-[#EBC8A8] bg-[#FFF8EC] p-4">
+        <p className="font-semibold text-sm">Observaciones de fotografía y ficha</p>
+        {(findings.description_conflicts||[]).map((x,k)=><p key={k} className="text-xs mt-1">• {x}</p>)}
+        <p className="text-xs mt-2">Las faltas de ortografía se corrigen automáticamente. No necesitas reescribir.</p>
       </div>}
       <div className="grid md:grid-cols-3 gap-4">
        {concepts.map((c,i)=><button type="button" key={i} onClick={()=>setSelection(i)}
@@ -277,6 +265,25 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic}
         <ul className="text-sm space-y-1 list-disc pl-5 text-[#655875]">
           {concepts[selection].shots.map((shot,i)=><li key={i}>{shot}</li>)}
         </ul>
+        <div className="grid sm:grid-cols-2 gap-3">
+         <label className="block text-sm font-bold">Estilo visual (opcional)
+          <select className={field+' mt-2'} value={style} onChange={e=>setStyle(e.target.value)}>
+           <option value="auto">La IA decide</option>
+           <option value="ugc">UGC hablando</option>
+           <option value="cinematic">Cinematográfico</option>
+           <option value="premium">Comercial premium</option>
+           <option value="demo">Demostración</option>
+          </select>
+         </label>
+         <label className="block text-sm font-bold">Número de tomas (opcional)
+          <select className={field+' mt-2'} value={shotPreference} onChange={e=>setShotPreference(e.target.value)}>
+           <option value="auto">La IA decide según duración</option>
+           <option value="single">Una toma continua</option>
+           <option value="multi">Varias tomas</option>
+          </select>
+         </label>
+        </div>
+        <p className="text-xs text-[#6B5387]">El director audiovisual adapta voz, planos y referencias al modelo que elijas.</p>
         <label className="block text-sm font-bold">Prompt audiovisual editable
           <textarea value={editedPrompt} onChange={e=>setEditedPrompt(e.target.value)}
             className={field+' mt-2 min-h-[170px]'} maxLength={5500}/>
@@ -291,6 +298,10 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic}
         </li>)}</ul>:
         <p className="mt-2 text-xs text-[#9B7759]">No hay fuentes web verificables en este informe. No deben interpretarse como datos de ventas confirmados.</p>}
       </div>
+      <label className="flex items-start gap-3 rounded-xl bg-[#F8F3FC] p-4 text-sm">
+       <input type="checkbox" checked={acknowledged} onChange={e=>setAcknowledged(e.target.checked)} className="mt-1"/>
+       <span>Confirmo que soy responsable de las afirmaciones comerciales de mi anuncio y he revisado las observaciones. Realizo corregirá erratas sin cambiar la intención del producto.</span>
+      </label>
       <button type="button" onClick={approve} disabled={busy}
         className="rounded-2xl bg-[#6D48CB] text-white font-bold py-3.5 px-6 disabled:opacity-50">
         {busy?'Guardando…':'Aprobar concepto y elegir modelo de video'}
