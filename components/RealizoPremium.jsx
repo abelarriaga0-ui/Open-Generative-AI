@@ -20,6 +20,24 @@ const markets=[['EC','Ecuador'],['CO','Colombia'],['MX','México'],['PE','Perú'
 const languages=[['es','Español'],['en','English'],['pt','Português'],['fr','Français'],['de','Deutsch'],['it','Italiano']];
 const previews={ugc:{icon:'🎙️',label:'UGC'},problem:{icon:'⚡',label:'Problema-solución'},premium:{icon:'🎬',label:'Cinematográfico'},benefits:{icon:'✨',label:'Beneficios'},sensory:{icon:'🌙',label:'Sensorial'},demo:{icon:'🧴',label:'Demostración'}};
 const visualFor=c=>previews[String(c.angle||'').toLowerCase().split(/[ :/]/)[0]]||(/ugc/i.test(c.name||'')?previews.ugc:previews.benefits);
+// A familiar provider → version → creation-mode selector, backed by the exact
+// same server-validated endpoint catalog. No extra paid AI calls on selection.
+const preferredVideoModel=options=>{
+ const candidates=options.filter(m=>m.family_id==='seedance-2.5');
+ const pool=candidates.length?candidates:options;
+ return pool.find(m=>m.image_role==='product_reference')
+   ||pool.find(m=>m.image_role==='start_frame')||pool[0]||null;
+};
+const preferredDuration=(model,previous)=>{
+ if(model?.durations?.includes(Number(previous)))return Number(previous);
+ return model?.durations?.includes(8)?8:model?.durations?.[0]??'';
+};
+const videoModes={
+ product_reference:['🖼️','Imagen de referencia','Crea escenas nuevas conservando el aspecto del producto'],
+ start_frame:['▶️','Animar fotografía','El video comienza desde la foto cargada'],
+ none:['✍️','Sin referencia','Este motor no garantiza conservar la fotografía']
+};
+
 const creativeStyles=[['auto','✨','IA decide'],['ugc','🤳','UGC'],['cinematic','🎥','Cine'],['premium','💎','Premium'],['demo','🧴','Demo']];
 const field='w-full rounded-2xl border border-[#E6DCE9] bg-white px-4 py-3 text-[#2C2341] outline-none focus:border-[#8B65D1]';
 const card='rounded-[24px] border border-[#E9DFE6] bg-white p-5 sm:p-7 shadow-sm';
@@ -44,6 +62,13 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
    .then(r=>r.ok?r.json():Promise.reject()).then(async v=>{
      if(!active)return;
      setConfig(v);
+     // Choose Seedance 2.5 as the starting engine; users can change freely
+     // before committing the single paid investigation.
+     const recommended=preferredVideoModel(v.video_options||[]);
+     if(recommended)setProduct(prev=>prev.video_model_id?prev:{
+      ...prev,video_model_id:recommended.id,
+      video_duration_seconds:preferredDuration(recommended,prev.video_duration_seconds),
+     });
      // Fresh creation is the default. Only restore a previous investigation
      // after the owner explicitly selects it from "Mis videos".
      if(initialProjectId){
@@ -158,8 +183,29 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
  };
  const findings=project?.findings||{};
  const concepts=project?.concepts||[];
- const selectedModel=(config?.video_options||[]).find(m=>m.id===product.video_model_id);
+ const videoOptions=config?.video_options||[];
+ const selectedModel=videoOptions.find(m=>m.id===product.video_model_id);
  const availableDurations=selectedModel?.durations||[];
+ const selectedProvider=selectedModel?.provider||'';
+ const selectedFamily=selectedModel?.family_id||'';
+ const providerOptions=Array.from(new Map(videoOptions.map(m=>[
+   m.provider,{id:m.provider,name:m.provider_name||m.provider}
+ ])).values()).sort((a,b)=>a.name.localeCompare(b.name,'es'));
+ const providerModels=videoOptions.filter(m=>m.provider===selectedProvider);
+ const familyOptions=Array.from(new Map(providerModels.map(m=>[
+   m.family_id,{id:m.family_id,name:m.family}
+ ])).values()).sort((a,b)=>b.name.localeCompare(a.name,'es',{numeric:true}));
+ const familyModels=providerModels.filter(m=>m.family_id===selectedFamily);
+ const availableModes=Object.keys(videoModes).filter(role=>familyModels.some(m=>m.image_role===role));
+ const variantsForMode=familyModels.filter(m=>m.image_role===selectedModel?.image_role);
+ const chooseVideoModel=next=>{
+   if(!next)return;
+   setProduct(prev=>({
+    ...prev,video_model_id:next.id,
+    video_duration_seconds:preferredDuration(next,prev.video_duration_seconds),
+   }));
+   keyRef.current=null;
+ };
  const ready=concepts.length===3 && ['ready','needs_review','approved'].includes(project?.status);
  return <div className="max-w-[1160px] mx-auto space-y-5">
   <div className="rounded-[25px] bg-gradient-to-r from-[#38244E] to-[#6D47AE] p-6 sm:p-8 text-white">
@@ -219,26 +265,65 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
     <div className="rounded-2xl border border-[#D8C5EF] bg-[#F9F5FF] p-4 space-y-3">
      <p className="text-sm font-extrabold">3. Configura el video antes de investigar</p>
      <p className="text-xs text-[#765E90]">Elegir modelo y duración es gratuito. Los tres conceptos se escribirán una sola vez para esta configuración.</p>
-     <label className="block text-sm font-bold">Modelo de generación *
-      <select className={field+' mt-2'} value={product.video_model_id} onChange={e=>{
-       const next=(config?.video_options||[]).find(m=>m.id===e.target.value);
-       setProduct(p=>({...p,video_model_id:e.target.value,
-        video_duration_seconds:next?.durations?.[0]??''}));keyRef.current=null;
-      }}>
-       <option value="">Escoge el motor de video</option>
-       {(config?.video_options||[]).map(model=><option key={model.id} value={model.id}>
-        {model.family} · {model.name} ({model.image_role==='product_reference'?'Referencia':model.image_role==='start_frame'?'Animar foto':'Solo texto'})
-       </option>)}
-      </select>
-     </label>
+
+     <div className="grid sm:grid-cols-2 gap-3">
+      <label className="block text-sm font-bold">Proveedor
+       <select className={field+' mt-2'} value={selectedProvider}
+        onChange={e=>chooseVideoModel(preferredVideoModel(
+         videoOptions.filter(m=>m.provider===e.target.value)))}>
+        {providerOptions.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}
+       </select>
+      </label>
+      <label className="block text-sm font-bold">Modelo y versión
+       <select className={field+' mt-2'} value={selectedFamily}
+        onChange={e=>chooseVideoModel(preferredVideoModel(
+         providerModels.filter(m=>m.family_id===e.target.value)))}>
+        {familyOptions.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}
+       </select>
+      </label>
+     </div>
+     {!!availableModes.length&&<div className="space-y-2">
+      <p className="text-sm font-bold">¿Cómo quieres crear el video?</p>
+      <div className="grid sm:grid-cols-3 gap-2">
+       {availableModes.map(mode=>{
+        const [emoji,label,description]=videoModes[mode];
+        return <button key={mode} type="button" onClick={()=>chooseVideoModel(preferredVideoModel(
+          familyModels.filter(m=>m.image_role===mode)))}
+          aria-pressed={selectedModel?.image_role===mode}
+          className={'rounded-xl border-2 p-3 text-left transition '+(
+           selectedModel?.image_role===mode
+            ?'border-[#7B4FC9] bg-white shadow-sm':'border-[#E2D5EC] bg-white/50 hover:bg-white')}>
+          <span className="text-lg" aria-hidden="true">{emoji}</span>
+          <p className="text-xs font-bold mt-1">{label}</p>
+          <p className="text-[11px] leading-4 text-[#806F91] mt-1">{description}</p>
+         </button>;
+       })}
+      </div>
+     </div>}
+     {variantsForMode.length>1&&<details className="rounded-xl border border-[#E4D8ED] bg-white p-3">
+      <summary className="text-xs font-bold text-[#6B4C94] cursor-pointer">
+       Opciones avanzadas del motor · {variantsForMode.length} variantes
+      </summary>
+      <label className="block text-xs font-bold mt-3">Variante específica
+       <select className={field+' mt-2 text-sm'} value={product.video_model_id}
+        onChange={e=>chooseVideoModel(variantsForMode.find(m=>m.id===e.target.value))}>
+        {variantsForMode.map(model=><option key={model.id} value={model.id}>
+         {model.variant_label||model.name}
+        </option>)}
+       </select>
+      </label>
+     </details>}
      {selectedModel&&<>
-      <label className="block text-sm font-bold">Duración compatible *
+      <label className="block text-sm font-bold">Duración disponible
        <select className={field+' mt-2'} value={product.video_duration_seconds}
         onChange={e=>change('video_duration_seconds',Number(e.target.value))}>
         {availableDurations.map(n=><option key={n} value={n}>{n} segundos</option>)}
        </select>
       </label>
-      <p className="text-xs text-[#71588B]">{selectedModel.note}</p>
+      <p className="text-xs text-[#71588B]">
+       Seleccionado: <strong>{selectedModel.family}</strong> · {videoModes[selectedModel.image_role]?.[1]||selectedModel.name} · {product.video_duration_seconds} s.
+       {' '}{selectedModel.note}
+      </p>
      </>}
     </div>
     <label className="block text-sm font-bold">Público objetivo (opcional)
