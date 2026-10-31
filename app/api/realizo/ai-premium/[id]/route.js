@@ -1,6 +1,6 @@
 import {getWalletEnvironment,requireWalletUser,jsonError} from '@/lib/wallet/server';
 import {
-  premiumBetaOwner,readOpenAIResearch,parseResearchResult,safeResearchResponse,
+  premiumAccess,readOpenAIResearch,parseResearchResult,safeResearchResponse,
 } from '@/lib/realizo-creative/ai-premium';
 
 export const dynamic='force-dynamic';
@@ -17,7 +17,7 @@ export async function GET(request,{params}){
     .bind(id,user.id).first();
   if(!project)return Response.json({error:'not_found'},{status:404});
   if(project.status==='researching' && project.provider_response_id &&
-     await premiumBetaOwner(env,user)){
+     (await premiumAccess(env,user)).enabled){
     const last=new Date(project.updated_at.replace(' ','T')+'Z').getTime();
     // Rate limit server-to-OpenAI polling across many browser tabs.
     if(Number.isFinite(last)&&Date.now()-last>4500){
@@ -41,17 +41,27 @@ export async function GET(request,{params}){
             research_limitations:report.research_limitations,
             recommended_index:report.recommended_index,
           }),JSON.stringify(report.concepts),JSON.stringify(sources),id,user.id,'researching').run();
+          const used=(response.output||[]).filter(o=>o.type==='web_search_call').length;
+          const input=Number(response.usage?.input_tokens||0),output=Number(response.usage?.output_tokens||0);
           await db.prepare(
             'INSERT OR IGNORE INTO realizo_ai_usage (project_id,user_id,model,input_tokens,output_tokens,web_calls) VALUES (?,?,?,?,?,?)'
           ).bind(id,user.id,project.research_model||env.OPENAI_PREMIUM_MODEL,
-            Number(response.usage?.input_tokens||0),
-            Number(response.usage?.output_tokens||0),
-            (response.output||[]).filter(o=>o.type==='web_search_call').length
-          ).run();
+            input,output,used).run();
+          // Capture exactly once only when valid research and 3 concepts have
+          // been persisted; Sandbox-sponsored work has no order at all.
+          if(project.billing_type==='paid'){
+            await db.prepare(
+              "UPDATE realizo_ai_premium_orders SET status='captured',updated_at=datetime('now') WHERE project_id=? AND user_id=? AND status='reserved'"
+            ).bind(id,user.id).run();
+          }
         }else if(['failed','cancelled','incomplete'].includes(response.status)){
           await db.prepare(
             "UPDATE realizo_ai_projects SET status='failed',error_code='research_failed',updated_at=datetime('now') WHERE id=? AND user_id=? AND status='researching'"
           ).bind(id,user.id).run();
+          if(project.billing_type==='paid')
+            await db.prepare(
+              "UPDATE realizo_ai_premium_orders SET status='released',updated_at=datetime('now') WHERE project_id=? AND user_id=? AND status='reserved'"
+            ).bind(id,user.id).run();
         }
       }catch{
         // Keep an ambiguous provider response for manual reconciliation.
