@@ -39,10 +39,13 @@ export default function RealizoStudio({accountId}){
  const [pilotPrice,setPilotPrice]=useState(null);
  const [jobs,setJobs]=useState([]);
  const [jobsLoading,setJobsLoading]=useState(false);
+ const [premiumProjects,setPremiumProjects]=useState([]);
  const [page,setPage]=useState('create');
  const [brief,setBrief]=useState(null);
  const [editorOpen,setEditorOpen]=useState(false);
  const [creatorMode,setCreatorMode]=useState('automatic');
+ const [resumeProjectId,setResumeProjectId]=useState(null);
+ const [createKey,setCreateKey]=useState(0);
  const [sidebar,setSidebar]=useState(false);
  const uploadAsset=useCallback(async(file)=>{
     const compressed=await optimizeImage(file);
@@ -62,11 +65,19 @@ export default function RealizoStudio({accountId}){
  const onWalletGenerate=useCallback(params=>generateWithRealizoWallet(params),[]);
  useEffect(()=>{
    if(page!=='videos')return;
-   let cancelled=false;setJobsLoading(true);
-   fetch('/api/realizo/jobs',{credentials:'same-origin',cache:'no-store'})
-    .then(r=>r.ok?r.json():Promise.reject(new Error('No se pudo cargar el historial')))
-    .then(r=>{if(!cancelled)setJobs(r.jobs||[])}).catch(()=>{if(!cancelled)setJobs([])})
-    .finally(()=>{if(!cancelled)setJobsLoading(false)});
+   let cancelled=false;
+   setJobsLoading(true);
+   // Videos generated and Premium research projects have separate histories.
+   Promise.allSettled([
+     fetch('/api/realizo/jobs',{credentials:'same-origin',cache:'no-store'})
+       .then(r=>r.ok?r.json():Promise.reject(new Error('video_history_unavailable'))),
+     fetch('/api/realizo/ai-premium',{credentials:'same-origin',cache:'no-store'})
+       .then(r=>r.ok?r.json():Promise.reject(new Error('premium_history_unavailable')))
+   ]).then(([videos,projects])=>{
+     if(cancelled)return;
+     setJobs(videos.status==='fulfilled'?(videos.value.jobs||[]):[]);
+     setPremiumProjects(projects.status==='fulfilled'?(projects.value.projects||[]):[]);
+   }).finally(()=>{if(!cancelled)setJobsLoading(false)});
    return ()=>{cancelled=true};
  },[page]);
  async function exit(){
@@ -74,6 +85,26 @@ export default function RealizoStudio({accountId}){
    finally{window.location.assign('/login');}
  }
  function openEditor(){setEditorOpen(true);setPage('create');setSidebar(false)}
+ function startNewVideo(){
+   setPage('create');setEditorOpen(false);setBrief(null);
+   setCreatorMode('automatic');setResumeProjectId(null);
+   setCreateKey(current=>current+1);setSidebar(false);
+ }
+ function newPremiumProject(){
+   setBrief(null);setEditorOpen(false);setResumeProjectId(null);
+   setCreateKey(current=>current+1);setCreatorMode('premium');setPage('create');
+ }
+ function reopenPremiumProject(projectId){
+   if(!/^[a-f0-9-]{36}$/i.test(projectId))return;
+   setBrief(null);setEditorOpen(false);setResumeProjectId(projectId);
+   setCreateKey(current=>current+1);setCreatorMode('premium');
+   setPage('create');setSidebar(false);
+ }
+ function chooseCreatorMode(mode){
+   setBrief(null);setResumeProjectId(null);setCreateKey(current=>current+1);
+   setCreatorMode(mode);
+   if(mode==='manual')openEditor();
+ }
  const nav=(id,label,icon,action)=>(
    <button key={id} type="button" onClick={()=>{setPage(id);setSidebar(false);if(action)action();}}
      className={navBase+' '+(page===id?'bg-[#EDE2FB] text-[#6542AB]':'text-[#756782] hover:bg-[#F7F0F7]')}>
@@ -98,7 +129,7 @@ export default function RealizoStudio({accountId}){
     <aside className={(sidebar?'block':'hidden')+' lg:block w-full lg:w-[255px] shrink-0 border-r border-[#E9DFDD] bg-[#FFFCF9] p-5 lg:p-6 space-y-4'}>
       <div className="hidden lg:block py-3 mb-5"><p className="text-[11px] tracking-[.18em] uppercase text-[#A58CB9] font-bold mb-2">Mi espacio</p><p className="text-lg font-extrabold leading-snug">Crea algo increíble<span className="text-[#F0928B]">.</span></p></div>
       <nav aria-label="Menú de Realizo" className="space-y-2">
-       {nav('create','Crear video','video')}
+       {nav('create','Crear video','video',startNewVideo)}
        {nav('videos','Mis videos','folder')}
        <Link href="/wallet" className={navBase+' text-[#756782] hover:bg-[#F7F0F7]'}><Icon name="wallet"/>Mis créditos<Icon name="chevron" size={14}/></Link>
       </nav>
@@ -118,7 +149,13 @@ export default function RealizoStudio({accountId}){
         <div className="flex flex-wrap items-center justify-between gap-5 mt-2">
           <div><h1 className="text-[33px] sm:text-[42px] tracking-[-.045em] font-extrabold leading-tight">{editorOpen?'Editor de video':'Convierte tu idea en video'}<span className="text-[#EB8A87]">.</span></h1>
           <p className="mt-2 text-[#8E8197] text-sm">{editorOpen?'Elige el modelo y configura tu generación.':'Dale vida a tu producto en unos pocos pasos.'}</p></div>
-          <button type="button" onClick={()=>setEditorOpen(o=>!o)} className="inline-flex gap-2 items-center text-[#6845AB] font-semibold text-sm bg-white rounded-full border border-[#E5D8E4] px-5 py-3 hover:bg-[#F1E9FC]">
+          <button type="button" onClick={()=>{
+            if(editorOpen && brief?.project_id){
+              setResumeProjectId(brief.project_id);setCreatorMode('premium');
+              setCreateKey(current=>current+1);
+            }
+            setEditorOpen(open=>!open);
+          }} className="inline-flex gap-2 items-center text-[#6845AB] font-semibold text-sm bg-white rounded-full border border-[#E5D8E4] px-5 py-3 hover:bg-[#F1E9FC]">
             <Icon name={editorOpen?'arrow':'sliders'} size={18}/>{editorOpen?'Volver al producto':'Editor avanzado'}
           </button>
         </div>
@@ -131,7 +168,7 @@ export default function RealizoStudio({accountId}){
             ['manual','Manual · tu prompt'],
             ['premium','✦ La IA decide todo · Premium']
           ].map(([id,label])=><button key={id} type="button"
-            onClick={()=>{setCreatorMode(id);if(id==='manual'){setBrief(null);openEditor();}}}
+            onClick={()=>chooseCreatorMode(id)}
             aria-pressed={creatorMode===id}
             className={'rounded-2xl px-5 py-3 text-sm font-bold transition '+
               (creatorMode===id?'bg-[#6E4BD2] text-white':'bg-[#F8F4FB] text-[#6B5092] hover:bg-[#EDE1FA]')}>
@@ -139,14 +176,22 @@ export default function RealizoStudio({accountId}){
           </button>)}
         </div>
         {creatorMode==='premium'?
-          <RealizoPremium onPrepare={setBrief} onOpenAdvanced={openEditor}
-            onUseAutomatic={()=>setCreatorMode('automatic')}/>:
+          <RealizoPremium key={'premium-'+createKey+'-'+(resumeProjectId||'new')}
+            initialProjectId={resumeProjectId}
+            onPrepare={setBrief} onOpenAdvanced={openEditor} onCreateNew={newPremiumProject}
+            onUseAutomatic={()=>chooseCreatorMode('automatic')}/>:
           <RealizoCreator accountId={accountId} onPrepare={setBrief} onOpenAdvanced={openEditor}/>}
        </section>:
        <section className="max-w-[1550px] mx-auto space-y-4">
         {brief&&<div className="rounded-2xl bg-[#E9DDFB] px-5 py-3 flex flex-wrap items-center justify-between gap-3">
           <span className="text-[13px] text-[#624496] font-semibold">✓ Producto y ángulo de venta aplicados al editor</span>
-          <button type="button" onClick={()=>setEditorOpen(false)} className="text-[#6E4BD2] text-[13px] font-bold hover:underline">Editar concepto</button>
+          <button type="button" onClick={()=>{
+            if(brief?.project_id){
+              setResumeProjectId(brief.project_id);setCreatorMode('premium');
+              setCreateKey(current=>current+1);
+            }
+            setEditorOpen(false);
+          }} className="text-[#6E4BD2] text-[13px] font-bold hover:underline">Editar concepto</button>
         </div>}
         <div className="realizo-native-video rounded-[26px] overflow-hidden border border-[#E6DBE4] bg-[#FAF7F4] shadow-[0_16px_44px_rgba(51,38,83,.065)] h-[min(790px,calc(100vh-190px))] min-h-[605px]">
           <VideoStudio locale="en" apiKey={null} persistenceScope={accountId} preparedBrief={brief}
@@ -188,9 +233,26 @@ export default function RealizoStudio({accountId}){
            <div className="inline-grid place-items-center w-16 h-16 bg-[#F0E6FB] rounded-2xl text-[#8057BC]"><Icon name="folder" size={29}/></div>
            <h2 className="text-[23px] font-bold mt-5">Tu biblioteca empieza aquí</h2>
            <p className="text-sm text-[#8E8294] mt-2">Tus videos aparecerán cuando completes una generación.</p>
-           <button onClick={()=>setPage('create')} className="inline-flex gap-2 items-center mt-6 rounded-2xl bg-[#6E4BD2] text-white font-bold px-5 py-3"><Icon name="video"/>Crear un video</button>
+           <button onClick={startNewVideo} className="inline-flex gap-2 items-center mt-6 rounded-2xl bg-[#6E4BD2] text-white font-bold px-5 py-3"><Icon name="video"/>Crear un video</button>
           </div>}
        </div>
+       {premiumProjects.length>0&&<section className="rounded-[25px] bg-white border border-[#E8DEDA] p-6 sm:p-8 mt-6">
+        <h2 className="text-xl font-extrabold">Proyectos Premium guardados</h2>
+        <p className="text-sm text-[#8A7C90] mt-1 mb-4">Investigaciones y guiones anteriores, separados de los videos. Solo se reabren cuando tú lo decides.</p>
+        <div className="grid sm:grid-cols-2 gap-3">
+         {premiumProjects.map(item=><article key={item.id} className="rounded-2xl border border-[#EBE1EB] bg-[#FAF8FC] p-4 space-y-2">
+           <p className="font-bold text-sm">{item.product_name||'Producto sin nombre'}</p>
+           <p className="text-xs text-[#8A7C90]">{item.created_at&&new Date(item.created_at.replace(' ','T')+'Z').toLocaleDateString('es-EC')} · {({
+             approved:'Concepto aprobado',ready:'Listo para revisar',needs_review:'Revisión disponible',
+             researching:'Investigación en curso',created:'Preparando',failed:'No completado'
+           })[item.status]||item.status}</p>
+           <button type="button" onClick={()=>reopenPremiumProject(item.id)}
+             className="text-[#6E4BD2] font-bold text-sm underline">
+             {['created','researching'].includes(item.status)?'Continuar investigación':'Abrir proyecto'}
+           </button>
+         </article>)}
+        </div>
+       </section>}
       </section>}
     </div>
    </div>
