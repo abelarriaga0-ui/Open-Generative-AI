@@ -176,6 +176,19 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
   }catch(e){setError(e.message)}
   finally{setBusy(false)}
  };
+ const recover=async()=>{
+  if(!project?.recovery_available || busy)return;
+  setBusy(true);setError('');
+  try{
+   const r=await fetch('/api/realizo/ai-premium/'+encodeURIComponent(project.id),{
+    method:'POST',credentials:'same-origin',
+   });
+   const json=await r.json().catch(()=>({}));
+   if(!r.ok)throw Error('No se puede recuperar la respuesta anterior: '+(json.error||r.status));
+   setProject(json);
+  }catch(e){setError(e.message)}
+  finally{setBusy(false)}
+ };
  const approve=async()=>{
   setBusy(true);setError('');
   try{
@@ -413,7 +426,12 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
        project.research_payment_status==='reserved'?
        'El cobro está en revisión; no se volverá a intentar automáticamente.':
        'No se capturó ningún cobro de esta investigación.'}</p>
-      <p>Puedes crear un proyecto nuevo después de revisar la descripción o la fotografía del producto.</p>
+      {project.recovery_available&&<button type="button" onClick={recover} disabled={busy}
+       className="mt-2 rounded-xl border border-[#CEB7DB] bg-white px-4 py-2 text-xs font-bold text-[#7547B1] disabled:opacity-50">
+       Recuperar respuesta existente · sin nueva consulta IA
+      </button>}
+      <p>{project.recovery_available?'La recuperación reanaliza la respuesta guardada y no inicia otra investigación.':
+        'Puedes crear un proyecto nuevo después de revisar la descripción o la fotografía del producto.'}</p>
      </div>}
     {project.status==='needs_review'&&!ready&&<p className="text-sm text-[#9A6257]">La investigación necesita revisión técnica antes de volver a intentarse. No se volverá a cobrar automáticamente.</p>}
     {ready&&project.findings?.research_quality?.needsReview&&
