@@ -40,7 +40,7 @@ test('subtitles are browser-only, offered after generation, preserve the origina
  assert.match(renderer,/new MediaRecorder/);
  assert.match(editor,/Agregar subtítulos/);
  assert.match(editor,/Generar subtítulos gratis/);
- assert.match(editor,/El video original/); // adjust match below if Spanish differs
+ assert.match(editor,/video original se conserva/);
  assert.match(studio,/Agregar subtítulos · Gratis/);
  assert.match(studio,/preparedBrief\?\.spoken_script/);
  assert.doesNotMatch(editor,/\/api\/wallet|OPENAI_API_KEY|MUAPI_API_KEY|purchase|price_cents/);
