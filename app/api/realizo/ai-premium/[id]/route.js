@@ -1,4 +1,5 @@
 import {getWalletEnvironment,requireWalletUser,jsonError} from '@/lib/wallet/server';
+import {enforceSameOrigin} from '@/lib/wallet/access-auth';
 import {
   premiumAccess,premiumSandboxPaidOwner,readOpenAIResearch,parseResearchResult,safeResearchResponse,
 } from '@/lib/realizo-creative/ai-premium';
@@ -28,9 +29,9 @@ export async function GET(request,{params}){
       try{
         const response=await readOpenAIResearch(env,project.provider_response_id);
         if(response.status==='completed'){
-          const {report,sources}=parseResearchResult(response,{creativeStyle:project.creative_style||'auto',duration:project.video_duration_seconds||8,requireGrounding:true});
+          const {report,sources,quality}=parseResearchResult(response,{creativeStyle:project.creative_style||'auto',duration:project.video_duration_seconds||8,requireGrounding:true});
           // Mark conflicts as needs_review, but give customer all 3 concepts.
-          const status=report.description_conflicts.length?'needs_review':'ready';
+          const status=quality.needsReview||report.description_conflicts.length?'needs_review':'ready';
           await db.prepare(
             'UPDATE realizo_ai_projects SET status=?,findings_json=?,concepts_json=?,sources_json=?,error_code=NULL,updated_at=datetime("now") WHERE id=? AND user_id=? AND status=?'
           ).bind(status,JSON.stringify({
@@ -46,6 +47,7 @@ export async function GET(request,{params}){
             research_evidence:report.evidence,
             angle_analysis:report.angle_analysis,
             selected_sales_angle:report.selected_sales_angle,
+            research_quality:quality,
           }),JSON.stringify(report.concepts),JSON.stringify(sources),id,user.id,'researching').run();
           const used=(response.output||[]).filter(o=>o.type==='web_search_call').length;
           const input=Number(response.usage?.input_tokens||0),output=Number(response.usage?.output_tokens||0);
@@ -58,17 +60,20 @@ export async function GET(request,{params}){
             'INSERT OR IGNORE INTO realizo_ai_usage (project_id,user_id,model,input_tokens,output_tokens,web_calls,cached_input_tokens,estimated_cost_micro_usd,cost_status,cost_pricing_snapshot) VALUES (?,?,?,?,?,?,?,?,?,?)'
           ).bind(id,user.id,project.research_model||env.OPENAI_PREMIUM_MODEL,
             input,output,used,cached,cost.microUsd,cost.status,cost.pricingSnapshot).run();
-          // Capture exactly once only when valid research and 3 concepts have
-          // been persisted; Sandbox-sponsored work has no order at all.
+          // A sourced, complete deliverable can be charged. Partial
+          // investigations are available for honest review, but FREE.
+          // Never run another paid OpenAI request just to improve quality.
           if(project.billing_type==='paid'){
             await db.prepare(
-              "UPDATE realizo_ai_premium_orders SET status='captured',updated_at=datetime('now') WHERE project_id=? AND user_id=? AND status='reserved'"
+              quality.billable
+                ?"UPDATE realizo_ai_premium_orders SET status='captured',updated_at=datetime('now') WHERE project_id=? AND user_id=? AND status='reserved'"
+                :"UPDATE realizo_ai_premium_orders SET status='released',updated_at=datetime('now') WHERE project_id=? AND user_id=? AND status='reserved'"
             ).bind(id,user.id).run();
           }
         }else if(['failed','cancelled','incomplete'].includes(response.status)){
           await db.prepare(
-            "UPDATE realizo_ai_projects SET status='failed',error_code='research_failed',updated_at=datetime('now') WHERE id=? AND user_id=? AND status='researching'"
-          ).bind(id,user.id).run();
+            "UPDATE realizo_ai_projects SET status='failed',error_code=?,updated_at=datetime('now') WHERE id=? AND user_id=? AND status='researching'"
+          ).bind(response.status==='incomplete'?'research_output_incomplete':'research_provider_failed',id,user.id).run();
           if(project.billing_type==='paid')
             await db.prepare(
               "UPDATE realizo_ai_premium_orders SET status='released',updated_at=datetime('now') WHERE project_id=? AND user_id=? AND status='reserved'"
@@ -78,10 +83,10 @@ export async function GET(request,{params}){
         // A completed but structurally unusable response is a failed
         // deliverable: refund it, even though the provider used tokens.
         // Transient network/database failures stay pending for reconciliation.
-        if(e?.message==='research_invalid_content' || e instanceof SyntaxError){
+        if(['research_invalid_content','research_web_not_performed'].includes(e?.message) || e instanceof SyntaxError){
           await db.prepare(
-            "UPDATE realizo_ai_projects SET status='failed',error_code='unusable_research',updated_at=datetime('now') WHERE id=? AND user_id=? AND status='researching'"
-          ).bind(id,user.id).run();
+            "UPDATE realizo_ai_projects SET status='failed',error_code=?,updated_at=datetime('now') WHERE id=? AND user_id=? AND status='researching'"
+          ).bind(e?.message==='research_web_not_performed'?'research_web_not_performed':project.error_code==='recovery_existing_response'?'unusable_research_recovered':'unusable_research',id,user.id).run();
           if(project.billing_type==='paid')
             await db.prepare(
               "UPDATE realizo_ai_premium_orders SET status='released',updated_at=datetime('now') WHERE project_id=? AND user_id=? AND status='reserved'"
@@ -93,6 +98,13 @@ export async function GET(request,{params}){
     }
   }
   const response=safeResearchResponse(project);
+  // Customer-visible payment state is based on the order ledger, not a guess.
+  if(project.billing_type==='paid'){
+    const order=await db.prepare(
+      'SELECT status FROM realizo_ai_premium_orders WHERE project_id=? AND user_id=? LIMIT 1'
+    ).bind(id,user.id).first();
+    response.research_payment_status=order?.status||null;
+  }
   // Provider cost is private business accounting, not an exact charge to the customer.
   if(await premiumSandboxPaidOwner(env,user)){
    const audit=await db.prepare(
@@ -101,5 +113,27 @@ export async function GET(request,{params}){
    if(audit)response.owner_cost_audit={...audit,disclaimer:'Estimación por tarifas publicadas; conciliar contra costos facturados de OpenAI.'};
   }
   return Response.json(response,{headers});
+ }catch(e){return jsonError(e)}
+}
+// Recover at most once from a previously completed response without another
+// OpenAI POST, without video generation and without capturing a released order.
+// No arbitrary response IDs, no cross-user access and no second billable query.
+export async function POST(request,{params}){
+ if(!enforceSameOrigin(request))return Response.json({error:'invalid_origin'},{status:403,headers});
+ try{
+  const env=await getWalletEnvironment();
+  const user=await requireWalletUser(request,env);
+  if(!user)return Response.json({error:'not_authenticated'},{status:401,headers});
+  const {id}=await params;
+  if(!/^[a-f0-9-]{36}$/i.test(id||''))return Response.json({error:'not_found'},{status:404,headers});
+  const db=env.WALLETS_DB;
+  const changed=await db.prepare(
+   "UPDATE realizo_ai_projects SET status='researching',error_code='recovery_existing_response',updated_at=datetime('now','-1 minute') WHERE id=? AND user_id=? AND status='failed' AND error_code='unusable_research' AND provider_response_id IS NOT NULL"
+  ).bind(id,user.id).run();
+  if(Number(changed.meta?.changes||0)!==1)
+   return Response.json({error:'recovery_not_available'},{status:409,headers});
+  const project=await db.prepare('SELECT * FROM realizo_ai_projects WHERE id=? AND user_id=?')
+   .bind(id,user.id).first();
+  return Response.json(safeResearchResponse(project),{headers});
  }catch(e){return jsonError(e)}
 }

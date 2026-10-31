@@ -35,7 +35,7 @@ export async function POST(request,{params}){
   const correction=String(body.correction||'').trim().slice(0,700);
   // One concise seller responsibility acknowledgement, not a spelling
   // correction form. Material photo/fact discrepancies remain visible.
-  if((conflicts.length||claimsToVerify.length) && body.acknowledged_responsibility!==true)
+  if((conflicts.length||claimsToVerify.length||findings.research_quality?.needsReview) && body.acknowledged_responsibility!==true)
     return Response.json({error:'review_product_responsibility'},{status:422});
   const userPrompt=String(body.prompt||concept.video_prompt).trim();
   if(userPrompt.length<60||userPrompt.length>5500)
