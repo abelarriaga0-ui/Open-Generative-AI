@@ -2194,6 +2194,7 @@ export default function VideoStudio({
         cta:preparedBrief.overlay_cta,
         market:preparedBrief.market||'EC',
         modelId:selectedModel,
+        workflowId:selectedWorkflowId,
         duration:selectedDuration,
         style:preparedBrief.creative_style,
         shotPreference:preparedBrief.shot_preference,
