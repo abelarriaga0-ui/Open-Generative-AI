@@ -5,8 +5,8 @@ import {optimizeImage} from '@/lib/realizo-creative/optimize-image';
 const angles=[
  ['auto','Que la IA investigue y elija'],['problem','Problema → solución'],
  ['premium','Premium / lujo'],['benefits','Beneficio directo'],
- ['sensory','Sensorial / emocional'],['demo','Demostración'],
- ['lifestyle','Lifestyle'],['ugc','UGC actuado'],['offer','Oferta confirmada']
+ ['sensory','Sensorial / emocional'],
+ ['lifestyle','Estilo de vida'],['offer','Oferta confirmada']
 ];
 const markets=[['EC','Ecuador'],['CO','Colombia'],['MX','México'],['PE','Perú'],
  ['CL','Chile'],['GT','Guatemala'],['US','Estados Unidos'],['ES','España'],
