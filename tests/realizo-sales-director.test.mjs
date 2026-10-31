@@ -22,6 +22,9 @@ test('Seedance 2.5 references are distinct from first-frame animation',()=>{
  assert.match(plan.prompt,/SPOKEN SCRIPT/);
  assert.match(plan.prompt,/CTA/);
  assert.match(plan.prompt,/SHOT 1/);
+ assert.match(plan.prompt,/APPROVED CREATIVE DIRECTION/);
+ assert.match(plan.prompt,/RESEARCHED SHOT IDEAS/);
+ assert.match(plan.prompt,/Adult speaks to camera with product in bathroom/);
  assert.equal(plan.shot_count,3);
  assert.equal(plan.media_role,'reference_only');
  assert.equal(plan.warning,null);
