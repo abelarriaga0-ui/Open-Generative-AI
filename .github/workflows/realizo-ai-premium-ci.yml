@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: '62c8f138a3f41db4fe60e1600e5a3bb442c18b5b'
+          ref: '43ad2d4eb2538dccc1e57a7df4bdd1261092130c'
           persist-credentials: false
           submodules: recursive
       - uses: actions/setup-node@v4
