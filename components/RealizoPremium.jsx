@@ -286,6 +286,14 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
     {ready&&<>
       <p className="text-sm font-semibold text-[#6B4B8C] rounded-xl bg-[#F3EBFA] p-3">Configuración investigada: {project.video_model_id} · {project.video_duration_seconds||8} segundos. No se vuelve a consultar la IA al elegir concepto.</p>
 
+      {project.owner_cost_audit&&<div className="rounded-xl border border-[#C9DAE5] bg-[#F1F7FD] p-4 text-xs text-[#496079] space-y-1">
+       <p className="font-bold">Auditoría privada · costo de OpenAI</p>
+       <p>{project.owner_cost_audit.cost_status==='estimated'&&Number.isInteger(project.owner_cost_audit.estimated_cost_micro_usd)?
+         'Estimación por esta investigación: USD '+(project.owner_cost_audit.estimated_cost_micro_usd/1_000_000).toFixed(6):
+         'Costo de proveedor no calculable con las tarifas disponibles.'}</p>
+       <p>{project.owner_cost_audit.input_tokens} tokens de entrada · {project.owner_cost_audit.output_tokens} de salida · {project.owner_cost_audit.web_calls} búsquedas.</p>
+       <p>Importe orientativo, NO factura final. Contrastar con el reporte de costos de OpenAI. El precio cobrado al cliente sigue siendo USD 0,49.</p>
+      </div>}
       <div className="rounded-2xl bg-[#F8F5F0] p-4 space-y-2">
        <p className="font-bold">Análisis comercial</p>
        <p className="text-sm text-[#6B5878]">
