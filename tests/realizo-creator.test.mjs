@@ -44,7 +44,7 @@ test('creative uploads are available only for authenticated Realizo native route
 });
 test('original editor accepts prepared image URLs and product brief',()=>{
   const editor=readFileSync('packages/studio/src/components/VideoStudio.jsx','utf8');
-  assert.match(editor,/preparedBrief/);assert.match(editor,/applyUserSelectedVariant\(variant, "i2v", family\)/);
+  assert.match(editor,/preparedBrief/);assert.match(editor,/applyUserSelectedVariant\(candidate,"i2v",family\)/);assert.match(editor,/referenceImages:images/);
   assert.match(editor,/setUploadedImageUrls\(briefImages/);
   assert.match(editor,/uploadAsset\(file\)/);
   const wrapper=readFileSync('components/RealizoStudio.jsx','utf8');
