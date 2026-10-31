@@ -63,9 +63,19 @@ export async function GET(request,{params}){
               "UPDATE realizo_ai_premium_orders SET status='released',updated_at=datetime('now') WHERE project_id=? AND user_id=? AND status='reserved'"
             ).bind(id,user.id).run();
         }
-      }catch{
-        // Keep an ambiguous provider response for manual reconciliation.
-        // Never charge or resend automatically.
+      }catch(e){
+        // A completed but structurally unusable response is a failed
+        // deliverable: refund it, even though the provider used tokens.
+        // Transient network/database failures stay pending for reconciliation.
+        if(e?.message==='research_invalid_content' || e instanceof SyntaxError){
+          await db.prepare(
+            "UPDATE realizo_ai_projects SET status='failed',error_code='unusable_research',updated_at=datetime('now') WHERE id=? AND user_id=? AND status='researching'"
+          ).bind(id,user.id).run();
+          if(project.billing_type==='paid')
+            await db.prepare(
+              "UPDATE realizo_ai_premium_orders SET status='released',updated_at=datetime('now') WHERE project_id=? AND user_id=? AND status='reserved'"
+            ).bind(id,user.id).run();
+        }
       }
       project=await db.prepare('SELECT * FROM realizo_ai_projects WHERE id=? AND user_id=?')
         .bind(id,user.id).first();
