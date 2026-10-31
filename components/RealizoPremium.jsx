@@ -20,6 +20,7 @@ const markets=[['EC','Ecuador'],['CO','Colombia'],['MX','México'],['PE','Perú'
 const languages=[['es','Español'],['en','English'],['pt','Português'],['fr','Français'],['de','Deutsch'],['it','Italiano']];
 const previews={ugc:{icon:'🎙️',label:'UGC'},problem:{icon:'⚡',label:'Problema-solución'},premium:{icon:'🎬',label:'Cinematográfico'},benefits:{icon:'✨',label:'Beneficios'},sensory:{icon:'🌙',label:'Sensorial'},demo:{icon:'🧴',label:'Demostración'}};
 const visualFor=c=>previews[String(c.angle||'').toLowerCase().split(/[ :/]/)[0]]||(/ugc/i.test(c.name||'')?previews.ugc:previews.benefits);
+const creativeStyles=[['auto','✨','IA decide'],['ugc','🤳','UGC'],['cinematic','🎥','Cine'],['premium','💎','Premium'],['demo','🧴','Demo']];
 const field='w-full rounded-2xl border border-[#E6DCE9] bg-white px-4 py-3 text-[#2C2341] outline-none focus:border-[#8B65D1]';
 const card='rounded-[24px] border border-[#E9DFE6] bg-white p-5 sm:p-7 shadow-sm';
 const fmt=status=>({
@@ -304,20 +305,21 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
           </ul>
          </details>
         </div>
-        <div className="grid sm:grid-cols-2 gap-3">
-         <label className="block text-sm font-bold">Estilo visual (opcional)
-          <select className={field+' mt-2'} value={style} onChange={e=>setStyle(e.target.value)}>
-           <option value="auto">La IA decide</option>
-           <option value="ugc">UGC hablando</option>
-           <option value="cinematic">Cinematográfico</option>
-           <option value="premium">Comercial premium</option>
-           <option value="demo">Demostración</option>
-          </select>
-         </label>
-         <label className="block text-sm font-bold">Número de tomas (opcional)
+        <div className="space-y-2">
+         <p className="text-sm font-bold">¿Cómo quieres que se vea el anuncio?</p>
+         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+          {creativeStyles.map(([id,icon,label])=><button type="button" key={id}
+            aria-pressed={style===id} onClick={()=>setStyle(id)}
+            className={'rounded-xl border-2 px-2 py-3 flex flex-col items-center justify-center gap-2 transition '+(style===id?
+             'border-[#7650C6] bg-[#F2EAFE]':'border-[#E7DEEC] bg-[#FCF9FE] hover:border-[#B9A0D8]')}>
+            <span className="text-3xl" aria-hidden="true">{icon}</span>
+            <span className="text-[11px] font-bold">{label}</span>
+          </button>)}
+         </div>
+         <label className="block text-xs font-bold">Tomas
           <select className={field+' mt-2'} value={shotPreference} onChange={e=>setShotPreference(e.target.value)}>
-           <option value="auto">La IA decide según duración</option>
-           <option value="single">Una toma continua</option>
+           <option value="auto">La IA decide</option>
+           <option value="single">Una toma</option>
            <option value="multi">Varias tomas</option>
           </select>
          </label>
@@ -326,7 +328,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
 
         <details className="rounded-xl border border-[#E7DCEF] p-4">
          <summary className="cursor-pointer text-sm font-bold">Editar prompt técnico (avanzado)</summary>
-         <p className="text-xs text-[#7C6C88] mt-2">El motor puede recibir instrucciones técnicas en inglés, pero el diálogo se generará en el idioma que seleccionaste.</p>
+         <p className="text-xs text-[#7C6C88] mt-2">El motor puede recibir instrucciones técnicas en inglés; el guion hablado se solicita en el idioma elegido. La voz nativa depende del modelo de video seleccionado.</p>
          <textarea value={editedPrompt} onChange={e=>setEditedPrompt(e.target.value)}
            className={field+' mt-3 min-h-[155px]'} maxLength={5500}/>
         </details>
