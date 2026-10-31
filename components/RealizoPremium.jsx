@@ -564,7 +564,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
         </details>
       </div>}
       <button type="button" onClick={approve}
-       disabled={busy||(style==='ugc'&&(spokenWords<speechMin||spokenWords>speechMax))}
+       disabled={busy}
         className="rounded-2xl bg-[#6D48CB] text-white font-bold py-3.5 px-6 disabled:opacity-50">
         {busy?'Guardando…':'Aprobar concepto y elegir modelo de video'}
       </button>
