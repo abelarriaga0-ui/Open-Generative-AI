@@ -10,7 +10,13 @@ const angles=[
 ];
 const markets=[['EC','Ecuador'],['CO','Colombia'],['MX','México'],['PE','Perú'],
  ['CL','Chile'],['GT','Guatemala'],['US','Estados Unidos'],['ES','España'],
- ['AR','Argentina'],['PA','Panamá'],['CR','Costa Rica']];
+ ['AR','Argentina'],['PA','Panamá'],['CR','Costa Rica'],
+ ['UY','Uruguay'],['PY','Paraguay'],['BO','Bolivia'],['VE','Venezuela'],
+ ['NI','Nicaragua'],['HN','Honduras'],['SV','El Salvador'],['DO','República Dominicana'],
+ ['PR','Puerto Rico'],['CU','Cuba'],['BR','Brasil'],['CA','Canadá'],
+ ['GB','Reino Unido'],['FR','Francia'],['DE','Alemania'],['IT','Italia'],
+ ['PT','Portugal'],['AU','Australia'],['JP','Japón'],['IN','India'],
+ ['AE','Emiratos Árabes Unidos']];
 const field='w-full rounded-2xl border border-[#E6DCE9] bg-white px-4 py-3 text-[#2C2341] outline-none focus:border-[#8B65D1]';
 const card='rounded-[24px] border border-[#E9DFE6] bg-white p-5 sm:p-7 shadow-sm';
 const fmt=status=>({
