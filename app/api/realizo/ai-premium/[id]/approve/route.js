@@ -35,26 +35,23 @@ export async function POST(request,{params}){
   const correction=String(body.correction||'').trim().slice(0,700);
   // One concise seller responsibility acknowledgement, not a spelling
   // correction form. Material photo/fact discrepancies remain visible.
-  if((conflicts.length||claimsToVerify.length||findings.research_quality?.needsReview) && body.acknowledged_responsibility!==true)
-    return Response.json({error:'review_product_responsibility'},{status:422});
+  // Facts not established by the research stay visible in the report and
+  // are not promoted to verified claims. No extra customer confirmation
+  // step is needed to proceed with a truthful creative proposal.
   const userPrompt=String(body.prompt||concept.video_prompt).trim();
-  if(userPrompt.length<60||userPrompt.length>5500)
+  if(userPrompt.length<10||userPrompt.length>5500)
     return Response.json({error:'invalid_prompt'},{status:400});
   const style=['auto','ugc','cinematic','premium','demo'].includes(project.creative_style)
     ?project.creative_style:'auto';
   // Legacy projects with 'auto' may retain the old review-time style selection.
   const finalStyle=style==='auto'&&['auto','ugc','cinematic','premium','demo'].includes(body.style)?body.style:style;
   const userSpeech=String(body.speech??concept.spoken_script??concept.script??'').trim();
-  if(userSpeech.length>650 || (finalStyle==='ugc' && userSpeech.length<12))
+  if(userSpeech.length>650)
     return Response.json({error:'invalid_spoken_script'},{status:400});
   const shotPreference=['auto','single','multi'].includes(body.shot_preference)?body.shot_preference:'auto';
   const directorConcept={...concept,video_prompt:userPrompt,spoken_script:userSpeech};
   const modelId=project.video_model_id||'seedance-2.5-omni-reference';
   const duration=Number(project.video_duration_seconds)||8;
-  const spokenWords=userSpeech.split(/\s+/).filter(Boolean).length;
-  if(finalStyle==='ugc' && (spokenWords<Math.max(5,Math.floor(duration*1.4)) ||
-     spokenWords>Math.floor(duration*2.4)))
-    return Response.json({error:'ugc_speech_timing_invalid'},{status:422});
   const workflowId=project.video_workflow_id||null;
   const director=buildCommercialDirectorPackage({
     concept:directorConcept,productName:normalizeProductCopy(project.product_name),

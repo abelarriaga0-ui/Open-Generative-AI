@@ -1,5 +1,4 @@
 import {getWalletEnvironment,requireWalletUser,jsonError} from '@/lib/wallet/server';
-import {enforceSameOrigin} from '@/lib/wallet/access-auth';
 import {
   premiumAccess,premiumSandboxPaidOwner,readOpenAIResearch,parseResearchResult,safeResearchResponse,
 } from '@/lib/realizo-creative/ai-premium';
@@ -19,6 +18,17 @@ export async function GET(request,{params}){
   let project=await db.prepare('SELECT * FROM realizo_ai_projects WHERE id=? AND user_id=?')
     .bind(id,user.id).first();
   if(!project)return Response.json({error:'not_found'},{status:404});
+  // A previous completed response can be re-read by its existing ID.
+  // Do this automatically once when opening an old failed project;
+  // the customer should not see a separate recovery action.
+  if(project.status==='failed' && project.error_code==='unusable_research' &&
+     project.provider_response_id){
+    await db.prepare(
+      "UPDATE realizo_ai_projects SET status='researching',error_code='recovery_existing_response',updated_at=datetime('now','-1 minute') WHERE id=? AND user_id=? AND status='failed' AND error_code='unusable_research' AND provider_response_id IS NOT NULL"
+    ).bind(id,user.id).run();
+    project=await db.prepare('SELECT * FROM realizo_ai_projects WHERE id=? AND user_id=?')
+      .bind(id,user.id).first();
+  }
   if(project.status==='researching' && project.provider_response_id &&
      (await premiumAccess(env,user)).enabled){
     const last=new Date(project.updated_at.replace(' ','T')+'Z').getTime();
@@ -31,7 +41,7 @@ export async function GET(request,{params}){
         if(response.status==='completed'){
           const {report,sources,quality}=parseResearchResult(response,{creativeStyle:project.creative_style||'auto',duration:project.video_duration_seconds||8,requireGrounding:true});
           // Mark conflicts as needs_review, but give customer all 3 concepts.
-          const status=quality.needsReview||report.description_conflicts.length?'needs_review':'ready';
+          const status='ready'; // Three researched concepts are available immediately; no extra approval screens.
           await db.prepare(
             'UPDATE realizo_ai_projects SET status=?,findings_json=?,concepts_json=?,sources_json=?,error_code=NULL,updated_at=datetime("now") WHERE id=? AND user_id=? AND status=?'
           ).bind(status,JSON.stringify({
@@ -83,10 +93,12 @@ export async function GET(request,{params}){
         // A completed but structurally unusable response is a failed
         // deliverable: refund it, even though the provider used tokens.
         // Transient network/database failures stay pending for reconciliation.
-        if(['research_invalid_content','research_web_not_performed'].includes(e?.message) || e instanceof SyntaxError){
+        if(['research_invalid_content','research_web_not_performed','openai_response_unavailable'].includes(e?.message) || e instanceof SyntaxError){
           await db.prepare(
             "UPDATE realizo_ai_projects SET status='failed',error_code=?,updated_at=datetime('now') WHERE id=? AND user_id=? AND status='researching'"
-          ).bind(e?.message==='research_web_not_performed'?'research_web_not_performed':project.error_code==='recovery_existing_response'?'unusable_research_recovered':'unusable_research',id,user.id).run();
+          ).bind(e?.message==='research_web_not_performed'?'research_web_not_performed':
+            e?.message==='openai_response_unavailable'?'research_response_unavailable':
+            project.error_code==='recovery_existing_response'?'unusable_research_recovered':'unusable_research',id,user.id).run();
           if(project.billing_type==='paid')
             await db.prepare(
               "UPDATE realizo_ai_premium_orders SET status='released',updated_at=datetime('now') WHERE project_id=? AND user_id=? AND status='reserved'"
@@ -113,27 +125,5 @@ export async function GET(request,{params}){
    if(audit)response.owner_cost_audit={...audit,disclaimer:'Estimación por tarifas publicadas; conciliar contra costos facturados de OpenAI.'};
   }
   return Response.json(response,{headers});
- }catch(e){return jsonError(e)}
-}
-// Recover at most once from a previously completed response without another
-// OpenAI POST, without video generation and without capturing a released order.
-// No arbitrary response IDs, no cross-user access and no second billable query.
-export async function POST(request,{params}){
- if(!enforceSameOrigin(request))return Response.json({error:'invalid_origin'},{status:403,headers});
- try{
-  const env=await getWalletEnvironment();
-  const user=await requireWalletUser(request,env);
-  if(!user)return Response.json({error:'not_authenticated'},{status:401,headers});
-  const {id}=await params;
-  if(!/^[a-f0-9-]{36}$/i.test(id||''))return Response.json({error:'not_found'},{status:404,headers});
-  const db=env.WALLETS_DB;
-  const changed=await db.prepare(
-   "UPDATE realizo_ai_projects SET status='researching',error_code='recovery_existing_response',updated_at=datetime('now','-1 minute') WHERE id=? AND user_id=? AND status='failed' AND error_code='unusable_research' AND provider_response_id IS NOT NULL"
-  ).bind(id,user.id).run();
-  if(Number(changed.meta?.changes||0)!==1)
-   return Response.json({error:'recovery_not_available'},{status:409,headers});
-  const project=await db.prepare('SELECT * FROM realizo_ai_projects WHERE id=? AND user_id=?')
-   .bind(id,user.id).first();
-  return Response.json(safeResearchResponse(project),{headers});
  }catch(e){return jsonError(e)}
 }

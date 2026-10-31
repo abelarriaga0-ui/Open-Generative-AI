@@ -62,7 +62,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
  const [editedPrompt,setEditedPrompt]=useState('');
  const [editedSpeech,setEditedSpeech]=useState('');
  const [style,setStyle]=useState('ugc'),[shotPreference,setShotPreference]=useState('auto');
- const [acknowledged,setAcknowledged]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ const [busy,setBusy]=useState(false),[error,setError]=useState('');
  const fileRef=useRef(null),keyRef=useRef(null);
  useEffect(()=>{
   let active=true;
@@ -112,6 +112,17 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
   const timer=setInterval(poll,5500);
   return()=>{active=false;clearInterval(timer)};
  },[project?.id,project?.status,onWalletRefresh]);
+ // Recover an already-completed OpenAI response automatically once, on
+ // current failed projects too. This performs only a read, not a paid POST.
+ useEffect(()=>{
+  if(project?.status!=='failed'||project?.error!=='unusable_research'||!project.id)return;
+  let active=true;
+  fetch('/api/realizo/ai-premium/'+encodeURIComponent(project.id),{cache:'no-store'})
+   .then(r=>r.ok?r.json():Promise.reject())
+   .then(saved=>{if(active)setProject(saved)})
+   .catch(()=>{});
+  return()=>{active=false};
+ },[project?.id,project?.status,project?.error]);
  useEffect(()=>{
   if(project?.concepts?.length===3){
    const i=Number.isInteger(project.findings?.recommended_index)?
@@ -176,26 +187,13 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
   }catch(e){setError(e.message)}
   finally{setBusy(false)}
  };
- const recover=async()=>{
-  if(!project?.recovery_available || busy)return;
-  setBusy(true);setError('');
-  try{
-   const r=await fetch('/api/realizo/ai-premium/'+encodeURIComponent(project.id),{
-    method:'POST',credentials:'same-origin',
-   });
-   const json=await r.json().catch(()=>({}));
-   if(!r.ok)throw Error('No se puede recuperar la respuesta anterior: '+(json.error||r.status));
-   setProject(json);
-  }catch(e){setError(e.message)}
-  finally{setBusy(false)}
- };
  const approve=async()=>{
   setBusy(true);setError('');
   try{
    const r=await fetch('/api/realizo/ai-premium/'+encodeURIComponent(project.id)+'/approve',{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({index:selection,prompt:editedPrompt,speech:editedSpeech,style,
-     shot_preference:shotPreference,acknowledged_responsibility:acknowledged}),
+     shot_preference:shotPreference}),
    });
    const json=await r.json().catch(()=>({}));
    if(!r.ok)throw Error(json.error==='ugc_speech_timing_invalid'?
@@ -431,24 +429,9 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
        project.research_payment_status==='reserved'?
        'El cobro está en revisión; no se volverá a intentar automáticamente.':
        'No se capturó ningún cobro de esta investigación.'}</p>
-      {project.recovery_available&&<button type="button" onClick={recover} disabled={busy}
-       className="mt-2 rounded-xl border border-[#CEB7DB] bg-white px-4 py-2 text-xs font-bold text-[#7547B1] disabled:opacity-50">
-       Recuperar respuesta existente · sin nueva consulta IA
-      </button>}
-      <p>{project.recovery_available?'La recuperación reanaliza la respuesta guardada y no inicia otra investigación.':
-        'Puedes crear un proyecto nuevo después de revisar la descripción o la fotografía del producto.'}</p>
+      <p>Si la respuesta anterior todavía existe, REALIZO la recuperará automáticamente al abrir el proyecto, sin otra consulta ni pago.</p>
      </div>}
     {project.status==='needs_review'&&!ready&&<p className="text-sm text-[#9A6257]">La investigación necesita revisión técnica antes de volver a intentarse. No se volverá a cobrar automáticamente.</p>}
-    {ready&&project.findings?.research_quality?.needsReview&&
-      <div className="rounded-xl border border-[#E6D6B6] bg-[#FCF6E8] p-4 space-y-1 text-xs text-[#705C3C]">
-       <p className="font-bold">Investigación parcial: puedes revisar los conceptos, pero faltan comprobaciones.</p>
-       <p>El sistema investigó en internet y conservó el informe, sin presentarlo como investigación verificada.</p>
-       {(project.findings.research_quality.reasons||[]).map((reason,i)=><p key={i}>• {reason}</p>)}
-       <p className="font-bold">{project.research_payment_status==='released'?
-        'Reserva de USD 0,49 liberada: no se cobró.':
-        project.research_payment_status==='reserved'?'Reserva pendiente de verificación; no se iniciará otro cobro.':
-        'Consulta el estado de pago en la billetera antes de generar.'}</p>
-      </div>}
     {ready&&<>
       <p className="text-sm font-semibold text-[#6B4B8C] rounded-xl bg-[#F3EBFA] p-3">Configuración investigada: {project.video_model_id} · {project.video_duration_seconds||8} segundos · {creativeStyles.find(([id])=>id===(project.creative_style||'auto'))?.[2]||'Automático'}. No se vuelve a consultar la IA al elegir concepto.</p>
 
@@ -580,12 +563,8 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
            className={field+' mt-3 min-h-[155px]'} maxLength={5500}/>
         </details>
       </div>}
-      <label className="flex items-start gap-3 rounded-xl bg-[#F8F3FC] p-4 text-sm">
-       <input type="checkbox" checked={acknowledged} onChange={e=>setAcknowledged(e.target.checked)} className="mt-1"/>
-       <span>Confirmo que soy responsable de las afirmaciones comerciales de mi anuncio y he revisado las observaciones. Realizo corregirá erratas sin cambiar la intención del producto.</span>
-      </label>
       <button type="button" onClick={approve}
-       disabled={busy||(style==='ugc'&&(spokenWords<speechMin||spokenWords>speechMax))}
+       disabled={busy}
         className="rounded-2xl bg-[#6D48CB] text-white font-bold py-3.5 px-6 disabled:opacity-50">
         {busy?'Guardando…':'Aprobar concepto y elegir modelo de video'}
       </button>
