@@ -1,0 +1,42 @@
+name: Realizo - verificar AI Premium después del despliegue
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/realizo-ai-premium-live-readonly.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Verify secret metadata and protected AI Premium endpoint without spending
+        run: |
+          node --input-type=module <<'JS'
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          if(!token)throw Error('Cloudflare verification credential unavailable');
+          const r=await fetch('https://api.cloudflare.com/client/v4/accounts/7e405c54c1a91abbdad537f7fec379a1/workers/scripts/realizo-auth-sandbox/secrets',{
+            headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(15000)
+          });
+          if(!r.ok)throw Error('Cloudflare secret metadata request failed HTTP '+r.status);
+          const j=await r.json();
+          if(!j.success)throw Error('Cloudflare secret metadata could not be read');
+          const hasSecret=Array.isArray(j.result)&&j.result.some(x=>x.name==='OPENAI_API_KEY');
+          console.log('OPENAI_SANDBOX_SECRET_INSTALLED='+hasSecret);
+          if(!hasSecret)throw Error('OpenAI secret was not preserved after the deployment');
+          const base='https://realizo-auth-sandbox.abelarriaga0.workers.dev';
+          const response=await fetch(base+'/api/realizo/ai-premium',{
+            redirect:'manual',signal:AbortSignal.timeout(15000)
+          });
+          console.log('ANONYMOUS_AI_PREMIUM_HTTP='+response.status);
+          if(response.status!==401)throw Error('AI Premium API did not enforce private authentication');
+          const studio=await fetch(base+'/studio',{redirect:'manual',signal:AbortSignal.timeout(15000)});
+          console.log('STUDIO_REDIRECT_HTTP='+studio.status);
+          if(![302,303,307,308].includes(studio.status))
+            throw Error('Anonymous Studio login redirect not enforced');
+          console.log('REALIZO_AI_PREMIUM_READONLY_PROBE=PASS; no generation or paid API call');
+          JS
