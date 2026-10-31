@@ -28,7 +28,7 @@ export async function GET(request,{params}){
       try{
         const response=await readOpenAIResearch(env,project.provider_response_id);
         if(response.status==='completed'){
-          const {report,sources}=parseResearchResult(response,{creativeStyle:project.creative_style||'auto',duration:project.video_duration_seconds||8});
+          const {report,sources}=parseResearchResult(response,{creativeStyle:project.creative_style||'auto',duration:project.video_duration_seconds||8,requireGrounding:true});
           // Mark conflicts as needs_review, but give customer all 3 concepts.
           const status=report.description_conflicts.length?'needs_review':'ready';
           await db.prepare(
@@ -42,6 +42,10 @@ export async function GET(request,{params}){
             audience_insights:report.audience_insights,
             research_limitations:report.research_limitations,
             recommended_index:report.recommended_index,
+            product_dossier:report.product_dossier,
+            research_evidence:report.evidence,
+            angle_analysis:report.angle_analysis,
+            selected_sales_angle:report.selected_sales_angle,
           }),JSON.stringify(report.concepts),JSON.stringify(sources),id,user.id,'researching').run();
           const used=(response.output||[]).filter(o=>o.type==='web_search_call').length;
           const input=Number(response.usage?.input_tokens||0),output=Number(response.usage?.output_tokens||0);
