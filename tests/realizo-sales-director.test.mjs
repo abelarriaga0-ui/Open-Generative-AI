@@ -58,7 +58,7 @@ test('Premium approved brief actually selects provider reference workflow and ch
  const approval=readFileSync('app/api/realizo/ai-premium/[id]/approve/route.js','utf8');
  assert.match(approval,/media_role:director.model_capabilities.imageRole/);
  assert.match(approval,/buildCommercialDirectorPackage/);
- assert.match(approval,/acknowledged_responsibility/);
+ assert.doesNotMatch(approval,/acknowledged_responsibility/);
  const ui=readFileSync('components/RealizoPremium.jsx','utf8');
  assert.match(ui,/Varias tomas/);
  assert.match(ui,/Cinematográfico/);
