@@ -34,7 +34,7 @@ export async function POST(request) {
     if (!capture.ok && fetched.data?.status !== 'COMPLETED') {
       return Response.json({ status: 'pending', message: 'Pago todavía no confirmado.' }, { status: 202 });
     }
-    const result = await settlePaypalOrder(env.WALLETS_DB, orderId, fetched.data);
+    const result = await settlePaypalOrder(env.WALLETS_DB, orderId, fetched.data, env.PAYPAL_MODE||'sandbox');
     return Response.json(result, { status: result.status === 'paid' ? 200 : 202 });
   } catch (error) { return jsonError(error); }
 }
