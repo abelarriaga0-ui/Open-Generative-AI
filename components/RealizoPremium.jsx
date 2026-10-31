@@ -19,7 +19,14 @@ const markets=[['EC','Ecuador'],['CO','Colombia'],['MX','México'],['PE','Perú'
  ['AE','Emiratos Árabes Unidos']];
 const languages=[['es','Español'],['en','English'],['pt','Português'],['fr','Français'],['de','Deutsch'],['it','Italiano']];
 const previews={ugc:{icon:'🎙️',label:'UGC'},problem:{icon:'⚡',label:'Problema-solución'},premium:{icon:'🎬',label:'Cinematográfico'},benefits:{icon:'✨',label:'Beneficios'},sensory:{icon:'🌙',label:'Sensorial'},demo:{icon:'🧴',label:'Demostración'}};
-const visualFor=c=>previews[String(c.angle||'').toLowerCase().split(/[ :/]/)[0]]||(/ugc/i.test(c.name||'')?previews.ugc:previews.benefits);
+const visualFor=c=>{
+ const format=String(c.creative_style||'');
+ if(format==='ugc')return previews.ugc;
+ if(format==='cinematic')return previews.premium;
+ if(format==='premium')return {icon:'💎',label:'Premium'};
+ if(format==='demo')return previews.demo;
+ return previews[String(c.angle||'').toLowerCase().split(/[ :/]/)[0]]||previews.benefits;
+};
 // A familiar provider → version → creation-mode selector, backed by the exact
 // same server-validated endpoint catalog. No extra paid AI calls on selection.
 const preferredVideoModel=options=>{
@@ -390,7 +397,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
     </div>
     {['created','researching'].includes(project.status)&&<div className="p-6 rounded-2xl bg-[#F8F4FC]">
       <p className="font-semibold">Estamos analizando la imagen y fuentes de mercado.</p>
-      <p className="text-sm text-[#7D718A] mt-2">Puedes mantener abierta esta pantalla. La consulta recupera el mismo proyecto; no inicia nuevas investigaciones ni videos.</p>
+      <p className="text-sm text-[#7D718A] mt-2">REALIZO está identificando cada producto, contrastando fuentes web, revisando sus características y eligiendo los motivos de compra antes de crear los conceptos. Reabrir el proyecto no inicia nuevas consultas ni cobros.</p>
     </div>}
     {project.status==='failed'&&<p className="text-sm text-[#9A6257]">La investigación no pudo completarse. No se ha cobrado al cliente. Puedes utilizar el modo automático sin costo adicional.</p>}
     {project.status==='needs_review'&&!ready&&<p className="text-sm text-[#9A6257]">La investigación necesita revisión técnica antes de volver a intentarse. No se volverá a cobrar automáticamente.</p>}
@@ -413,7 +420,30 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
        <details className="text-xs text-[#796A83]">
         <summary className="font-semibold cursor-pointer">Ver informe completo, verificaciones y fuentes</summary>
         <div className="mt-3 space-y-2">
-         <p>{findings.product_observation}</p><p>{findings.market_summary}</p>
+         <p>{findings.product_observation}</p>
+         {findings.product_dossier&&<div className="space-y-1">
+          <p className="font-bold">Identificación del producto</p>
+          <p>{findings.product_dossier.identified_product} · {findings.product_dossier.actual_category}</p>
+          <p>Coincidencia con la imagen: {findings.product_dossier.identity_status==='matched'?'Identidad contrastada':findings.product_dossier.identity_status==='partial'?'Coincidencia parcial':'Sin confirmar'}</p>
+          {!!findings.product_dossier.components_or_ingredients?.length&&<p><strong>Componentes/ingredientes investigados:</strong> {findings.product_dossier.components_or_ingredients.join(' · ')}</p>}
+          {!!findings.product_dossier.features?.length&&<p><strong>Características:</strong> {findings.product_dossier.features.join(' · ')}</p>}
+          {!!findings.product_dossier.realistic_uses?.length&&<p><strong>Usos:</strong> {findings.product_dossier.realistic_uses.join(' · ')}</p>}
+          {!!findings.product_dossier.evidence_gaps?.length&&<p><strong>Datos aún sin comprobar:</strong> {findings.product_dossier.evidence_gaps.join(' · ')}</p>}
+         </div>}
+         <p>{findings.market_summary}</p>
+         {!!findings.angle_analysis?.length&&<div className="space-y-1">
+          <p className="font-bold">Motivos de compra analizados</p>
+          {findings.angle_analysis.map((a,i)=><p key={i}>
+           <strong>{a.angle}:</strong> {a.buyer_motive} — {a.evidence_reason}
+          </p>)}
+         </div>}
+         {!!findings.research_evidence?.length&&<div className="space-y-1">
+          <p className="font-bold">Evidencias y su procedencia</p>
+          {findings.research_evidence.map((e,i)=><p key={i}>
+           {e.basis==='web'?'Fuente web':e.basis==='photo'?'Fotografía':e.basis==='seller'?'Declaración del vendedor':'Sin verificar'}: {e.claim}
+           {e.source_url&&e.basis==='web'?<a href={e.source_url} target="_blank" rel="noreferrer" className="underline text-[#6D48CB] ml-1">Ver fuente</a>:null}
+          </p>)}
+         </div>}
          {(findings.description_conflicts||[]).length>0&&<p><strong>Observaciones:</strong> {findings.description_conflicts.join(' · ')}</p>}
          {(findings.claims_to_verify||[]).length>0&&<p><strong>Por verificar:</strong> {findings.claims_to_verify.join(' · ')}</p>}
          {(findings.research_limitations||[]).length>0&&<p><strong>Alcance:</strong> {findings.research_limitations.join(' · ')}</p>}
@@ -424,6 +454,10 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
        </details>
       </div>
 
+      {findings.selected_sales_angle&&<div className="mb-3 rounded-xl bg-[#F5EDF9] px-4 py-3">
+       <p className="text-xs text-[#806A91]">Ángulo recomendado por la investigación</p>
+       <p className="text-sm font-bold">{findings.selected_sales_angle}</p>
+      </div>}
       <div className="grid sm:grid-cols-3 gap-3">
        {concepts.map((c,i)=>{
         const visual=visualFor(c);
@@ -439,6 +473,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
          <div className="p-4 space-y-2">
           <p className="font-bold text-sm">{c.name}</p>
           <p className="text-xs text-[#7D698A] line-clamp-2">“{c.hook}”</p>
+          {!!c.buyer_motive&&<p className="text-xs text-[#756581] line-clamp-2">Motivo: {c.buyer_motive}</p>}
           <p className="text-xs font-bold text-[#7551BD]">{selection===i?'✓ Elegido':'Elegir concepto'}</p>
          </div>
         </button>;
