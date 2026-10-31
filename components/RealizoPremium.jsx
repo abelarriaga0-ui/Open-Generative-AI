@@ -31,7 +31,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic}
   angle:'auto',market:'EC',cta:''});
  const [project,setProject]=useState(null),[selection,setSelection]=useState(0);
  const [editedPrompt,setEditedPrompt]=useState(''),[correction,setCorrection]=useState('');
- const [ack,setAck]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ const [ack,setAck]=useState(false),[ackClaims,setAckClaims]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const fileRef=useRef(null),keyRef=useRef(null);
  useEffect(()=>{
   let active=true;
@@ -130,11 +130,14 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic}
   try{
    const r=await fetch('/api/realizo/ai-premium/'+encodeURIComponent(project.id)+'/approve',{
     method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({index:selection,prompt:editedPrompt,acknowledged_conflicts:ack,correction}),
+    body:JSON.stringify({index:selection,prompt:editedPrompt,acknowledged_conflicts:ack,
+      acknowledged_claims:ackClaims,correction}),
    });
    const json=await r.json().catch(()=>({}));
    if(!r.ok)throw Error(json.error==='resolve_product_conflict_first'?
     'Confirma la información correcta del producto antes de aprobar.':
+    json.error==='review_unverified_claims'?
+    'Revisa y confirma las afirmaciones pendientes antes de aprobar.':
     'No se pudo aprobar: '+(json.error||r.status));
    if(!json.ready_for_editor)throw Error('El editor no recibió el proyecto.');
    setProject(json);onPrepare(json.ready_for_editor);onOpenAdvanced();
@@ -241,6 +244,13 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic}
        <p className="text-sm text-[#6A5C74]">{findings.market_summary}</p>
        {(findings.claims_to_verify||[]).length>0&&<p className="text-xs text-[#995E4A]">
         Por verificar: {findings.claims_to_verify.join(' · ')}</p>}
+       {(findings.claims_to_verify||[]).length>0&&<label className="block text-xs font-semibold text-[#885F3C]">
+        <span>Revisión obligatoria: las afirmaciones listadas arriba NO son resultados confirmados.</span>
+        <span className="flex items-center gap-2 mt-2">
+          <input type="checkbox" checked={ackClaims} onChange={e=>setAckClaims(e.target.checked)}/>
+          He revisado estos datos y entiendo que no deben presentarse como comprobados sin evidencia.
+        </span>
+       </label>}
        {(findings.research_limitations||[]).length>0&&<p className="text-xs text-[#796C7F]">
         Alcance: {findings.research_limitations.join(' · ')}</p>}
       </div>
