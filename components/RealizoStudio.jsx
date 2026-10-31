@@ -55,13 +55,19 @@ export default function RealizoStudio({accountId}){
     if(!r.ok||!json.url)throw new Error(json.error||'No se pudo cargar la imagen');
     return json.url;
  },[]);
- useEffect(()=>{
-   const controller=new AbortController();
-   fetch('/api/wallet',{credentials:'same-origin',cache:'no-store',signal:controller.signal})
-     .then(r=>r.ok?r.json():null)
-     .then(x=>{setWallet(x?.wallet||null);setBillableModelIds((x?.models||[]).map(m=>m.model_id));setPilotPrice(x?.pilot_cost_cents??null);setPilotAvailable(Boolean(x?.generation_enabled));setGenerationReady(Boolean(x?.generation_enabled && (x?.wallet?.available_cents??0)>0));}).catch(()=>{});
-   return ()=>controller.abort();
+ const refreshWallet=useCallback(async()=>{
+   try{
+     const r=await fetch('/api/wallet',{credentials:'same-origin',cache:'no-store'});
+     if(!r.ok)return;
+     const x=await r.json();
+     setWallet(x?.wallet||null);
+     setBillableModelIds((x?.models||[]).map(m=>m.model_id));
+     setPilotPrice(x?.pilot_cost_cents??null);
+     setPilotAvailable(Boolean(x?.generation_enabled));
+     setGenerationReady(Boolean(x?.generation_enabled && (x?.wallet?.available_cents??0)>0));
+   }catch{}
  },[]);
+ useEffect(()=>{refreshWallet()},[refreshWallet]);
  const onWalletGenerate=useCallback(params=>generateWithRealizoWallet(params),[]);
  useEffect(()=>{
    if(page!=='videos')return;
@@ -179,6 +185,7 @@ export default function RealizoStudio({accountId}){
           <RealizoPremium key={'premium-'+createKey+'-'+(resumeProjectId||'new')}
             initialProjectId={resumeProjectId}
             onPrepare={setBrief} onOpenAdvanced={openEditor} onCreateNew={newPremiumProject}
+            onWalletRefresh={refreshWallet}
             onUseAutomatic={()=>chooseCreatorMode('automatic')}/>:
           <RealizoCreator accountId={accountId} onPrepare={setBrief} onOpenAdvanced={openEditor}/>}
        </section>:

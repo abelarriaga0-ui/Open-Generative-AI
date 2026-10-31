@@ -3,7 +3,7 @@ import {enforceSameOrigin} from '@/lib/wallet/access-auth';
 import {
   validatePremiumInput,premiumAccess,premiumPublicEnabled,ownedAsset,
   startOpenAIResearch,safeResearchResponse,availableAIFunds,researchFingerprint,
-  PREMIUM_PRICING_VERSION
+  PREMIUM_PRICING_VERSION,premiumSandboxPaidOwner
 } from '@/lib/realizo-creative/ai-premium';
 
 export const dynamic='force-dynamic';
@@ -27,12 +27,11 @@ export async function GET(request){
    general_available_cents:aiFunds,
    video_charge_separate:true,
    pricing_version:PREMIUM_PRICING_VERSION,
-   research_scope:'Imagen, investigación pública con hasta 2 búsquedas y 3 anuncios estratégicos.',
+   research_scope:'Foto y mercado + tres propuestas de venta. Video aparte.',
    projects:list.results??[],
    message:access.enabled?
-    access.mode==='paid'?'Análisis Premium de pago; el video Muapi se cotiza por separado.':
-      'La cuenta piloto puede investigar hasta cinco productos cada 24 horas, patrocinados por Realizo y sin consumir saldo de Muapi.':
-      'AI Premium necesita conexión y facturación real verificadas para habilitar investigaciones.',
+      'Investigación de pago: USD 0.49 por tres conceptos. Se reserva antes y se cobra si la investigación se completa correctamente. Video aparte.':
+      'La investigación requiere saldo real verificado; PayPal Sandbox no crea fondos reales.',
   },{headers});
  }catch(e){return jsonError(e)}
 }
@@ -62,22 +61,25 @@ export async function POST(request){
   ).bind(user.id,fp).first();
   if(reusable)return Response.json({...safeResearchResponse(reusable),reused:true},{headers});
   if(access.mode==='paid'){
-   // Server-verified real payment is mandatory. Fake PayPal Sandbox money,
-   // partner provider balances or self-reported topups cannot pay for OpenAI.
-   if(!premiumPublicEnabled(env))return error('real_billing_required',503);
-   const deposits=await db.prepare(
-    "SELECT COUNT(*) AS n FROM verified_deposits WHERE user_id=? AND payment_provider='paypal' AND status='paid' AND provider_environment='live'"
-   ).bind(user.id).first();
-   if(!Number(deposits?.n))return error('verified_real_topup_required',402);
+   // Verified funding is mandatory. Sandbox test money is excluded; only
+   // live PayPal deposits or the owner's independently reconciled real funds qualify.
+   const sandboxOwner=await premiumSandboxPaidOwner(env,user);
+   if(!premiumPublicEnabled(env) && !sandboxOwner)return error('real_billing_required',503);
+   if(!sandboxOwner){
+     const deposits=await db.prepare(
+      "SELECT COUNT(*) AS n FROM verified_deposits WHERE user_id=? AND payment_provider='paypal' AND status='paid' AND provider_environment='live'"
+     ).bind(user.id).first();
+     if(!Number(deposits?.n))return error('verified_real_topup_required',402);
+   }
    if(await availableAIFunds(env,user.id)<access.price_cents)
     return error('insufficient_general_funds',402);
   }
   const projectId=crypto.randomUUID(), orderId=crypto.randomUUID();
   const ins=db.prepare(
-   'INSERT INTO realizo_ai_projects (id,user_id,primary_asset_id,product_name,description,audience,sales_angle,market_code,cta,request_key,status,research_model,billing_type,premium_price_cents,research_fingerprint,pricing_version) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+   'INSERT INTO realizo_ai_projects (id,user_id,primary_asset_id,product_name,description,audience,sales_angle,market_code,cta,request_key,status,research_model,billing_type,premium_price_cents,research_fingerprint,pricing_version,video_language) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
   ).bind(projectId,user.id,data.assetId,data.productName,data.description,data.audience,
     data.angle,data.market,data.cta,data.requestKey,'created',env.OPENAI_PREMIUM_MODEL,
-    access.mode,access.price_cents,fp,PREMIUM_PRICING_VERSION);
+    access.mode,access.price_cents,fp,PREMIUM_PRICING_VERSION,data.videoLanguage);
   try{
    // D1 batch is transactional: both the project and its premium reservation
    // succeed together, or neither succeeds. Never call OpenAI first.

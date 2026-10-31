@@ -17,6 +17,10 @@ const markets=[['EC','Ecuador'],['CO','Colombia'],['MX','México'],['PE','Perú'
  ['GB','Reino Unido'],['FR','Francia'],['DE','Alemania'],['IT','Italia'],
  ['PT','Portugal'],['AU','Australia'],['JP','Japón'],['IN','India'],
  ['AE','Emiratos Árabes Unidos']];
+const languages=[['es','Español'],['en','English'],['pt','Português'],['fr','Français'],['de','Deutsch'],['it','Italiano']];
+const previews={ugc:{icon:'🎙️',label:'UGC'},problem:{icon:'⚡',label:'Problema-solución'},premium:{icon:'🎬',label:'Cinematográfico'},benefits:{icon:'✨',label:'Beneficios'},sensory:{icon:'🌙',label:'Sensorial'},demo:{icon:'🧴',label:'Demostración'}};
+const visualFor=c=>previews[String(c.angle||'').toLowerCase().split(/[ :/]/)[0]]||(/ugc/i.test(c.name||'')?previews.ugc:previews.benefits);
+const creativeStyles=[['auto','✨','IA decide'],['ugc','🤳','UGC'],['cinematic','🎥','Cine'],['premium','💎','Premium'],['demo','🧴','Demo']];
 const field='w-full rounded-2xl border border-[#E6DCE9] bg-white px-4 py-3 text-[#2C2341] outline-none focus:border-[#8B65D1]';
 const card='rounded-[24px] border border-[#E9DFE6] bg-white p-5 sm:p-7 shadow-sm';
 const fmt=status=>({
@@ -25,10 +29,10 @@ const fmt=status=>({
  approved:'Concepto aprobado',failed:'Investigación no completada',
 })[status]||status;
 
-export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,onCreateNew,initialProjectId=null}){
+export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,onCreateNew,onWalletRefresh,initialProjectId=null}){
  const [config,setConfig]=useState(null),[image,setImage]=useState(null);
  const [product,setProduct]=useState({product_name:'',description:'',audience:'',
-  angle:'auto',market:'EC',cta:''});
+  angle:'auto',market:'EC',video_language:'es',cta:''});
  const [project,setProject]=useState(null),[selection,setSelection]=useState(0);
  const [editedPrompt,setEditedPrompt]=useState('');
  const [style,setStyle]=useState('auto'),[shotPreference,setShotPreference]=useState('auto');
@@ -66,12 +70,15 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
     const r=await fetch('/api/realizo/ai-premium/'+encodeURIComponent(project.id),{cache:'no-store'});
     if(!r.ok)return;
     const result=await r.json();
-    if(active)setProject(result);
+    if(active){
+      setProject(result);
+      if(!['created','researching'].includes(result.status))onWalletRefresh?.();
+    }
    }catch{}
   };
   const timer=setInterval(poll,5500);
   return()=>{active=false;clearInterval(timer)};
- },[project?.id,project?.status]);
+ },[project?.id,project?.status,onWalletRefresh]);
  useEffect(()=>{
   if(project?.concepts?.length===3){
    const i=Number.isInteger(project.findings?.recommended_index)?
@@ -103,12 +110,10 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
     return setError('Sube una foto y describe el producto en al menos 15 caracteres.');
   const price=config.customer_charge_cents;
   if(!Number.isInteger(price)||price<0)return setError('No se pudo cotizar la investigación.');
-  if(config.billing_mode==='paid' && config.general_available_cents<price)
-    return setError('Saldo insuficiente de créditos generales de Realizo.');
-  const message=price>0?
-    'Investigación Premium + 3 conceptos: USD '+(price/100).toFixed(2)+
-    '. El video se cobra por separado. ¿Confirmas este precio?':
-    'Esta investigación será patrocinada por Realizo. ¿Comenzar sin cargo de investigación?';
+  if(config.billing_mode!=='paid'||price<=0||config.general_available_cents<price)
+    return setError('Saldo real insuficiente para pagar la investigación. Necesitas fondos verificados.');
+  const message='Investigación IA: USD '+(price/100).toFixed(2)+
+    '. Se reservará de tu billetera ahora y se cobrará al entregar los 3 conceptos. El video se cotiza aparte. ¿Confirmas el pago?';
   if(!window.confirm(message))return;
   setBusy(true);setError('');
   if(!keyRef.current)keyRef.current=crypto.randomUUID();
@@ -126,6 +131,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
      json.error==='price_changed_confirm_again'?'El precio cambió. Actualiza y confírmalo nuevamente.':
      'No se pudo iniciar la investigación: '+(json.error||r.status));
    setProject(json);
+   onWalletRefresh?.();
   }catch(e){setError(e.message)}
   finally{setBusy(false)}
  };
@@ -157,11 +163,9 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
     Sube la foto, describe el producto y elige el mercado. La IA investiga y prepara tres anuncios para que tú decidas.
    </p>
    <p className="mt-4 inline-block rounded-full bg-white/15 px-4 py-2 text-xs font-bold">
-    {config?.enabled?
-    config.customer_charge_cents>0?
-      'Investigación y tres conceptos · USD '+(config.customer_charge_cents/100).toFixed(2)+' · video aparte':
-      'Investigación patrocinada · video aparte':
-    'AI Premium pendiente de activar · sin cargos'}
+    {config?.enabled && config.customer_charge_cents>0?
+      'Investigación IA: USD '+(config.customer_charge_cents/100).toFixed(2)+' · Video aparte':
+      'Precio de investigación no disponible'}
    </p>
   </div>
   {error&&<div role="alert" className="rounded-2xl border border-[#EEB9AB] bg-[#FFF0E9] px-5 py-3 text-sm text-[#914F40]">{error}</div>}
@@ -201,6 +205,11 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
        </select>
      </label>
     </div>
+    <label className="block text-sm font-bold">Idioma de voz y video
+     <select className={field+' mt-2'} value={product.video_language} onChange={e=>change('video_language',e.target.value)}>
+      {languages.map(([code,name])=><option key={code} value={code}>{name}</option>)}
+     </select>
+    </label>
     <label className="block text-sm font-bold">Público objetivo (opcional)
      <input className={field+' mt-2'} maxLength={180} value={product.audience}
       onChange={e=>change('audience',e.target.value)} placeholder="Ej. Hombres de 18 a 40 años"/>
@@ -209,17 +218,13 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
      <input className={field+' mt-2'} maxLength={120} value={product.cta}
       onChange={e=>change('cta',e.target.value)} placeholder="Ej. Paga al recibir"/>
     </label>
-    <p className="text-xs text-[#7D6B8A] rounded-xl bg-[#F8F3FC] p-3">
-     {config?.billing_mode==='paid'?
-       'La investigación cuesta USD '+(config.customer_charge_cents/100).toFixed(2)+
-         ' y se cobra a créditos Realizo respaldados por pagos reales. El video se cotiza aparte.':
-       'La investigación de esta cuenta es financiada por Realizo sin descontar créditos de video.'}
-     {' '}Fuentes públicas limitadas; sin inventar ventas, descuentos ni resultados publicitarios.
+    <p className="text-xs text-[#755F88] rounded-xl bg-[#F8F3FC] p-3">
+     Precio fijo: <strong>USD {((config?.customer_charge_cents||0)/100).toFixed(2)}</strong> por investigar y crear 3 conceptos. El video se cobra aparte.
     </p>
     <div className="flex flex-wrap gap-3">
      <button type="button" disabled={busy||!config?.enabled||!image}
       onClick={start} className="rounded-2xl bg-[#704CD4] disabled:opacity-45 text-white px-6 py-3 font-bold">
-      {busy?'Preparando…':'✦ Investigar y crear 3 conceptos'}
+      {busy?'Investigando…':'✦ Investigar y pagar $'+((config?.customer_charge_cents||0)/100).toFixed(2)}
      </button>
      <button type="button" onClick={onUseAutomatic}
       className="rounded-2xl border border-[#DCCEE9] px-5 py-3 text-[#684C98] font-bold">Usar modo gratis</button>
@@ -248,67 +253,86 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
     {project.status==='failed'&&<p className="text-sm text-[#9A6257]">La investigación no pudo completarse. No se ha cobrado al cliente. Puedes utilizar el modo automático sin costo adicional.</p>}
     {project.status==='needs_review'&&!ready&&<p className="text-sm text-[#9A6257]">La investigación necesita revisión técnica antes de volver a intentarse. No se volverá a cobrar automáticamente.</p>}
     {ready&&<>
-      <div className="rounded-2xl bg-[#F8F5F0] p-5 space-y-2">
-       <h4 className="font-extrabold">Informe de producto y mercado</h4>
-       <p className="text-sm">{findings.product_observation}</p>
-       <p className="text-sm text-[#6A5C74]">{findings.market_summary}</p>
-       {(findings.claims_to_verify||[]).length>0&&<p className="text-xs text-[#995E4A]">
-        Por verificar: {findings.claims_to_verify.join(' · ')}</p>}
-       {(findings.research_limitations||[]).length>0&&<p className="text-xs text-[#796C7F]">
-        Alcance: {findings.research_limitations.join(' · ')}</p>}
+
+      <div className="rounded-2xl bg-[#F8F5F0] p-4 space-y-2">
+       <p className="font-bold">Análisis comercial</p>
+       <p className="text-sm text-[#6B5878]">
+        {String(findings.market_summary||'').slice(0,200)}{String(findings.market_summary||'').length>200?'…':''}
+       </p>
+       <details className="text-xs text-[#796A83]">
+        <summary className="font-semibold cursor-pointer">Ver informe completo, verificaciones y fuentes</summary>
+        <div className="mt-3 space-y-2">
+         <p>{findings.product_observation}</p><p>{findings.market_summary}</p>
+         {(findings.description_conflicts||[]).length>0&&<p><strong>Observaciones:</strong> {findings.description_conflicts.join(' · ')}</p>}
+         {(findings.claims_to_verify||[]).length>0&&<p><strong>Por verificar:</strong> {findings.claims_to_verify.join(' · ')}</p>}
+         {(findings.research_limitations||[]).length>0&&<p><strong>Alcance:</strong> {findings.research_limitations.join(' · ')}</p>}
+         <p>{project.sources?.length?project.sources.map((x,i)=><span key={i}>
+          <a href={x.url} target="_blank" rel="noreferrer" className="underline text-[#6D48CB]">{x.title||x.url}</a>{' · '}
+         </span>):'No se obtuvieron enlaces verificables.'}</p>
+        </div>
+       </details>
       </div>
-      {(findings.description_conflicts||[]).length>0&&<div className="rounded-2xl border border-[#EBC8A8] bg-[#FFF8EC] p-4">
-        <p className="font-semibold text-sm">Observaciones de fotografía y ficha</p>
-        {(findings.description_conflicts||[]).map((x,k)=><p key={k} className="text-xs mt-1">• {x}</p>)}
-        <p className="text-xs mt-2">Las faltas de ortografía se corrigen automáticamente. No necesitas reescribir.</p>
-      </div>}
-      <div className="grid md:grid-cols-3 gap-4">
-       {concepts.map((c,i)=><button type="button" key={i} onClick={()=>setSelection(i)}
-        className={'rounded-[20px] p-4 text-left border-2 transition '+(selection===i?'border-[#8054C9] bg-[#F4EDFD]':'border-[#E7DEEA] bg-white')}>
-        <p className="text-xs font-bold uppercase tracking-wide text-[#8E64C0]">{['A','B','C'][i]} · {c.angle}</p>
-        <p className="text-lg font-extrabold mt-2">{c.name}</p><p className="text-sm mt-2">“{c.hook}”</p>
-        <p className="text-xs text-[#81728A] mt-3">{c.reason}</p>
-       </button>)}
+
+      <div className="grid sm:grid-cols-3 gap-3">
+       {concepts.map((c,i)=>{
+        const visual=visualFor(c);
+        return <button type="button" key={i} aria-pressed={selection===i}
+          onClick={()=>setSelection(i)}
+          className={'rounded-2xl text-left border-2 overflow-hidden transition '+(selection===i?'border-[#8054C9] shadow-md':'border-[#E9DFEC] hover:border-[#B89DE4]')}>
+         <div className="h-[110px] bg-gradient-to-br from-[#E6DBF6] via-[#F8E8EA] to-[#F9EDD7] flex items-center justify-center gap-4 relative">
+          {image?.url?<img src={image.url} alt="" className="h-20 w-20 rounded-xl object-contain bg-white/65 p-1 shadow-sm"/>:
+           <span className="text-5xl" aria-hidden="true">{visual.icon}</span>}
+          <div className="rounded-full bg-white/85 w-12 h-12 flex items-center justify-center text-2xl" aria-hidden="true">{visual.icon}</div>
+          <span className="absolute top-2 right-2 bg-white/90 rounded-full px-2 py-1 text-[10px] font-bold text-[#70509E]">{visual.label}</span>
+         </div>
+         <div className="p-4 space-y-2">
+          <p className="font-bold text-sm">{c.name}</p>
+          <p className="text-xs text-[#7D698A] line-clamp-2">“{c.hook}”</p>
+          <p className="text-xs font-bold text-[#7551BD]">{selection===i?'✓ Elegido':'Elegir concepto'}</p>
+         </div>
+        </button>;
+       })}
       </div>
       {concepts[selection]&&<div className="space-y-3">
-        <h4 className="font-extrabold">Guion y planos seleccionados</h4>
-        <p className="text-sm">{concepts[selection].script}</p>
-        <ul className="text-sm space-y-1 list-disc pl-5 text-[#655875]">
-          {concepts[selection].shots.map((shot,i)=><li key={i}>{shot}</li>)}
-        </ul>
-        <div className="grid sm:grid-cols-2 gap-3">
-         <label className="block text-sm font-bold">Estilo visual (opcional)
-          <select className={field+' mt-2'} value={style} onChange={e=>setStyle(e.target.value)}>
-           <option value="auto">La IA decide</option>
-           <option value="ugc">UGC hablando</option>
-           <option value="cinematic">Cinematográfico</option>
-           <option value="premium">Comercial premium</option>
-           <option value="demo">Demostración</option>
-          </select>
-         </label>
-         <label className="block text-sm font-bold">Número de tomas (opcional)
+
+        <div className="rounded-xl bg-[#F8F3FC] p-4">
+         <p className="text-xs font-bold text-[#7555A5]">Guion hablado · {languages.find(([code])=>code===(project.video_language||'es'))?.[1]||'Español'}</p>
+         <p className="text-sm font-bold mt-2">“{concepts[selection].spoken_script||concepts[selection].script}”</p>
+         <details className="mt-3 text-xs text-[#7A6988]">
+          <summary className="cursor-pointer">Mostrar los planos</summary>
+          <ul className="list-disc pl-4 mt-2 space-y-1">
+           {(concepts[selection].shots||[]).map((shot,i)=><li key={i}>{shot}</li>)}
+          </ul>
+         </details>
+        </div>
+        <div className="space-y-2">
+         <p className="text-sm font-bold">¿Cómo quieres que se vea el anuncio?</p>
+         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+          {creativeStyles.map(([id,icon,label])=><button type="button" key={id}
+            aria-pressed={style===id} onClick={()=>setStyle(id)}
+            className={'rounded-xl border-2 px-2 py-3 flex flex-col items-center justify-center gap-2 transition '+(style===id?
+             'border-[#7650C6] bg-[#F2EAFE]':'border-[#E7DEEC] bg-[#FCF9FE] hover:border-[#B9A0D8]')}>
+            <span className="text-3xl" aria-hidden="true">{icon}</span>
+            <span className="text-[11px] font-bold">{label}</span>
+          </button>)}
+         </div>
+         <label className="block text-xs font-bold">Tomas
           <select className={field+' mt-2'} value={shotPreference} onChange={e=>setShotPreference(e.target.value)}>
-           <option value="auto">La IA decide según duración</option>
-           <option value="single">Una toma continua</option>
+           <option value="auto">La IA decide</option>
+           <option value="single">Una toma</option>
            <option value="multi">Varias tomas</option>
           </select>
          </label>
         </div>
         <p className="text-xs text-[#6B5387]">El director audiovisual adapta voz, planos y referencias al modelo que elijas.</p>
-        <label className="block text-sm font-bold">Prompt audiovisual editable
-          <textarea value={editedPrompt} onChange={e=>setEditedPrompt(e.target.value)}
-            className={field+' mt-2 min-h-[170px]'} maxLength={5500}/>
-        </label>
-        <p className="text-xs text-[#7B6E87]">Los textos y el CTA pueden añadirse posteriormente como superposiciones para preservar la etiqueta.</p>
+
+        <details className="rounded-xl border border-[#E7DCEF] p-4">
+         <summary className="cursor-pointer text-sm font-bold">Editar prompt técnico (avanzado)</summary>
+         <p className="text-xs text-[#7C6C88] mt-2">El motor puede recibir instrucciones técnicas en inglés; el guion hablado se solicita en el idioma elegido. La voz nativa depende del modelo de video seleccionado.</p>
+         <textarea value={editedPrompt} onChange={e=>setEditedPrompt(e.target.value)}
+           className={field+' mt-3 min-h-[155px]'} maxLength={5500}/>
+        </details>
       </div>}
-      <div className="rounded-2xl border border-[#EAE0EF] p-4">
-       <h4 className="font-bold text-sm">Fuentes consultadas</h4>
-       {project.sources?.length?
-        <ul className="mt-2 space-y-2 text-xs">{project.sources.map((x,i)=><li key={i}>
-         <a href={x.url} target="_blank" rel="noreferrer" className="underline text-[#7254B6]">{x.title||x.url}</a>
-        </li>)}</ul>:
-        <p className="mt-2 text-xs text-[#9B7759]">No hay fuentes web verificables en este informe. No deben interpretarse como datos de ventas confirmados.</p>}
-      </div>
       <label className="flex items-start gap-3 rounded-xl bg-[#F8F3FC] p-4 text-sm">
        <input type="checkbox" checked={acknowledged} onChange={e=>setAcknowledged(e.target.checked)} className="mt-1"/>
        <span>Confirmo que soy responsable de las afirmaciones comerciales de mi anuncio y he revisado las observaciones. Realizo corregirá erratas sin cambiar la intención del producto.</span>
