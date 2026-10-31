@@ -100,6 +100,8 @@ import en from "../messages/en/videoStudio.json";
 import zh from "../messages/zh/videoStudio.json";
 import { resolveCopy } from "../i18nUtils";
 import {buildCommercialDirectorPackage} from "../../../../lib/realizo-creative/sales-director.js";
+import RealizoSubtitleEditor from "./RealizoSubtitleEditor.jsx";
+import {scriptFromPrompt} from "../../../../lib/realizo-creative/subtitle-timeline.js";
 
 async function downloadFile(url, filename) {
   try {
@@ -870,6 +872,7 @@ export default function VideoStudio({
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState(null);
   const [fullscreenUrl, setFullscreenUrl] = useState(null);
+  const [subtitleTarget, setSubtitleTarget] = useState(null);
   const [canvasUrl, setCanvasUrl] = useState(null);
   const [canvasModel, setCanvasModel] = useState(null);
   const [showCanvas, setShowCanvas] = useState(false);
@@ -2396,6 +2399,7 @@ export default function VideoStudio({
           id: genId,
           url: res.url,
           prompt: trimmedPrompt,
+          spoken_script:preparedBrief?.spoken_script||scriptFromPrompt(trimmedPrompt),
           model: selectedModel,
           ...(!grouped ? {
             ...(aspectRatios.length > 0 ? { aspect_ratio: selectedAr } : {}),
@@ -2756,6 +2760,15 @@ export default function VideoStudio({
                     ]}
                   />
 
+                  {realizoBrand&&<button
+                    type="button"
+                    onClick={e=>{
+                      e.stopPropagation();
+                      setSubtitleTarget({url:entry.url,script:entry.spoken_script||scriptFromPrompt(entry.prompt),
+                        prompt:entry.prompt||'',filename:'realizo-'+(entry.id||idx)});
+                    }}
+                    className="mx-3 mt-2 rounded-xl border border-[#C5A6EB]/50 bg-[#714CC7] px-3 py-2 text-sm text-white font-bold hover:bg-[#855DE1]"
+                  >Agregar subtítulos · Gratis</button>}
                   {/* Prompt & Details */}
                   <div className="p-3 bg-black/80 backdrop-blur-sm border-t border-white/5 flex-1 flex flex-col justify-between gap-2">
                     <p className="text-white/70 text-xs line-clamp-3 leading-relaxed" title={entry.prompt}>
@@ -3605,6 +3618,13 @@ export default function VideoStudio({
           </PromptFooter>
       </PromptComposer>
 
+      {realizoBrand&&subtitleTarget&&<RealizoSubtitleEditor
+        videoUrl={subtitleTarget.url}
+        spokenScript={subtitleTarget.script}
+        prompt={subtitleTarget.prompt}
+        filename={subtitleTarget.filename}
+        onClose={()=>setSubtitleTarget(null)}
+      />}
       {/* ── FULLSCREEN VIDEO MODAL ── */}
       {fullscreenUrl && (
         <div 
@@ -3624,6 +3644,20 @@ export default function VideoStudio({
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
+          {realizoBrand&&<button type="button"
+            onClick={e=>{
+              e.stopPropagation();
+              const entry=history.find(x=>x.url===fullscreenUrl);
+              setFullscreenUrl(null);
+              setSubtitleTarget({
+                url:fullscreenUrl,
+                script:entry?.spoken_script||scriptFromPrompt(entry?.prompt||''),
+                prompt:entry?.prompt||'',filename:'realizo-'+(entry?.id||'video'),
+              });
+            }}
+            className="absolute top-6 left-6 rounded-xl bg-[#7955CB] px-4 py-3 text-white text-sm font-bold">
+            Agregar subtítulos · Gratis
+          </button>}
           <video 
             src={fullscreenUrl} 
             controls 
