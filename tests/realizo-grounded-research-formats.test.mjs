@@ -7,7 +7,7 @@ import {planSalesVideo,buildCommercialDirectorPackage} from '../lib/realizo-crea
 import {estimateOpenAIResearchCost} from '../lib/realizo-creative/openai-costs.js';
 
 const url='https://manufacturer.example/noil-shampoo';
-const script='¿Buscas completar tu rutina? NOIL es shampoo perfumado y GODA es una esencia para hombre. Dos productos para dos pasos de tu preparación. Conoce el combo y pídelo hoy.';
+const script='¿Buscas completar tu rutina? NOIL es shampoo perfumado y GODA es una esencia para hombre. Dos productos para dos pasos de tu preparación. Conoce el combo y pídelo.';
 function report(style='ugc'){
  const concepts=[0,1,2].map((n)=>({
   name:'Concepto '+(n+1),creative_style:style,angle:['rutina','combinación','ocasión'][n],
