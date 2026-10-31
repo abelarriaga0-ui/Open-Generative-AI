@@ -399,8 +399,33 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
       <p className="font-semibold">Estamos analizando la imagen y fuentes de mercado.</p>
       <p className="text-sm text-[#7D718A] mt-2">REALIZO está identificando cada producto, contrastando fuentes web, revisando sus características y eligiendo los motivos de compra antes de crear los conceptos. Reabrir el proyecto no inicia nuevas consultas ni cobros.</p>
     </div>}
-    {project.status==='failed'&&<p className="text-sm text-[#9A6257]">La investigación no pudo completarse. No se ha cobrado al cliente. Puedes utilizar el modo automático sin costo adicional.</p>}
+    {project.status==='failed'&&<div className="text-sm text-[#9A6257] space-y-1">
+      <p><strong>No se completó la investigación.</strong> {({
+       research_web_not_performed:'OpenAI no llegó a consultar internet.',
+       research_output_incomplete:'OpenAI no entregó el informe completo.',
+       research_provider_failed:'El proveedor interrumpió la investigación.',
+       unusable_research:'OpenAI devolvió datos que no permiten validar los anuncios.',
+       openai_rejected:'El proveedor rechazó la configuración de investigación.',
+       research_launch_unconfirmed:'No se pudo confirmar el inicio; no se volverá a enviar automáticamente.',
+      })[project.error]||'No fue posible obtener los tres conceptos válidos.'}</p>
+      <p>{project.research_payment_status==='released'?
+       'La reserva de investigación fue liberada: no se cobró USD 0,49.':
+       project.research_payment_status==='reserved'?
+       'El cobro está en revisión; no se volverá a intentar automáticamente.':
+       'No se capturó ningún cobro de esta investigación.'}</p>
+      <p>Puedes crear un proyecto nuevo después de revisar la descripción o la fotografía del producto.</p>
+     </div>}
     {project.status==='needs_review'&&!ready&&<p className="text-sm text-[#9A6257]">La investigación necesita revisión técnica antes de volver a intentarse. No se volverá a cobrar automáticamente.</p>}
+    {ready&&project.findings?.research_quality?.needsReview&&
+      <div className="rounded-xl border border-[#E6D6B6] bg-[#FCF6E8] p-4 space-y-1 text-xs text-[#705C3C]">
+       <p className="font-bold">Investigación parcial: puedes revisar los conceptos, pero faltan comprobaciones.</p>
+       <p>El sistema investigó en internet y conservó el informe, sin presentarlo como investigación verificada.</p>
+       {(project.findings.research_quality.reasons||[]).map((reason,i)=><p key={i}>• {reason}</p>)}
+       <p className="font-bold">{project.research_payment_status==='released'?
+        'Reserva de USD 0,49 liberada: no se cobró.':
+        project.research_payment_status==='reserved'?'Reserva pendiente de verificación; no se iniciará otro cobro.':
+        'Consulta el estado de pago en la billetera antes de generar.'}</p>
+      </div>}
     {ready&&<>
       <p className="text-sm font-semibold text-[#6B4B8C] rounded-xl bg-[#F3EBFA] p-3">Configuración investigada: {project.video_model_id} · {project.video_duration_seconds||8} segundos · {creativeStyles.find(([id])=>id===(project.creative_style||'auto'))?.[2]||'Automático'}. No se vuelve a consultar la IA al elegir concepto.</p>
 
