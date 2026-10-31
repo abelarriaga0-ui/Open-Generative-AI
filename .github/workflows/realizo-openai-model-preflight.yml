@@ -1,0 +1,32 @@
+name: Realizo - validar acceso OpenAI Luna (sin cargos)
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/realizo-openai-model-preflight.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-openai:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      API_KEY: ${{ secrets.REALIZO_OPENAI_API_KEY || secrets.OPENAI_API_KEY }}
+    steps:
+      - name: Verify API model availability without generating or billing
+        run: |
+          node --input-type=module <<'JS'
+          const key=process.env.API_KEY;
+          if(!key)throw Error('OpenAI secret not available');
+          for(const name of ['gpt-6-luna','gpt-6.1-terra']){
+            const r=await fetch('https://api.openai.com/v1/models/'+name,{
+              headers:{Authorization:'Bearer '+key},
+              signal:AbortSignal.timeout(12000)
+            });
+            console.log('MODEL_ACCESS_'+name.toUpperCase().replace(/[^A-Z0-9]/g,'_')+'='+r.status);
+            if(name==='gpt-6-luna' && !r.ok)
+              throw Error('OpenAI key does not have access to budget model gpt-6-luna; no spending started');
+          }
+          console.log('OPENAI_MODEL_PREFLIGHT=PASS; no Responses calls, no paid web search, no generated media.');
+          JS
