@@ -2166,7 +2166,7 @@ export default function VideoStudio({
     const grouped = getGroupedVideoConfiguration(selectedModel);
     const activeParameterValues = createModelParameterValues(currentModel, modelParameterValues);
     const generationParameterValues = grouped && currentModel.inputs?.omni_reference_task_type
-      ? { ...activeParameterValues, omni_reference_task_type: "auto" }
+      ? { ...activeParameterValues, omni_reference_task_type: selectedWorkflowId==="references" ? "reference" : "auto" }
       : activeParameterValues;
     const commonParams = grouped
       ? buildVideoCommonPayload(currentModel, {
