@@ -2157,6 +2157,11 @@ export default function VideoStudio({
       toast.error(copy.errors.waitForCurrentUpload);
       return;
     }
+    if(preparedBrief?.media_role==='reference_only' &&
+       selectedWorkflowId!=='references' && !allowAnimationInsteadOfReference){
+      alert("Para crear escenas nuevas usa el modo Referencias de este motor. Animar imagen solo se permite si lo autorizas expresamente.");
+      return;
+    }
     const currentModel = getCurrentModel();
     const grouped = getGroupedVideoConfiguration(selectedModel);
     const activeParameterValues = createModelParameterValues(currentModel, modelParameterValues);
@@ -2179,7 +2184,22 @@ export default function VideoStudio({
     const isExtendMode = currentModel?.requiresRequestId;
     const capabilities = getModelMediaCapabilities(currentModel);
     const requestSource = selectedVeoTool ? selectedVeoSource : generationSources[selectedFamily.id];
-    const trimmedPrompt = promptDisabled ? "" : prompt.trim();
+    const dynamicDirection=preparedBrief?.media_role==='reference_only' &&
+      preparedBrief.creative_concept &&
+      prompt.trim()===String(preparedBrief.prompt||'').trim()
+      ?buildCommercialDirectorPackage({
+        concept:preparedBrief.creative_concept,
+        productName:preparedBrief.productName,
+        description:preparedBrief.productDescription,
+        cta:preparedBrief.overlay_cta,
+        market:preparedBrief.market||'EC',
+        modelId:selectedModel,
+        duration:selectedDuration,
+        style:preparedBrief.creative_style,
+        shotPreference:preparedBrief.shot_preference,
+        imageProvided:true,
+      }):null;
+    const trimmedPrompt=promptDisabled?"":(dynamicDirection?.prompt||prompt.trim());
     const workflowMedia = selectedWorkflowId
       ? activeWorkflowMediaDraft || {}
       : {
@@ -2397,6 +2417,7 @@ export default function VideoStudio({
       onGenerationEnd?.();
     }
   }, [
+    preparedBrief,allowAnimationInsteadOfReference,
     apiKey,
     onWalletGenerate,
     generationReady,
@@ -2771,7 +2792,17 @@ export default function VideoStudio({
         )}
       </div>
 
-      {/* ── BOTTOM PROMPT BAR ── */}
+      {preparedBrief?.media_role==='reference_only'&&
+        <div className="w-[95%] mx-auto px-3 py-2 rounded-lg bg-[#EEE5F7] text-[#563979] text-xs">
+          {selectedWorkflowId==='references'?
+            <span>✓ Imagen usada como referencia de producto · Escenas nuevas con dirección comercial.</span>:
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={allowAnimationInsteadOfReference}
+                onChange={e=>setAllowAnimationInsteadOfReference(e.target.checked)}/>
+              Este modo podría animar la fotografía. Acepto utilizarlo en vez de generar con referencias.
+            </label>}
+        </div>}
+       {/* ── BOTTOM PROMPT BAR ── */}
       <PromptComposer
         positionClassName={realizoBrand ? "realizo-docked-composer relative w-full z-30 px-4 sm:px-6 pb-5 pt-2" : undefined}
         panelClassName={realizoBrand ? "realizo-premium-composer" : ""}
