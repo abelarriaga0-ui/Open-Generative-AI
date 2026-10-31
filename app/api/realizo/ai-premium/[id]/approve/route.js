@@ -40,16 +40,26 @@ export async function POST(request,{params}){
   const userPrompt=String(body.prompt||concept.video_prompt).trim();
   if(userPrompt.length<60||userPrompt.length>5500)
     return Response.json({error:'invalid_prompt'},{status:400});
-  const style=['auto','ugc','cinematic','premium','demo'].includes(body.style)?body.style:'auto';
+  const style=['auto','ugc','cinematic','premium','demo'].includes(project.creative_style)
+    ?project.creative_style:'auto';
+  // Legacy projects with 'auto' may retain the old review-time style selection.
+  const finalStyle=style==='auto'&&['auto','ugc','cinematic','premium','demo'].includes(body.style)?body.style:style;
+  const userSpeech=String(body.speech??concept.spoken_script??concept.script??'').trim();
+  if(userSpeech.length>650 || (finalStyle==='ugc' && userSpeech.length<12))
+    return Response.json({error:'invalid_spoken_script'},{status:400});
   const shotPreference=['auto','single','multi'].includes(body.shot_preference)?body.shot_preference:'auto';
-  const directorConcept={...concept,video_prompt:userPrompt};
+  const directorConcept={...concept,video_prompt:userPrompt,spoken_script:userSpeech};
   const modelId=project.video_model_id||'seedance-2.5-omni-reference';
   const duration=Number(project.video_duration_seconds)||8;
+  const spokenWords=userSpeech.split(/\s+/).filter(Boolean).length;
+  if(finalStyle==='ugc' && (spokenWords<Math.max(5,Math.floor(duration*1.4)) ||
+     spokenWords>Math.floor(duration*2.4)))
+    return Response.json({error:'ugc_speech_timing_invalid'},{status:422});
   const workflowId=project.video_workflow_id||null;
   const director=buildCommercialDirectorPackage({
     concept:directorConcept,productName:normalizeProductCopy(project.product_name),
     description:normalizeProductCopy(project.description),cta:concept.cta||project.cta,
-    market:project.market_code,videoLanguage:project.video_language||'es',style,shotPreference,duration,
+    market:project.market_code,videoLanguage:project.video_language||'es',style:finalStyle,shotPreference,duration,
     imageProvided:true,modelId,workflowId,
   });
   // Preserve the seller's commercial intent while keeping unverified product
@@ -76,7 +86,7 @@ export async function POST(request,{params}){
       video_model_id:modelId,video_duration_seconds:duration,video_workflow_id:workflowId,
       revision:crypto.randomUUID(),project_id:id,approved_concept:selection,
       media_role:director.model_capabilities.imageRole==='product_reference'?'reference_only':
-        director.model_capabilities.imageRole==='start_frame'?'start_frame':'none',creative_style:style,
+        director.model_capabilities.imageRole==='start_frame'?'start_frame':'none',creative_style:finalStyle,
       shot_preference:shotPreference,creative_concept:directorConcept,
       overlay_cta:director.cta,spoken_script:director.spoken_script,
       product_claims_to_verify:claimsToVerify,

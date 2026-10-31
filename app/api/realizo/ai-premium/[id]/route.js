@@ -28,7 +28,7 @@ export async function GET(request,{params}){
       try{
         const response=await readOpenAIResearch(env,project.provider_response_id);
         if(response.status==='completed'){
-          const {report,sources}=parseResearchResult(response);
+          const {report,sources}=parseResearchResult(response,{creativeStyle:project.creative_style||'auto',duration:project.video_duration_seconds||8});
           // Mark conflicts as needs_review, but give customer all 3 concepts.
           const status=report.description_conflicts.length?'needs_review':'ready';
           await db.prepare(

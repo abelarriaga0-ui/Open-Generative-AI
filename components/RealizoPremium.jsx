@@ -50,10 +50,11 @@ const fmt=status=>({
 export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,onCreateNew,onWalletRefresh,initialProjectId=null}){
  const [config,setConfig]=useState(null),[image,setImage]=useState(null);
  const [product,setProduct]=useState({product_name:'',description:'',audience:'',
-  angle:'auto',market:'EC',video_language:'es',cta:'',video_model_id:'',video_duration_seconds:''});
+  angle:'auto',market:'EC',video_language:'es',cta:'',creative_style:'ugc',video_model_id:'',video_duration_seconds:''});
  const [project,setProject]=useState(null),[selection,setSelection]=useState(0);
  const [editedPrompt,setEditedPrompt]=useState('');
- const [style,setStyle]=useState('auto'),[shotPreference,setShotPreference]=useState('auto');
+ const [editedSpeech,setEditedSpeech]=useState('');
+ const [style,setStyle]=useState('ugc'),[shotPreference,setShotPreference]=useState('auto');
  const [acknowledged,setAcknowledged]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const fileRef=useRef(null),keyRef=useRef(null);
  useEffect(()=>{
@@ -113,7 +114,11 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
  },[project?.id,project?.concepts]);
  useEffect(()=>{
   setEditedPrompt(project?.concepts?.[selection]?.video_prompt||'');
+  setEditedSpeech(project?.concepts?.[selection]?.spoken_script||project?.concepts?.[selection]?.script||'');
  },[project?.concepts,selection]);
+ useEffect(()=>{
+  if(project?.id)setStyle(project.creative_style||'auto');
+ },[project?.id,project?.creative_style]);
  const change=(k,v)=>{setProduct(p=>({...p,[k]:v}));keyRef.current=null};
  const upload=async(file)=>{
   if(!file)return;
@@ -141,7 +146,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
   if(config.billing_mode!=='paid'||price<=0||config.general_available_cents<price)
     return setError('Saldo real insuficiente para pagar la investigación. Necesitas fondos verificados.');
   const message='Investigación IA: USD '+(price/100).toFixed(2)+
-    '. Modelo '+chosen.name+', duración '+product.video_duration_seconds+' segundos. Se reservará de tu billetera ahora y se cobrará al entregar los 3 conceptos. El video se cotiza aparte. ¿Confirmas el pago?';
+    '. Modelo '+chosen.name+', duración '+product.video_duration_seconds+' segundos, estilo '+product.creative_style+'. Se reservará de tu billetera ahora y se cobrará al entregar los 3 conceptos. El video se cotiza aparte. ¿Confirmas el pago?';
   if(!window.confirm(message))return;
   setBusy(true);setError('');
   if(!keyRef.current)keyRef.current=crypto.randomUUID();
@@ -169,11 +174,13 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
   try{
    const r=await fetch('/api/realizo/ai-premium/'+encodeURIComponent(project.id)+'/approve',{
     method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({index:selection,prompt:editedPrompt,style,
+    body:JSON.stringify({index:selection,prompt:editedPrompt,speech:editedSpeech,style,
      shot_preference:shotPreference,acknowledged_responsibility:acknowledged}),
    });
    const json=await r.json().catch(()=>({}));
-   if(!r.ok)throw Error(json.error==='review_product_responsibility'?
+   if(!r.ok)throw Error(json.error==='ugc_speech_timing_invalid'?
+    'Ajusta el diálogo UGC para que encaje en los segundos elegidos. No se cobrará otra investigación.':
+    json.error==='review_product_responsibility'?
     'Acepta la declaración de responsabilidad comercial antes de aprobar.':
     'No se pudo aprobar: '+(json.error||r.status));
    if(!json.ready_for_editor)throw Error('El editor no recibió el proyecto.');
@@ -186,6 +193,10 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
  const videoOptions=config?.video_options||[];
  const selectedModel=videoOptions.find(m=>m.id===product.video_model_id);
  const availableDurations=selectedModel?.durations||[];
+ const spokenWords=editedSpeech.trim()?editedSpeech.trim().split(/\s+/).length:0;
+ const durationSpeech=Number(project?.video_duration_seconds)||8;
+ const speechMin=Math.max(5,Math.floor(durationSpeech*1.4));
+ const speechMax=Math.floor(durationSpeech*2.4);
  const selectedProvider=selectedModel?.provider||'';
  const selectedFamily=selectedModel?.family_id||'';
  const providerOptions=Array.from(new Map(videoOptions.map(m=>[
@@ -264,7 +275,22 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
     </label>
     <div className="rounded-2xl border border-[#D8C5EF] bg-[#F9F5FF] p-4 space-y-3">
      <p className="text-sm font-extrabold">3. Configura el video antes de investigar</p>
-     <p className="text-xs text-[#765E90]">Elegir modelo y duración es gratuito. Los tres conceptos se escribirán una sola vez para esta configuración.</p>
+     <p className="text-xs text-[#765E90]">Elige cómo venderás y con qué motor, antes del único cobro de investigación.</p>
+     <div className="space-y-2">
+      <p className="text-sm font-bold">Formato publicitario</p>
+      <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+       {creativeStyles.map(([id,icon,label])=><button type="button" key={id}
+        aria-pressed={product.creative_style===id} onClick={()=>change('creative_style',id)}
+        className={'rounded-xl border-2 px-2 py-3 text-center transition '+(
+         product.creative_style===id?'border-[#7650C6] bg-white shadow-sm':
+          'border-[#E7DEEC] bg-white/60 hover:bg-white')}>
+        <span className="block text-xl" aria-hidden="true">{icon}</span>
+        <span className="block mt-1 text-xs font-bold">{label}</span>
+       </button>)}
+      </div>
+      {product.creative_style==='ugc'&&
+       <p className="text-xs text-[#6D518D]">UGC: una persona habla mirando a cámara, explica el producto, engancha desde el inicio y termina invitando a comprar.</p>}
+     </div>
 
      <div className="grid sm:grid-cols-2 gap-3">
       <label className="block text-sm font-bold">Proveedor
@@ -369,7 +395,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
     {project.status==='failed'&&<p className="text-sm text-[#9A6257]">La investigación no pudo completarse. No se ha cobrado al cliente. Puedes utilizar el modo automático sin costo adicional.</p>}
     {project.status==='needs_review'&&!ready&&<p className="text-sm text-[#9A6257]">La investigación necesita revisión técnica antes de volver a intentarse. No se volverá a cobrar automáticamente.</p>}
     {ready&&<>
-      <p className="text-sm font-semibold text-[#6B4B8C] rounded-xl bg-[#F3EBFA] p-3">Configuración investigada: {project.video_model_id} · {project.video_duration_seconds||8} segundos. No se vuelve a consultar la IA al elegir concepto.</p>
+      <p className="text-sm font-semibold text-[#6B4B8C] rounded-xl bg-[#F3EBFA] p-3">Configuración investigada: {project.video_model_id} · {project.video_duration_seconds||8} segundos · {creativeStyles.find(([id])=>id===(project.creative_style||'auto'))?.[2]||'Automático'}. No se vuelve a consultar la IA al elegir concepto.</p>
 
       {project.owner_cost_audit&&<div className="rounded-xl border border-[#C9DAE5] bg-[#F1F7FD] p-4 text-xs text-[#496079] space-y-1">
        <p className="font-bold">Auditoría privada · costo de OpenAI</p>
@@ -422,7 +448,12 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
 
         <div className="rounded-xl bg-[#F8F3FC] p-4">
          <p className="text-xs font-bold text-[#7555A5]">Guion hablado · {languages.find(([code])=>code===(project.video_language||'es'))?.[1]||'Español'}</p>
-         <p className="text-sm font-bold mt-2">“{concepts[selection].spoken_script||concepts[selection].script}”</p>
+         <textarea value={editedSpeech} onChange={e=>setEditedSpeech(e.target.value)}
+          aria-label="Editar guion hablado sin costo adicional"
+          className={field+' mt-2 min-h-[95px] text-sm'} maxLength={650}/>
+         <p className="text-xs text-[#816D8F] mt-1">Edita el gancho, la explicación y el cierre sin pagar otra investigación. {style==='ugc'?
+           spokenWords+' palabras · objetivo '+speechMin+'–'+speechMax+' para '+durationSpeech+' s.':
+           'El guion debe caber en '+durationSpeech+' segundos.'}</p>
          <details className="mt-3 text-xs text-[#7A6988]">
           <summary className="cursor-pointer">Mostrar los planos</summary>
           <ul className="list-disc pl-4 mt-2 space-y-1">
@@ -432,15 +463,23 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
         </div>
         <div className="space-y-2">
          <p className="text-sm font-bold">¿Cómo quieres que se vea el anuncio?</p>
-         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-          {creativeStyles.map(([id,icon,label])=><button type="button" key={id}
-            aria-pressed={style===id} onClick={()=>setStyle(id)}
-            className={'rounded-xl border-2 px-2 py-3 flex flex-col items-center justify-center gap-2 transition '+(style===id?
-             'border-[#7650C6] bg-[#F2EAFE]':'border-[#E7DEEC] bg-[#FCF9FE] hover:border-[#B9A0D8]')}>
-            <span className="text-3xl" aria-hidden="true">{icon}</span>
-            <span className="text-[11px] font-bold">{label}</span>
-          </button>)}
-         </div>
+         {project.creative_style==='auto'
+          ?<div className="space-y-2">
+            <p className="text-xs text-[#7E658B]">Proyecto anterior o estilo automático: puedes ajustar la presentación sin nueva consulta IA. Revisa y edita el guion hablado.</p>
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+             {creativeStyles.map(([id,icon,label])=><button type="button" key={id}
+              aria-pressed={style===id} onClick={()=>setStyle(id)}
+              className={'rounded-xl border-2 px-2 py-3 text-center '+(style===id
+               ?'border-[#7650C6] bg-[#F2EAFE]':'border-[#E7DEEC] bg-white')}>
+              <span className="block text-xl" aria-hidden="true">{icon}</span>
+              <span className="block mt-1 text-xs font-bold">{label}</span>
+             </button>)}
+            </div>
+           </div>
+          :<p className="text-sm font-semibold rounded-xl bg-[#F4EBFB] px-4 py-3">
+            {creativeStyles.find(([id])=>id===style)?.[2]||'Automático'} · elegido antes de investigar.
+            {style==='ugc'?' La voz es lo principal; los planos son apoyo.':''}
+           </p>}
          <label className="block text-xs font-bold">Tomas
           <select className={field+' mt-2'} value={shotPreference} onChange={e=>setShotPreference(e.target.value)}>
            <option value="auto">La IA decide</option>
@@ -462,7 +501,8 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
        <input type="checkbox" checked={acknowledged} onChange={e=>setAcknowledged(e.target.checked)} className="mt-1"/>
        <span>Confirmo que soy responsable de las afirmaciones comerciales de mi anuncio y he revisado las observaciones. Realizo corregirá erratas sin cambiar la intención del producto.</span>
       </label>
-      <button type="button" onClick={approve} disabled={busy}
+      <button type="button" onClick={approve}
+       disabled={busy||(style==='ugc'&&(spokenWords<speechMin||spokenWords>speechMax))}
         className="rounded-2xl bg-[#6D48CB] text-white font-bold py-3.5 px-6 disabled:opacity-50">
         {busy?'Guardando…':'Aprobar concepto y elegir modelo de video'}
       </button>
