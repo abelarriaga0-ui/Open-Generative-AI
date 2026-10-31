@@ -58,6 +58,9 @@ test('no extra AI on script edits; UGC voice and aspect are attached to the appr
  assert.match(source,/speech:editedSpeech/);
  assert.match(approval,/spoken_script:userSpeech/);
  assert.match(approval,/project.creative_style/);
+ assert.match(approval,/ugc_speech_timing_invalid/);
+ assert.match(source,/objetivo.*speechMin/);
+
  assert.match(editor,/setSelectedAr\('9:16'\)/);
  assert.match(migration,/ADD COLUMN creative_style/);
  const director=buildCommercialDirectorPackage({
