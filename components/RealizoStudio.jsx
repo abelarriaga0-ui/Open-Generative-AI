@@ -195,7 +195,7 @@ export default function RealizoStudio({accountId}){
         </div>}
         <div className="realizo-native-video rounded-[26px] overflow-hidden border border-[#E6DBE4] bg-[#FAF7F4] shadow-[0_16px_44px_rgba(51,38,83,.065)] h-[min(790px,calc(100vh-190px))] min-h-[605px]">
           <VideoStudio locale="en" apiKey={null} persistenceScope={accountId} preparedBrief={brief}
-            realizoBrand previewOnly uploadAsset={uploadAsset}
+            realizoBrand previewOnly freshCreation uploadAsset={uploadAsset}
             onWalletGenerate={onWalletGenerate} generationReady={generationReady}
             billableModelIds={billableModelIds} />
         </div>
