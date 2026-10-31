@@ -40,7 +40,8 @@ test('cinematic mode and multi-shot selection are constrained by time not invent
  assert.equal(short.shots,2);
  assert.equal(long.shots,5);
  assert.equal(long.cinema,true);
- assert.ok(short.voice.split(/\s+/).length<=Math.floor(5*2.4));
+ assert.equal(short.voice,concept.spoken_script);
+ assert.equal(short.voiceTooLong,true);
  const c=buildCommercialDirectorPackage({concept,style:'cinematic',shotPreference:'multi',
  modelId:'seedance-2.5-omni-reference',duration:15});
  assert.match(c.prompt,/CINEMATOGRAPHIC/);
