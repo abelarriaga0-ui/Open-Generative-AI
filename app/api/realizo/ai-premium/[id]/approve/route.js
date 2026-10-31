@@ -58,6 +58,7 @@ export async function POST(request,{params}){
     description:normalizeProductCopy(project.description),cta:concept.cta||project.cta,
     market:project.market_code,videoLanguage:project.video_language||'es',style:finalStyle,shotPreference,duration,
     imageProvided:true,modelId,workflowId,
+    productGeometry:findings.product_visual_geometry||null,
   });
   // Preserve the seller's commercial intent while keeping unverified product
   // statements visibly distinguishable from claims substantiated by sources.
@@ -87,6 +88,7 @@ export async function POST(request,{params}){
       shot_preference:shotPreference,creative_concept:directorConcept,
       overlay_cta:director.cta,spoken_script:director.spoken_script,
       product_claims_to_verify:claimsToVerify,
+      product_visual_geometry:director.product_geometry,
       creative_director_version:director.quality_version,
     },
   },{headers:{'Cache-Control':'private,no-store'}});
