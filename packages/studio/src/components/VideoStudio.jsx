@@ -788,6 +788,8 @@ export default function VideoStudio({
   previewOnly = false,
   realizoBrand = false,
   preparedBrief = null,
+  // Realizo "Crear video" always starts empty; prior videos live in Mis videos.
+  freshCreation = false,
   uploadAsset = null,
   onWalletGenerate = null,
   generationReady = false,
@@ -1318,6 +1320,10 @@ export default function VideoStudio({
 
   // ── Persistence: Load ────────────────────────────────────────────────────
   useEffect(() => {
+    // Never automatically inject the previous product's prompt, image or
+    // reference slots into a newly started Realizo video. Historical videos
+    // and research remain on the server in the account's own library.
+    if(freshCreation){hasRestored.current=true;return;}
     try {
       const stored = localStorage.getItem(PERSIST_KEY);
       if (stored) {
@@ -1426,7 +1432,7 @@ export default function VideoStudio({
     } finally {
       hasRestored.current = true;
     }
-  }, [applyControlsForModel, defaultModel.id]);
+  }, [applyControlsForModel, defaultModel.id, freshCreation]);
 
   // Product photos are identity references, not first frames, in Premium.
   const appliedBriefRevision = useRef(null);
@@ -1486,6 +1492,9 @@ export default function VideoStudio({
 
   // ── Persistence: Save ────────────────────────────────────────────────────
   useEffect(() => {
+    // The new-video editor must not overwrite account-scoped historical
+    // drafts. The server continues storing all generated jobs.
+    if(freshCreation)return;
     const timer = setTimeout(() => {
       try {
         const state = {
@@ -1535,6 +1544,7 @@ export default function VideoStudio({
     workflowMediaDrafts,
     prompt,
     localHistory,
+    freshCreation,
   ]);
 
   // ── Derived UI values ────────────────────────────────────────────────────
