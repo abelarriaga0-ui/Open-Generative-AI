@@ -129,7 +129,7 @@ export default function RealizoStudio({accountId}){
           {[
             ['automatic','Automático · sin costo IA'],
             ['manual','Manual · tu prompt'],
-            ['premium','✦ Realizo AI Premium']
+            ['premium','✦ La IA decide todo · Premium']
           ].map(([id,label])=><button key={id} type="button"
             onClick={()=>{setCreatorMode(id);if(id==='manual'){setBrief(null);openEditor();}}}
             aria-pressed={creatorMode===id}
@@ -158,8 +158,8 @@ export default function RealizoStudio({accountId}){
           <p className="text-[13px] text-[#7A5663] font-semibold">Para generar necesitas al menos {usd(pilotPrice||35)} en tu billetera.</p>
           <Link href="/wallet" className="font-bold text-[#6845AB] text-sm underline">Recargar créditos de prueba</Link>
         </div>}
-        {generationReady&&<p className="text-[13px] font-semibold text-[#6A4D9B]">Elige tu modelo, duración y resolución. Realizo te mostrará el precio de Muapi antes de confirmar cada video.</p>}
-        {!pilotAvailable&&<p className="text-[12px] text-[#9A8B9B]">La generación se habilitará cuando la conexión con Muapi esté lista para tu cuenta.</p>}
+        {generationReady&&<p className="text-[13px] font-semibold text-[#6A4D9B]">Elige tu modelo, duración y resolución. Realizo te mostrará el precio exacto antes de confirmar cada video.</p>}
+        {!pilotAvailable&&<p className="text-[12px] text-[#9A8B9B]">La generación se habilitará cuando tu cuenta esté lista para crear videos.</p>}
        </section>}
      </>}
 

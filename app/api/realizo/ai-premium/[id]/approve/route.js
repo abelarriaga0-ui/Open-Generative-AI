@@ -30,7 +30,10 @@ export async function POST(request,{params}){
     return Response.json({error:'invalid_concept'},{status:400});
   const findings=project.findings_json?JSON.parse(project.findings_json):{};
   const conflicts=Array.isArray(findings.description_conflicts)?findings.description_conflicts:[];
+  const claimsToVerify=Array.isArray(findings.claims_to_verify)?findings.claims_to_verify:[];
   const correction=String(body.correction||'').trim().slice(0,700);
+  if(claimsToVerify.length && body.acknowledged_claims!==true)
+    return Response.json({error:'review_unverified_claims'},{status:422});
   if(conflicts.length && (!body.acknowledged_conflicts||correction.length<10))
     return Response.json({error:'resolve_product_conflict_first'},{status:422});
   const userPrompt=String(body.prompt||concept.video_prompt).trim();
@@ -42,6 +45,7 @@ export async function POST(request,{params}){
     'Concepto: '+String(concept.name).slice(0,120)+'.',
     'Dirección creativa: '+userPrompt,
     correction?'Corrección confirmada por el vendedor: '+correction+'.':'',
+    claimsToVerify.length?'No afirmar ni representar como comprobados estos datos pendientes de validar: '+claimsToVerify.slice(0,8).join('; ')+'.':'',
     'No inventar promociones, propiedades clínicas, etiquetas, testimonios o beneficios no confirmados.',
     'Evitar texto escrito directamente por el modelo; el CTA se añadirá como superposición.',
   ].filter(Boolean).join(' ');

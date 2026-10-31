@@ -10,7 +10,13 @@ const angles=[
 ];
 const markets=[['EC','Ecuador'],['CO','Colombia'],['MX','México'],['PE','Perú'],
  ['CL','Chile'],['GT','Guatemala'],['US','Estados Unidos'],['ES','España'],
- ['AR','Argentina'],['PA','Panamá'],['CR','Costa Rica']];
+ ['AR','Argentina'],['PA','Panamá'],['CR','Costa Rica'],['UY','Uruguay'],
+ ['PY','Paraguay'],['BO','Bolivia'],['VE','Venezuela'],['NI','Nicaragua'],
+ ['HN','Honduras'],['SV','El Salvador'],['DO','República Dominicana'],
+ ['PR','Puerto Rico'],['CU','Cuba'],['BR','Brasil'],['CA','Canadá'],
+ ['GB','Reino Unido'],['FR','Francia'],['DE','Alemania'],['IT','Italia'],
+ ['PT','Portugal'],['AU','Australia'],['JP','Japón'],['IN','India'],
+ ['AE','Emiratos Árabes Unidos']];
 const field='w-full rounded-2xl border border-[#E6DCE9] bg-white px-4 py-3 text-[#2C2341] outline-none focus:border-[#8B65D1]';
 const card='rounded-[24px] border border-[#E9DFE6] bg-white p-5 sm:p-7 shadow-sm';
 const fmt=status=>({
@@ -25,7 +31,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic}
   angle:'auto',market:'EC',cta:''});
  const [project,setProject]=useState(null),[selection,setSelection]=useState(0);
  const [editedPrompt,setEditedPrompt]=useState(''),[correction,setCorrection]=useState('');
- const [ack,setAck]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ const [ack,setAck]=useState(false),[ackClaims,setAckClaims]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const fileRef=useRef(null),keyRef=useRef(null);
  useEffect(()=>{
   let active=true;
@@ -86,19 +92,33 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic}
   }catch(e){setError(e.message)}finally{setBusy(false)}
  };
  const start=async()=>{
-  if(!config?.enabled)return setError('La IA Premium necesita una conexión OpenAI autorizada. El modo automático sigue disponible.');
+  if(!config?.enabled)return setError('Realizo AI Premium necesita una conexión autorizada y saldo real cuando corresponde.');
   if(!image?.id || product.description.trim().length<15)
-   return setError('Sube una imagen y explica brevemente qué vendes (15 caracteres o más).');
+    return setError('Sube una foto y describe el producto en al menos 15 caracteres.');
+  const price=config.customer_charge_cents;
+  if(!Number.isInteger(price)||price<0)return setError('No se pudo cotizar la investigación.');
+  if(config.billing_mode==='paid' && config.general_available_cents<price)
+    return setError('Saldo insuficiente de créditos generales de Realizo.');
+  const message=price>0?
+    'Investigación Premium + 3 conceptos: USD '+(price/100).toFixed(2)+
+    '. El video se cobra por separado. ¿Confirmas este precio?':
+    'Esta investigación será patrocinada por Realizo. ¿Comenzar sin cargo de investigación?';
+  if(!window.confirm(message))return;
   setBusy(true);setError('');
   if(!keyRef.current)keyRef.current=crypto.randomUUID();
   try{
    const r=await fetch('/api/realizo/ai-premium',{
     method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({...product,primary_asset_id:image.id,request_key:keyRef.current}),
+    body:JSON.stringify({...product,primary_asset_id:image.id,request_key:keyRef.current,
+      max_price_cents:price,pricing_version:config.pricing_version}),
    });
    const json=await r.json().catch(()=>({}));
    if(!r.ok)throw Error(json.error==='ai_premium_daily_limit'?
-     'Ya usaste la investigación de prueba disponible hoy.':'No se pudo iniciar la investigación: '+(json.error||r.status));
+     'Has alcanzado el límite de investigaciones del día.':
+     json.error==='insufficient_general_funds'||json.error==='verified_real_topup_required'?
+     'Necesitas saldo de una recarga real verificada.':
+     json.error==='price_changed_confirm_again'?'El precio cambió. Actualiza y confírmalo nuevamente.':
+     'No se pudo iniciar la investigación: '+(json.error||r.status));
    setProject(json);
   }catch(e){setError(e.message)}
   finally{setBusy(false)}
@@ -108,11 +128,13 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic}
   try{
    const r=await fetch('/api/realizo/ai-premium/'+encodeURIComponent(project.id)+'/approve',{
     method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({index:selection,prompt:editedPrompt,acknowledged_conflicts:ack,correction}),
+    body:JSON.stringify({index:selection,prompt:editedPrompt,acknowledged_conflicts:ack,
+     acknowledged_claims:ackClaims,correction}),
    });
    const json=await r.json().catch(()=>({}));
    if(!r.ok)throw Error(json.error==='resolve_product_conflict_first'?
     'Confirma la información correcta del producto antes de aprobar.':
+    json.error==='review_unverified_claims'?'Revisa las afirmaciones no confirmadas antes de aprobar.':
     'No se pudo aprobar: '+(json.error||r.status));
    if(!json.ready_for_editor)throw Error('El editor no recibió el proyecto.');
    setProject(json);onPrepare(json.ready_for_editor);onOpenAdvanced();
@@ -130,8 +152,11 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic}
     Sube la foto, describe el producto y elige el mercado. La IA investiga y prepara tres anuncios para que tú decidas.
    </p>
    <p className="mt-4 inline-block rounded-full bg-white/15 px-4 py-2 text-xs font-bold">
-    {config?.enabled?'Beta privada · $0 adicionales de investigación · video cotizado aparte':
-     'Investigación IA pendiente de activar · no habrá cobros'}
+    {config?.enabled?
+    config.customer_charge_cents>0?
+      'Investigación y tres conceptos · USD '+(config.customer_charge_cents/100).toFixed(2)+' · video aparte':
+      'Investigación patrocinada · video aparte':
+    'AI Premium pendiente de activar · sin cargos'}
    </p>
   </div>
   {error&&<div role="alert" className="rounded-2xl border border-[#EEB9AB] bg-[#FFF0E9] px-5 py-3 text-sm text-[#914F40]">{error}</div>}
@@ -180,8 +205,11 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic}
       onChange={e=>change('cta',e.target.value)} placeholder="Ej. Paga al recibir"/>
     </label>
     <p className="text-xs text-[#7D6B8A] rounded-xl bg-[#F8F3FC] p-3">
-     En la beta privada no se cobra la investigación a tu saldo de Muapi. El costo de cada video se confirmará después.
-     Los anuncios de terceros solo se analizarán cuando exista acceso público y verificable.
+     {config?.billing_mode==='paid'?
+       'La investigación cuesta USD '+(config.customer_charge_cents/100).toFixed(2)+
+         ' y se cobra a créditos Realizo respaldados por pagos reales. El video se cotiza aparte.':
+       'La investigación de esta cuenta es financiada por Realizo sin descontar créditos de video.'}
+     {' '}Fuentes públicas limitadas; sin inventar ventas, descuentos ni resultados publicitarios.
     </p>
     <div className="flex flex-wrap gap-3">
      <button type="button" disabled={busy||!config?.enabled||!image}
@@ -192,7 +220,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic}
       className="rounded-2xl border border-[#DCCEE9] px-5 py-3 text-[#684C98] font-bold">Usar modo gratis</button>
     </div>
     {!config?.enabled&&<p role="status" className="text-xs text-[#9A6A58]">
-     {config?.message||'Comprobando disponibilidad de OpenAI…'} No se ha descontado ningún crédito.
+     {config?.message||'Comprobando disponibilidad de Realizo AI…'} No se ha descontado ningún crédito.
     </p>}
    </section>
   </div>}
@@ -207,7 +235,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic}
       <p className="text-sm text-[#7D718A] mt-2">Puedes mantener abierta esta pantalla. La consulta recupera el mismo proyecto; no inicia nuevas investigaciones ni videos.</p>
     </div>}
     {project.status==='failed'&&<p className="text-sm text-[#9A6257]">La investigación no pudo completarse. No se ha cobrado al cliente. Puedes utilizar el modo automático sin costo adicional.</p>}
-    {project.status==='needs_review'&&!ready&&<p className="text-sm text-[#9A6257]">La llamada de OpenAI necesita revisión antes de volver a intentarse. No se volverá a cobrar automáticamente.</p>}
+    {project.status==='needs_review'&&!ready&&<p className="text-sm text-[#9A6257]">La investigación necesita revisión técnica antes de volver a intentarse. No se volverá a cobrar automáticamente.</p>}
     {ready&&<>
       <div className="rounded-2xl bg-[#F8F5F0] p-5 space-y-2">
        <h4 className="font-extrabold">Informe de producto y mercado</h4>
@@ -215,6 +243,13 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic}
        <p className="text-sm text-[#6A5C74]">{findings.market_summary}</p>
        {(findings.claims_to_verify||[]).length>0&&<p className="text-xs text-[#995E4A]">
         Por verificar: {findings.claims_to_verify.join(' · ')}</p>}
+       {(findings.claims_to_verify||[]).length>0&&<label className="block text-xs font-semibold text-[#885F3C]">
+        <span>Estas afirmaciones deben verificarse antes de anunciarse.</span>
+        <span className="flex gap-2 items-center mt-2">
+          <input type="checkbox" checked={ackClaims} onChange={e=>setAckClaims(e.target.checked)}/>
+          He revisado las afirmaciones pendientes y no las presentaré como confirmadas sin evidencia.
+        </span>
+       </label>}
        {(findings.research_limitations||[]).length>0&&<p className="text-xs text-[#796C7F]">
         Alcance: {findings.research_limitations.join(' · ')}</p>}
       </div>
@@ -258,7 +293,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic}
       </div>
       <button type="button" onClick={approve} disabled={busy}
         className="rounded-2xl bg-[#6D48CB] text-white font-bold py-3.5 px-6 disabled:opacity-50">
-        {busy?'Guardando…':'Aprobar concepto y elegir modelo Muapi'}
+        {busy?'Guardando…':'Aprobar concepto y elegir modelo de video'}
       </button>
       <p className="text-xs text-[#86788F]">La aprobación no genera ni cobra un video. El editor mostrará su precio antes del envío.</p>
     </>}
