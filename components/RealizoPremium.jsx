@@ -279,8 +279,9 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
           onClick={()=>setSelection(i)}
           className={'rounded-2xl text-left border-2 overflow-hidden transition '+(selection===i?'border-[#8054C9] shadow-md':'border-[#E9DFEC] hover:border-[#B89DE4]')}>
          <div className="h-[110px] bg-gradient-to-br from-[#E6DBF6] via-[#F8E8EA] to-[#F9EDD7] flex items-center justify-center gap-4 relative">
-          <span className="text-5xl" aria-hidden="true">{visual.icon}</span>
-          <span className="text-2xl" aria-hidden="true">▶</span>
+          {image?.url?<img src={image.url} alt="" className="h-20 w-20 rounded-xl object-contain bg-white/65 p-1 shadow-sm"/>:
+           <span className="text-5xl" aria-hidden="true">{visual.icon}</span>}
+          <div className="rounded-full bg-white/85 w-12 h-12 flex items-center justify-center text-2xl" aria-hidden="true">{visual.icon}</div>
           <span className="absolute top-2 right-2 bg-white/90 rounded-full px-2 py-1 text-[10px] font-bold text-[#70509E]">{visual.label}</span>
          </div>
          <div className="p-4 space-y-2">
