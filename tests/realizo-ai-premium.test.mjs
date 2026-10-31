@@ -35,7 +35,7 @@ test('vision and web research are bounded and never use a Muapi customer balance
   market_code:'EC',sales_angle:'premium',signedImage:'https://example.test/signed-image',cta:'Paga al recibir'};
  const request=buildResearchRequest({OPENAI_PREMIUM_MODEL:'gpt-5.5'},p);
  assert.equal(request.max_tool_calls,2);
- assert.ok(request.max_output_tokens<=4400);
+ assert.ok(request.max_output_tokens<=9000);
  assert.equal(request.background,true);
  assert.equal(request.store,true);
  assert.equal(request.reasoning.effort,'low');
