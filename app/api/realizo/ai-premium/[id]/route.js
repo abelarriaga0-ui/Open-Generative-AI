@@ -1,4 +1,5 @@
 import {getWalletEnvironment,requireWalletUser,jsonError} from '@/lib/wallet/server';
+import {enforceSameOrigin} from '@/lib/wallet/access-auth';
 import {
   premiumAccess,premiumSandboxPaidOwner,readOpenAIResearch,parseResearchResult,safeResearchResponse,
 } from '@/lib/realizo-creative/ai-premium';
@@ -85,7 +86,7 @@ export async function GET(request,{params}){
         if(['research_invalid_content','research_web_not_performed'].includes(e?.message) || e instanceof SyntaxError){
           await db.prepare(
             "UPDATE realizo_ai_projects SET status='failed',error_code=?,updated_at=datetime('now') WHERE id=? AND user_id=? AND status='researching'"
-          ).bind(e?.message==='research_web_not_performed'?'research_web_not_performed':'unusable_research',id,user.id).run();
+          ).bind(e?.message==='research_web_not_performed'?'research_web_not_performed':project.error_code==='recovery_existing_response'?'unusable_research_recovered':'unusable_research',id,user.id).run();
           if(project.billing_type==='paid')
             await db.prepare(
               "UPDATE realizo_ai_premium_orders SET status='released',updated_at=datetime('now') WHERE project_id=? AND user_id=? AND status='reserved'"
@@ -112,5 +113,27 @@ export async function GET(request,{params}){
    if(audit)response.owner_cost_audit={...audit,disclaimer:'Estimación por tarifas publicadas; conciliar contra costos facturados de OpenAI.'};
   }
   return Response.json(response,{headers});
+ }catch(e){return jsonError(e)}
+}
+// Recover at most once from a previously completed response without another
+// OpenAI POST, without video generation and without capturing a released order.
+// No arbitrary response IDs, no cross-user access and no second billable query.
+export async function POST(request,{params}){
+ if(!enforceSameOrigin(request))return Response.json({error:'invalid_origin'},{status:403,headers});
+ try{
+  const env=await getWalletEnvironment();
+  const user=await requireWalletUser(request,env);
+  if(!user)return Response.json({error:'not_authenticated'},{status:401,headers});
+  const {id}=await params;
+  if(!/^[a-f0-9-]{36}$/i.test(id||''))return Response.json({error:'not_found'},{status:404,headers});
+  const db=env.WALLETS_DB;
+  const changed=await db.prepare(
+   "UPDATE realizo_ai_projects SET status='researching',error_code='recovery_existing_response',updated_at=datetime('now','-1 minute') WHERE id=? AND user_id=? AND status='failed' AND error_code='unusable_research' AND provider_response_id IS NOT NULL"
+  ).bind(id,user.id).run();
+  if(Number(changed.meta?.changes||0)!==1)
+   return Response.json({error:'recovery_not_available'},{status:409,headers});
+  const project=await db.prepare('SELECT * FROM realizo_ai_projects WHERE id=? AND user_id=?')
+   .bind(id,user.id).first();
+  return Response.json(safeResearchResponse(project),{headers});
  }catch(e){return jsonError(e)}
 }
