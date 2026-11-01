@@ -7,7 +7,7 @@ const money = cents => new Intl.NumberFormat('es-EC',{style:'currency',currency:
 
 function Mark() {
   return <svg width="36" height="36" viewBox="0 0 56 56" fill="none" aria-hidden="true">
-    <defs><linearGradient id="realizo-wallet-mark" x1="0" y1="0" x2="54" y2="54"><stop stopColor="#FF987B"/><stop offset=".55" stopColor="#F469A6"/><stop offset="1" stopColor="#A279FF"/></linearGradient></defs>
+    <defs><linearGradient id="realizo-wallet-mark" x1="0" y1="0" x2="54" y2="54"><stop stopColor="#FFB76D"/><stop offset=".55" stopColor="#F49348"/><stop offset="1" stopColor="#A96032"/></linearGradient></defs>
     <rect width="56" height="56" rx="18" fill="url(#realizo-wallet-mark)"/><path d="M19 14.5v27l23-13.5L19 14.5Z" fill="#261C3C"/>
     <path d="M21.7 20.2 35 28l-13.3 7.8V20.2Z" fill="#FFF6EF"/><circle cx="43" cy="13" r="4.5" fill="#C6FFCB"/>
   </svg>;
