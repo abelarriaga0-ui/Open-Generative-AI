@@ -61,7 +61,8 @@ test('fixed existing billing does not become an unapproved variable charge',()=>
  assert.match(mig,/video_duration_seconds/);
  assert.match(mig,/estimated_cost_micro_usd/);
  assert.match(api,/data.modelId,data.duration,data.workflowId/);
- assert.match(approval,/duration=Number\(project.video_duration_seconds\)/);
+ assert.match(approval,/resolvePremiumVideoChoice\(modelId,body.video_duration_seconds\?\?project.video_duration_seconds\)/);
+ assert.match(approval,/video_duration_seconds=\?/);
  assert.match(editor,/preparedBrief.video_duration_seconds/);
  assert.doesNotMatch(approval,/duration:8/);
 });
