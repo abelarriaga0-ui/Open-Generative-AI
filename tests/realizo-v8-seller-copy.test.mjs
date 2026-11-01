@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import {improveSalesScript,speechWords,voiceBudget} from '../lib/realizo-creative/sales-storyboard.js';
 import {buildResearchRequest} from '../lib/realizo-creative/ai-premium.js';
 import {buildCommercialDirectorPackage} from '../lib/realizo-creative/sales-director.js';
+import {acceptsSellerConfirmation} from '../lib/realizo-creative/approval-consent.js';
 
 const description='Shampoo Perfumado NOIL más esencia de perfume con feromonas concentradas, para volverte irresistible, duración y fijación por 24 horas sin perder aroma';
 const concept={name:'El aroma de la noche',hook:'¿Quieres destacar esta noche?',
@@ -49,4 +50,17 @@ test('research keeps seller copy and verification as different fields, without e
  assert.equal(req.tool_choice,'required');
  assert.equal(req.max_tool_calls,5);
  assert.equal(req.input[0].content.filter(x=>x.type==='input_image').length,1);
+});
+
+test('legacy cached client approves researched concept without new checkbox field; no second billing',()=>{
+ assert.equal(acceptsSellerConfirmation({index:0,speech:'Guion vendedor aprobado'}),true);
+ assert.equal(acceptsSellerConfirmation({index:0,seller_claims_confirmed:true}),true);
+ assert.equal(acceptsSellerConfirmation({index:0,seller_claims_confirmed:false}),false);
+ assert.equal(acceptsSellerConfirmation({index:0,seller_claims_confirmed:null}),false);
+ assert.equal(acceptsSellerConfirmation(null),false);
+ const approval=readFileSync('app/api/realizo/ai-premium/[id]/approve/route.js','utf8');
+ assert.match(approval,/if\(!acceptsSellerConfirmation\(body\)\)/);
+ assert.match(approval,/requireWalletUser\(request,env\)/);
+ assert.match(approval,/seller_claims_confirmation_required/);
+ assert.doesNotMatch(approval,/startOpenAIResearch|research_payment_cents/);
 });
