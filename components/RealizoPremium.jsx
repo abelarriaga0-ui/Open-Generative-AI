@@ -260,7 +260,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
    keyRef.current=null;
  };
  const ready=concepts.length===3 && ['ready','needs_review','approved'].includes(project?.status);
- return <div className="max-w-[1160px] mx-auto space-y-5">
+ return <div className="realizo-premium-skin max-w-[1160px] mx-auto space-y-5">
   <div className="rounded-[25px] bg-gradient-to-r from-[#38244E] to-[#6D47AE] p-6 sm:p-8 text-white">
    <p className="text-xs font-bold tracking-[.19em] uppercase text-[#F8C3C5]">Realizo AI Premium</p>
    <h2 className="text-[27px] sm:text-[36px] font-extrabold mt-2">Tu agencia creativa con IA.</h2>
