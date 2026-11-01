@@ -35,7 +35,7 @@ test('one seller acknowledgment appears at final approval; no claim verification
  assert.match(ui,/Confirmo que revisé el guion y las afirmaciones comerciales que autorizo/);
  assert.match(ui,/manualSpeechRef.current=true/);
  assert.match(ui,/if\(!manualSpeechRef.current\)setEditedSpeech/);
- assert.match(approval,/body.seller_claims_confirmed!==true/);
+ assert.match(approval,/acceptsSellerConfirmation\(body\)/);
  assert.match(approval,/seller_claims_confirmation_required/);
  assert.match(approval,/spoken_script:userSpeech/);
 });
