@@ -70,13 +70,28 @@ class SharedResearchBalance(unittest.TestCase):
   self.assertEqual(self.balance('owner'),(48,0))
 
  def test_unverified_legacy_import_remains_restricted(self):
-  self.migrate()
-  # Owner's special reconciliation cannot be impersonated by another user.
-  self.db.execute("INSERT INTO realizo_prepaid_muapi_imports(slot,user_id,amount_cents) VALUES(2,'customer',775)")
-  self.db.execute("UPDATE wallets SET available_cents=800 WHERE user_id='customer'")
-  with self.assertRaisesRegex(sqlite3.IntegrityError,'ai_insufficient_general_funds'):
-   self.reserve('customer',1)
-  self.assertEqual(self.balance('customer'),(800,0))
+  # The legacy import table has one global slot. Build an independent DB
+  # where the imported account has NO verified reconciliation.
+  other=sqlite3.connect(':memory:')
+  try:
+   other.execute('PRAGMA foreign_keys=ON')
+   for name in BASE:other.executescript((ROOT/name).read_text())
+   other.executescript((ROOT/MIGRATION).read_text())
+   other.execute("INSERT INTO wallet_users(id,auth_provider,auth_subject) VALUES('customer','realizo','customer')")
+   other.execute("INSERT INTO wallets(user_id) VALUES('customer')")
+   other.execute("""INSERT INTO realizo_media_assets
+       (id,user_id,object_key,content_type,byte_size,created_at,expires_at)
+       VALUES ('img','customer','customer/img','image/jpeg',1000,1,9999999999)""")
+   other.execute("INSERT INTO realizo_prepaid_muapi_imports(slot,user_id,amount_cents) VALUES(1,'customer',775)")
+   other.execute("UPDATE wallets SET available_cents=800 WHERE user_id='customer'")
+   other.execute("""INSERT INTO realizo_ai_projects
+       (id,user_id,primary_asset_id,description,market_code,request_key,billing_type,premium_price_cents)
+       VALUES('p1','customer','img','Shampoo','EC','k1','paid',49)""")
+   with self.assertRaisesRegex(sqlite3.IntegrityError,'ai_insufficient_general_funds'):
+    other.execute("""INSERT INTO realizo_ai_premium_orders
+       (id,project_id,user_id,price_cents) VALUES('o1','p1','customer',49)""")
+   self.assertEqual(other.execute("SELECT available_cents,reserved_cents FROM wallets WHERE user_id='customer'").fetchone(),(800,0))
+  finally:other.close()
 
  def test_regular_paid_user_spends_verified_wallet_without_sandbox_owner_credit(self):
   self.migrate()
