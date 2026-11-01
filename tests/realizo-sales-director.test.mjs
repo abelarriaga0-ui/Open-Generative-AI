@@ -80,7 +80,7 @@ test('12-second UGC prioritizes a spoken buyer review over a five-shot silent mo
    style:'ugc',shotPreference:'multi',duration:12,modelId:'seedance-2.5-intl-omni-reference'
  });
  assert.equal(result.shot_count,2);
- assert.match(result.prompt,/0-1\.6s speaker says a compelling hook/i);
+ assert.match(result.prompt,/0-2\.9s speaker says a compelling hook/i);
  assert.match(result.prompt,/70-85%/);
  assert.match(result.prompt,/SPOKEN SCRIPT \(Spanish, target market EC\)/);
  assert.match(result.prompt,/no standalone product montage/i);
