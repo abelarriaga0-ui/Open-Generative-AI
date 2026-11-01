@@ -24,7 +24,7 @@ test('15-second UGC respects the owner description, uses buyer desire and fills 
  assert.match(speech,/GODA/i);
  assert.match(speech,/feromonas/i);
  assert.match(speech,/24 horas/i);
- assert.match(speech,/anunciada/i);
+ assert.match(speech,/esencia de perfume con feromonas/i);
  assert.match(speech,/combo hoy/i);
  assert.doesNotMatch(speech,/las mujeres no quieran|irresistible|garantiza/i);
  assert.equal(scriptReadiness(speech,{seconds:15,style:'ugc'}).tooShort,false);
@@ -61,7 +61,7 @@ test('a new paid research uses vendor marketing positioning as an attributed cla
   video_duration_seconds:15,market_code:'EC',creative_style:'ugc',sales_angle:'auto',
  });
  assert.match(req.instructions,/NOMBRES Y GUIONES QUE VENDEN/);
- assert.match(req.instructions,/feromonas o de fijación 24 horas/);
+ assert.match(req.instructions,/No suprimas palabras como «feromonas» o «24 horas»/);
  assert.match(req.instructions,/no conviertas el ANUNCIO/i);
  assert.equal(req.max_tool_calls,5);
  const route=readFileSync('app/api/realizo/ai-premium/[id]/route.js','utf8');
