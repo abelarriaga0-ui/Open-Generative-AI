@@ -273,6 +273,13 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
       'Precio de investigación no disponible'}
    </p>
   </div>
+  <div className="realizo-premium-progress" aria-label="Proceso de creación">
+    <span className={!project?'current':'done'}><i>01</i> Producto y motor</span>
+    <i className="realizo-progress-line"/>
+    <span className={project&&['ready','needs_review','approved'].includes(project.status)?'current':project?'in-progress':''}><i>02</i> Investigación y conceptos</span>
+    <i className="realizo-progress-line"/>
+    <span className={project?.status==='approved'?'done':''}><i>03</i> Revisión y generación</span>
+   </div>
   {error&&<div role="alert" className="rounded-2xl border border-[#EEB9AB] bg-[#FFF0E9] px-5 py-3 text-sm text-[#914F40]">{error}</div>}
   {!project&&<div className="grid lg:grid-cols-[.9fr_1.1fr] gap-5">
    <section className={card+' space-y-4'}>
@@ -285,7 +292,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
     </button>
     <input type="file" ref={fileRef} accept="image/jpeg,image/png,image/webp" className="hidden"
       onChange={e=>{upload(e.target.files?.[0]);e.target.value=''}}/>
-    <p className="text-xs text-[#86758B]">La fotografía define el envase y la etiqueta. La IA señalará las discrepancias, no inventará características.</p>
+    <p className="text-xs text-[#86758B]">La fotografía define el aspecto del producto. Puedes seguir personalizando escenas y estilo.</p>
    </section>
    <section className={card+' space-y-4'}>
     <h3 className="text-xl font-extrabold">2. Información y estrategia</h3>
@@ -317,7 +324,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
     </label>
     <div className="rounded-2xl border border-[#D8C5EF] bg-[#F9F5FF] p-4 space-y-3">
      <p className="text-sm font-extrabold">3. Configura el video antes de investigar</p>
-     <p className="text-xs text-[#765E90]">Elige cómo venderás y con qué motor, antes del único cobro de investigación.</p>
+     <p className="text-xs text-[#765E90]">Elige un estilo y motor. El costo se confirma antes de investigar.</p>
      <div className="space-y-2">
       <p className="text-sm font-bold">Formato publicitario</p>
       <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">

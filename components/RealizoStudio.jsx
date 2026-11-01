@@ -7,6 +7,7 @@ import { VideoStudio } from 'studio';
 import RealizoCreator from '@/components/RealizoCreator';
 import RealizoPremium from '@/components/RealizoPremium';
 import RealizoVisualGallery from '@/components/RealizoVisualGallery';
+import RealizoTemplateLibrary from '@/components/RealizoTemplateLibrary';
 
 function Mark() {
   return <svg width="37" height="37" viewBox="0 0 56 56" fill="none" aria-hidden="true">
@@ -121,6 +122,7 @@ export default function RealizoStudio({accountId}){
  }
  const nav=(id,label,icon,action)=>(
    <button key={id} type="button" onClick={()=>{setPage(id);setSidebar(false);if(action)action();}}
+     aria-current={page===id?'page':undefined}
      className={navBase+' '+(page===id?'bg-[#EDE2FB] text-[#6542AB]':'text-[#756782] hover:bg-[#F7F0F7]')}>
       <Icon name={icon}/>{label}{page===id&&<span className="ml-auto h-2 w-2 rounded-full bg-[#E9898F]"/>}
    </button>
@@ -145,6 +147,7 @@ export default function RealizoStudio({accountId}){
       <nav aria-label="Menú de Realizo" className="space-y-2">
        {nav('home','Inicio','video')}
        {nav('create','Crear video','video',startNewVideo)}
+       {nav('templates','Estilos e ideas','sliders')}
        {nav('videos','Mis videos','folder')}
        <Link href="/wallet" className={navBase+' text-[#756782] hover:bg-[#F7F0F7]'}><Icon name="wallet"/>Mis créditos<Icon name="chevron" size={14}/></Link>
       </nav>
@@ -158,27 +161,42 @@ export default function RealizoStudio({accountId}){
     </aside>
 
     <div className="realizo-content flex-1 min-w-0 px-4 sm:px-7 lg:px-10 py-8">
+     <div className="realizo-contextbar max-w-[1420px] mx-auto" aria-label="Espacio actual">
+      <span>WORKSPACE</span><span aria-hidden="true">/</span>
+      <strong>{page==='home'?'Inicio':page==='create'?'Crear anuncio':page==='templates'?'Estilos e ideas':'Mis videos'}</strong>
+      <span className="realizo-contextbar-right">REALIZO AI STUDIO</span>
+     </div>
      {page==='home'&&<div className="realizo-home max-w-[1420px] mx-auto space-y-10">
       <section className="realizo-hero">
        <div className="realizo-hero-copy">
         <p className="realizo-eyebrow"><span className="realizo-live-dot"/> REALIZO AI STUDIO <span className="realizo-eyebrow-divider"/> PUBLICIDAD CON IA</p>
         <h1>De una imagen a un anuncio <em>que impacta.</em></h1>
-        <p className="realizo-hero-desc">Crea videos publicitarios con personajes realistas, historias que conectan y los mejores motores de video con IA. Tu idea, tu marca, tu estilo.</p>
+        <p className="realizo-hero-desc">Del producto a una campaña que cuenta una historia. Videos UGC, cinematográficos y premium con IA, pensados para conectar con tus compradores.</p>
         <div className="realizo-hero-buttons">
          <button type="button" className="realizo-primary-action" onClick={()=>chooseVisualFormat('ugc')}>Crear anuncio <span aria-hidden="true">↗</span></button>
-         <button type="button" className="realizo-secondary-action" onClick={()=>chooseCreatorMode('manual')}>Editor avanzado <Icon name="sliders" size={16}/></button>
+         <button type="button" className="realizo-secondary-action" onClick={()=>setPage('templates')}>Explorar estilos <Icon name="arrow" size={16}/></button>
         </div>
-        <div className="realizo-hero-proof"><span>✦ IA que investiga</span><span>◉ UGC · Cine · Premium</span><span>↗ Precio antes de generar</span></div>
+        <div className="realizo-hero-proof"><span><i/> Investigación creativa</span><span><i/> Guion comercial</span><span><i/> Precio visible</span></div>
        </div>
-       <div className="realizo-hero-visual" aria-hidden="true">
-        <div className="realizo-hero-light"/>
-        <div className="realizo-hero-film film-back"><div className="realizo-hero-film-tag">CINEMATIC</div><div className="realizo-hero-film-sphere"/><div className="realizo-hero-film-product"/></div>
-        <div className="realizo-hero-film film-front"><div className="realizo-hero-film-tag">UGC / 15S</div><div className="realizo-hero-film-avatar"/><div className="realizo-hero-film-caption"><span/><span/></div><span className="realizo-film-play">▶</span></div>
-        <div className="realizo-hero-stat"><small>✦ AI CREATIVE STUDIO</small><strong>Convierte ideas en historias visuales.</strong></div>
+       <div className="realizo-hero-visual realizo-hero-composition" aria-hidden="true">
+        <div className="realizo-hero-orbit"/>
+        <div className="realizo-hero-shot realizo-hero-shot-left">
+         <div className="realizo-hero-shot-top"><span>01 / UGC</span><span>9:16</span></div>
+         <div className="realizo-hero-portrait"><span className="realizo-hero-portrait-face"/><span className="realizo-hero-portrait-shirt"/></div>
+         <div className="realizo-hero-shot-caption"><span/> <span/></div>
+        </div>
+        <div className="realizo-hero-shot realizo-hero-shot-right">
+         <div className="realizo-hero-shot-top"><span>02 / PRODUCT</span><span>9:16</span></div>
+         <div className="realizo-hero-plinth"/><div className="realizo-hero-bottle"><span/></div>
+         <div className="realizo-hero-product-glow"/>
+        </div>
+        <div className="realizo-floating-chip"><span className="realizo-floating-icon">✦</span><div><b>Dirección creativa</b><small>Una idea, múltiples estilos</small></div></div>
+        <div className="realizo-hero-editline"><span>● REC</span><i/><span>00:15</span></div>
        </div>
       </section>
       <div className="realizo-workflow-strip"><span><b>01</b> Tu producto</span><i/><span><b>02</b> Formato creativo</span><i/><span><b>03</b> Investigación y guion</span><i/><span><b>04</b> Video listo</span></div>
       <RealizoVisualGallery onChoose={chooseVisualFormat}/>
+      <div className="realizo-home-explore"><span>¿Buscas otra forma de contar tu historia?</span><button type="button" onClick={()=>setPage('templates')}>Explorar biblioteca de estilos <Icon name="arrow" size={16}/></button></div>
       <section className="realizo-quick-section">
        <div className="realizo-section-heading"><div><p className="realizo-kicker">TU ESTUDIO, TUS REGLAS</p><h2>Elige cómo quieres crear<span>.</span></h2><p className="realizo-muted">Tres caminos, las mismas funciones que ya utilizas.</p></div></div>
        <div className="realizo-quick-grid">
@@ -188,9 +206,17 @@ export default function RealizoStudio({accountId}){
        </div>
       </section>
      </div>}
+     {page==='templates'&&<div className="realizo-templates-page max-w-[1420px] mx-auto">
+       <div className="realizo-page-intro">
+        <p className="realizo-kicker">EXPLORA IDEAS</p>
+        <h1>Tu anuncio, tu <em>estilo.</em></h1>
+        <p>Descubre una dirección visual y crea tu propia versión con el producto, personaje y motor que prefieras.</p>
+       </div>
+       <RealizoTemplateLibrary onChoose={chooseVisualFormat}/>
+      </div>}
      {page==='create'&&<>
       <section className="realizo-page-heading max-w-[1230px] mx-auto mb-8">
-        <p className="uppercase tracking-[.19em] text-[#8A61B5] font-bold text-[11px]">Estudio de creación</p>
+        <p className="uppercase tracking-[.19em] text-[#8A61B5] font-bold text-[11px]">CREATIVE WORKSPACE / NUEVO PROYECTO</p>
         <div className="flex flex-wrap items-center justify-between gap-5 mt-2">
           <div><h1 className="text-[33px] sm:text-[42px] tracking-[-.045em] font-extrabold leading-tight">{editorOpen?'Editor de video':'Crea tu próximo anuncio'}<span className="text-[#EB8A87]">.</span></h1>
           <p className="mt-2 text-[#8E8197] text-sm">{editorOpen?'Elige el modelo y configura tu generación.':'Del producto al anuncio, con un proceso visual y sencillo.'}</p></div>
@@ -206,7 +232,7 @@ export default function RealizoStudio({accountId}){
         </div>
       </section>
 
-      {!editorOpen?<section className="max-w-[1230px] mx-auto space-y-6">
+      {!editorOpen?<section className="realizo-create-flow max-w-[1230px] mx-auto space-y-6">
         <div className="realizo-modes flex flex-wrap gap-3 rounded-[22px] p-3" aria-label="Modalidad de creación">
           {[
             ['automatic','Automático · sin costo IA'],
@@ -254,9 +280,10 @@ export default function RealizoStudio({accountId}){
        </section>}
      </>}
 
-     {page==='videos'&&<section className="max-w-[1030px] mx-auto">
+     {page==='videos'&&<section className="realizo-videos-page max-w-[1250px] mx-auto">
        <p className="uppercase tracking-[.19em] text-[#8A61B5] font-bold text-[11px] mb-2">Biblioteca</p>
-       <h1 className="text-[36px] tracking-tight font-extrabold">Mis videos<span className="text-[#EB8A87]">.</span></h1>
+       <h1 className="text-[36px] tracking-tight font-extrabold">Tu biblioteca creativa<span className="text-[#EB8A87]">.</span></h1>
+       <p className="realizo-videos-intro">Todos tus anuncios y proyectos preparados, organizados en un mismo espacio.</p>
        <div className="rounded-[25px] bg-white border border-[#E8DEDA] p-6 sm:p-8 mt-7">
          {jobsLoading?<p role="status" className="text-[#867A91]">Cargando tus videos…</p>:
           jobs.length?<div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
