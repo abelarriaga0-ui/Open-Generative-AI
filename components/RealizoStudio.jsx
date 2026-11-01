@@ -31,7 +31,7 @@ function Icon({name,size=20}){
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]||paths.video}</svg>;
 }
 const usd=c=>new Intl.NumberFormat('es-EC',{style:'currency',currency:'USD'}).format((c||0)/100);
-const navBase='flex items-center gap-3 px-4 py-3 rounded-2xl transition w-full text-left font-semibold text-[14px]';
+const navBase='realizo-nav-link flex items-center gap-3 px-4 py-3 rounded-2xl transition w-full text-left font-semibold text-[14px]';
 export default function RealizoStudio({accountId}){
  const [wallet,setWallet]=useState(null);
  const [billableModelIds,setBillableModelIds]=useState([]);
