@@ -9,6 +9,8 @@ on:
       - 'app/api/realizo/ai-premium/**'
       - 'migrations/0018_realizo_premium_video_choice_cost_audit.sql'
       - 'migrations/0020_realizo_paid_research_without_daily_cap.sql'
+      - 'migrations/0021_realizo_sandbox_owner_shared_ai_balance.sql'
+      - 'tests/test_realizo_sandbox_owner_shared_wallet.py'
       - 'tests/test_realizo_paid_without_daily_limit.py'
       - 'tests/realizo-*.test.mjs'
       - '.github/workflows/realizo-premium-duration-cost-ci.yml'
@@ -31,6 +33,8 @@ jobs:
           node --test tests/realizo-v8-seller-copy.test.mjs tests/realizo-v7-copy-duration.test.mjs tests/realizo-cinematic-hook-editing.test.mjs tests/realizo-nmf-sales-storyboard.test.mjs tests/realizo-local-subtitles.test.mjs tests/realizo-product-geometry.test.mjs tests/realizo-premium-recovery.test.mjs tests/realizo-grounded-research-formats.test.mjs tests/realizo-ugc-review-conversion.test.mjs tests/realizo-premium-hierarchical-picker.test.mjs tests/realizo-premium-duration-cost.test.mjs tests/realizo-ai-premium.test.mjs tests/realizo-premium-paid-languages.test.mjs tests/realizo-sales-director.test.mjs
       - name: Check paid research has no artificial daily cap, wallet still protected
         run: python3 -m unittest discover -s tests -p 'test_realizo_paid_without_daily_limit.py' -v
+      - name: Verify Sandbox owner wallet is shared while reserve/capture and other users remain protected
+        run: python3 -m unittest discover -s tests -p 'test_realizo_sandbox_owner_shared_wallet.py' -v
       - name: Install dependencies for JSX validation, no secrets
         run: npm install --no-save --package-lock=false --ignore-scripts
       - name: Check JSX syntax, no deployment
