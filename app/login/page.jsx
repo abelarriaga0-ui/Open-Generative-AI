@@ -114,7 +114,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F7F3EE] text-[#251D37]">
+    <main className="realizo-login-page min-h-screen">
       <div className="grid min-h-screen lg:grid-cols-[minmax(0,1.05fr)_minmax(420px,0.95fr)]">
         <section
           className="relative hidden min-h-[720px] overflow-hidden bg-[#261E3F] px-12 py-12 text-white lg:flex lg:flex-col lg:justify-between xl:px-16"
