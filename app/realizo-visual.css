@@ -248,3 +248,34 @@
 @media(prefers-reduced-motion:reduce){
  .realizo-app :is(button,a){transition:none!important;animation:none!important;}
 }
+
+/* REALIZO native login: same identity, authentication handlers untouched. */
+.realizo-login-page{background:#0c0e14;color:#f6f4fa;}
+.realizo-login-page>div>section:first-child{background:linear-gradient(150deg,#1f1717 0%,#191923 47%,#0c111b 100%)!important;}
+.realizo-login-page>div>section:first-child :is(h2,strong){color:#fff;}
+.realizo-login-page>div>section:first-child [class*="text-[#FF"]{color:#ffaf75!important;}
+.realizo-login-page>div>section:first-child [class*="bg-[#7051C0]"]{background:#4d302f!important;}
+.realizo-login-page>div>section:first-child [class*="bg-[#F58983]"]{background:#b96c42!important;}
+.realizo-login-page>div>section:first-child [class*="bg-[#3F315C]"]{background:#22232b!important;}
+.realizo-login-page>div>section:nth-child(2){background:radial-gradient(circle at 65% 15%,#211a1e 0%,#101218 37%,#0d0e14 90%);}
+.realizo-login-page>div>section:nth-child(2) h1{color:#fff;}
+.realizo-login-page>div>section:nth-child(2) [class*="text-[#"]{color:#a7a7b5!important;}
+.realizo-login-page>div>section:nth-child(2) [class*="text-[#281F3E]"]{color:#fff!important;}
+.realizo-login-page>div>section:nth-child(2) [class*="bg-[#E9DDFE]"]{background:#37251e!important;color:#ffb777!important;}
+.realizo-login-page>div>section:nth-child(2) input{
+ background:#181a22!important;color:#f4f4f7!important;-webkit-text-fill-color:#f4f4f7!important;
+ border:1px solid #41424d!important;border-radius:15px;
+}
+.realizo-login-page>div>section:nth-child(2) input::placeholder{color:#9a98a8!important;-webkit-text-fill-color:#9a98a8!important;}
+.realizo-login-page>div>section:nth-child(2) input:focus{border-color:#ffab6c!important;box-shadow:0 0 0 3px #e99d5424!important;}
+.realizo-login-page>div>section:nth-child(2) button[class*="bg-[#6E4BD2]"]{
+ background:linear-gradient(140deg,#ffc182,#f69447)!important;color:#20140f!important;
+ border-color:transparent!important;box-shadow:0 8px 25px #e9954428;
+}
+.realizo-login-page>div>section:nth-child(2) button[class*="bg-white"]{
+ background:#22242c!important;border-color:#3d3f49!important;color:#e7e5ec!important;
+}
+.realizo-login-page>div>section:nth-child(2) :is(span,small)[class*="bg-[#E4DDD9]"]{background:#383943!important;}
+.realizo-wallet-page :is(button,a):focus-visible,.realizo-app :is(button,a):focus-visible{
+ outline:2px solid #ffab68;outline-offset:3px;
+}
