@@ -76,7 +76,7 @@ export default function WalletPage(){
         <div className="grid lg:grid-cols-[1.2fr_.8fr] gap-5 items-start">
           <section className="rounded-[26px] bg-white border border-[#E7DFD8] p-6 sm:p-8">
             <h2 className="text-2xl tracking-tight font-extrabold mb-6">Recargar créditos</h2>
-            <PaypalTopup minCents={data.min_topup_cents} firstTopup={data.first_topup} onPaid={()=>window.location.reload()} theme="light"/>
+            <PaypalTopup minCents={data.min_topup_cents} firstTopup={data.first_topup} onPaid={()=>window.location.reload()} theme="dark"/>
           </section>
           <section className="rounded-[26px] bg-white border border-[#E7DFD8] p-6 sm:p-8">
             <h2 className="text-2xl tracking-tight font-extrabold mb-5">Actividad</h2>
