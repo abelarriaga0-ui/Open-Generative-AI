@@ -26,7 +26,7 @@ test('UGC style is chosen before charging and travels into the research request'
  assert.match(payload.instructions,/UGC DE VENTA/);
  assert.match(payload.instructions,/70-85%/);
  assert.match(payload.instructions,/GANCHO HABLADO/);
- assert.match(payload.instructions,/promesas de atracción romántica/);
+ assert.match(payload.instructions,/RESPETO DEL TEXTO COMERCIAL/);
  assert.match(payload.input[0].content[0].text,/creative_style/);
 });
 test('UGC research fingerprint is different from the silent cinematic option',async()=>{
