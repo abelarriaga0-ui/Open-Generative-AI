@@ -228,3 +228,30 @@
 @media(prefers-reduced-motion:reduce){
  .realizo-app *,.realizo-wallet-page *{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
 }
+
+/* Premium three-stage studio is a visual progress indicator, never a gate. */
+.realizo-premium-progress{
+ display:flex;gap:13px;align-items:center;border:1px solid #303138;
+ border-radius:15px;background:#14161b;padding:14px 19px;overflow-x:auto;
+}
+.realizo-premium-progress span{font-size:11px;font-weight:700;color:#8e909d;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.realizo-premium-progress span i{height:28px;width:28px;border:1px solid #42424b;border-radius:9px;font-size:10px;font-style:normal;display:grid;place-items:center}
+.realizo-premium-progress span.current{color:#ffc28b}
+.realizo-premium-progress span.current i{background:#4c3022;border-color:#956344;color:#ffd2a8}
+.realizo-premium-progress span.done{color:#d0cece}
+.realizo-premium-progress span.done i{background:#2b3b33;border-color:#52735d;color:#a4e7ba}
+.realizo-premium-progress .realizo-progress-line{height:1px;min-width:10px;background:#42434a;flex:1}
+.realizo-brief-review{border-radius:22px;border:1px solid #373943;background:linear-gradient(155deg,#202027,#161920);padding:30px;min-height:310px}
+.realizo-review-symbol{height:46px;width:46px;border:1px solid #7e5942;background:#3a2a24;border-radius:14px;display:grid;place-items:center;font-size:24px;color:#ffb87a}
+.realizo-brief-review h3{font-size:23px;letter-spacing:-.045em;font-weight:850;margin:20px 0 10px}
+.realizo-brief-review>p{font-size:13px;line-height:1.7;color:#a8a7b0;max-width:380px}
+.realizo-tech-details{margin-top:22px;border-top:1px solid #37363e;padding-top:17px}
+.realizo-tech-details summary{cursor:pointer;font-size:12px;color:#ffbb83;font-weight:750;list-style-position:inside}
+.realizo-tech-details label{display:block;margin-top:15px}
+.realizo-tech-details textarea{width:100%;background:#101219!important;color:#f8f6f3!important}
+@media(max-width:720px){
+ .realizo-premium-progress{padding:11px}
+ .realizo-premium-progress span{font-size:10px}
+ .realizo-premium-progress span i{width:25px;height:25px}
+ .realizo-brief-review{min-height:250px;padding:22px}
+}
