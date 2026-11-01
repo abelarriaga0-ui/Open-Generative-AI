@@ -52,7 +52,8 @@ test('no extra AI on script edits; UGC voice and aspect are attached to the appr
  const approval=readFileSync('app/api/realizo/ai-premium/[id]/approve/route.js','utf8');
  const editor=readFileSync('packages/studio/src/components/VideoStudio.jsx','utf8');
  const migration=readFileSync('migrations/0019_realizo_premium_creative_style.sql','utf8');
- assert.match(source,/creative_style:'ugc'/);
+ assert.match(source,/initialStyle='ugc'/);
+ assert.match(source,/creative_style:initialStyle/);
  assert.match(source,/onClick=\{\(\)=>change\('creative_style',id\)\}/);
  assert.match(source,/Editar guion hablado sin costo adicional/);
  assert.match(source,/speech:editedSpeech/);
