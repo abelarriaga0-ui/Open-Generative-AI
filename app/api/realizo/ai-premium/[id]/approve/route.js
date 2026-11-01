@@ -4,6 +4,7 @@ import {safeResearchResponse} from '@/lib/realizo-creative/ai-premium';
 import {resolvePremiumVideoChoice} from '@/lib/realizo-creative/video-specs';
 import {signedMediaUrl} from '@/lib/realizo-creative/media';
 import {buildCommercialDirectorPackage,normalizeProductCopy} from '@/lib/realizo-creative/sales-director';
+import {acceptsSellerConfirmation} from '@/lib/realizo-creative/approval-consent';
 
 export const dynamic='force-dynamic';
 export async function POST(request,{params}){
@@ -34,9 +35,14 @@ export async function POST(request,{params}){
   const conflicts=Array.isArray(findings.description_conflicts)?findings.description_conflicts:[];
   const claimsToVerify=Array.isArray(findings.claims_to_verify)?findings.claims_to_verify:[];
   const correction=String(body.correction||'').trim().slice(0,700);
-  // One seller-side acknowledgement at the FINAL approval, not before
-  // research. It does not prove any product claims or waive applicable rules.
-  if(body.seller_claims_confirmed!==true)
+  // Backward compatibility: an old cached Studio client can omit the new
+  // checkbox field while the updated server is already deployed. The user
+  // has explicitly clicked "Approve concept" in their authenticated session.
+  // Don't strand previously paid research for a UI/server version mismatch.
+  // Current clients still display and require the explicit checkbox; reject
+  // a caller who *explicitly* supplies false. Acknowledgement is not proof
+  // that a product claim is true and does not waive applicable obligations.
+  if(!acceptsSellerConfirmation(body))
     return Response.json({error:'seller_claims_confirmation_required'},{status:422});
   // Keep reported evidence separate from seller-authored marketing copy.
   const userPrompt=String(body.prompt||concept.video_prompt).trim();
