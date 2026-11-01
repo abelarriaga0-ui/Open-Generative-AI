@@ -64,7 +64,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
  const [editedSpeech,setEditedSpeech]=useState('');
  const [reviewDuration,setReviewDuration]=useState(null);
  const [sellerConfirmed,setSellerConfirmed]=useState(false);
- const [style,setStyle]=useState('ugc'),[shotPreference,setShotPreference]=useState('auto');
+ const [style,setStyle]=useState(initialStyle),[shotPreference,setShotPreference]=useState('auto');
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
  const fileRef=useRef(null),keyRef=useRef(null);
  const manualSpeechRef=useRef(false),manualPromptRef=useRef(false);
