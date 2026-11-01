@@ -198,9 +198,15 @@ export default function RealizoCreator({accountId,onPrepare,onOpenAdvanced}) {
       <button onClick={()=>setActiveStep(2)} className="rounded-xl border border-[#E6DDE1] px-4 py-2 text-sm font-semibold inline-flex gap-2 items-center"><Icon name="pen" size={16}/> Ajustar</button>
     </div>
     <div className="grid lg:grid-cols-[1fr_.8fr] gap-5">
-      <div>
-       <Field label="Instrucciones para el video"><textarea className={field+' min-h-[330px] text-[13px] leading-6 font-mono resize-y'}
-         value={prepared?.prompt||summary.prompt} onChange={e=>setPrepared(p=>({...p,prompt:e.target.value}))}/></Field>
+      <div className="realizo-brief-review">
+        <div className="realizo-review-symbol">✦</div>
+        <h3>Brief preparado para tu anuncio</h3>
+        <p>Producto, enfoque y referencias están listos. En el editor podrás elegir el motor y ver el precio antes de generar.</p>
+        <details className="realizo-tech-details">
+          <summary>Ver o editar instrucciones técnicas</summary>
+          <Field label="Prompt editable"><textarea className={field+' min-h-[235px] text-[13px] leading-6 font-mono resize-y mt-3'}
+             value={prepared?.prompt||summary.prompt} onChange={e=>setPrepared(p=>({...p,prompt:e.target.value}))}/></Field>
+        </details>
       </div>
       <div className="space-y-4">
        <div className="bg-[#F7F3EE] rounded-2xl p-5 space-y-3">
