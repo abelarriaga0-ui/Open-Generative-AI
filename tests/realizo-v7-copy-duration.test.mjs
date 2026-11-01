@@ -62,7 +62,7 @@ test('a new paid research uses vendor marketing positioning as an attributed cla
  });
  assert.match(req.instructions,/NOMBRES Y GUIONES QUE VENDEN/);
  assert.match(req.instructions,/No suprimas palabras como «feromonas» o «24 horas»/);
- assert.match(req.instructions,/no conviertas el ANUNCIO/i);
+ assert.match(req.instructions,/Las observaciones de verificación van en product_dossier/);
  assert.equal(req.max_tool_calls,5);
  const route=readFileSync('app/api/realizo/ai-premium/[id]/route.js','utf8');
  assert.match(route,/description:project.description/);
