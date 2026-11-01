@@ -6,11 +6,12 @@ import { generateWithRealizoWallet } from '@/lib/realizo-creative/wallet-generat
 import { VideoStudio } from 'studio';
 import RealizoCreator from '@/components/RealizoCreator';
 import RealizoPremium from '@/components/RealizoPremium';
+import RealizoVisualGallery from '@/components/RealizoVisualGallery';
 
 function Mark() {
   return <svg width="37" height="37" viewBox="0 0 56 56" fill="none" aria-hidden="true">
     <defs><linearGradient id="realizo-studio-sign" x1="2" y1="5" x2="54" y2="52">
-      <stop stopColor="#FF987B"/><stop offset=".53" stopColor="#F469A6"/><stop offset="1" stopColor="#A279FF"/>
+      <stop stopColor="#FFB76D"/><stop offset=".53" stopColor="#F49348"/><stop offset="1" stopColor="#A96032"/>
     </linearGradient></defs><rect width="56" height="56" rx="18" fill="url(#realizo-studio-sign)"/>
     <path d="M19 14.5v27l23-13.5L19 14.5Z" fill="#261C3C"/>
     <path d="M21.7 20.2 35 28l-13.3 7.8V20.2Z" fill="#FFF6EF"/>
@@ -30,7 +31,7 @@ function Icon({name,size=20}){
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]||paths.video}</svg>;
 }
 const usd=c=>new Intl.NumberFormat('es-EC',{style:'currency',currency:'USD'}).format((c||0)/100);
-const navBase='flex items-center gap-3 px-4 py-3 rounded-2xl transition w-full text-left font-semibold text-[14px]';
+const navBase='realizo-nav-link flex items-center gap-3 px-4 py-3 rounded-2xl transition w-full text-left font-semibold text-[14px]';
 export default function RealizoStudio({accountId}){
  const [wallet,setWallet]=useState(null);
  const [billableModelIds,setBillableModelIds]=useState([]);
@@ -40,7 +41,8 @@ export default function RealizoStudio({accountId}){
  const [jobs,setJobs]=useState([]);
  const [jobsLoading,setJobsLoading]=useState(false);
  const [premiumProjects,setPremiumProjects]=useState([]);
- const [page,setPage]=useState('create');
+ const [page,setPage]=useState('home');
+ const [formatPreset,setFormatPreset]=useState('ugc');
  const [brief,setBrief]=useState(null);
  const [editorOpen,setEditorOpen]=useState(false);
  const [creatorMode,setCreatorMode]=useState('automatic');
@@ -92,12 +94,12 @@ export default function RealizoStudio({accountId}){
  }
  function openEditor(){setEditorOpen(true);setPage('create');setSidebar(false)}
  function startNewVideo(){
-   setPage('create');setEditorOpen(false);setBrief(null);
+   setPage('create');setEditorOpen(false);setBrief(null);setFormatPreset('ugc');
    setCreatorMode('automatic');setResumeProjectId(null);
    setCreateKey(current=>current+1);setSidebar(false);
  }
  function newPremiumProject(){
-   setBrief(null);setEditorOpen(false);setResumeProjectId(null);
+   setBrief(null);setEditorOpen(false);setResumeProjectId(null);setFormatPreset('ugc');
    setCreateKey(current=>current+1);setCreatorMode('premium');setPage('create');
  }
  function reopenPremiumProject(projectId){
@@ -107,9 +109,15 @@ export default function RealizoStudio({accountId}){
    setPage('create');setSidebar(false);
  }
  function chooseCreatorMode(mode){
+   setPage('create');setSidebar(false);
    setBrief(null);setResumeProjectId(null);setCreateKey(current=>current+1);
    setCreatorMode(mode);
    if(mode==='manual')openEditor();
+ }
+ function chooseVisualFormat(format){
+  setBrief(null);setEditorOpen(false);setResumeProjectId(null);
+  setFormatPreset(format);setCreatorMode('premium');setPage('create');
+  setCreateKey(x=>x+1);setSidebar(false);
  }
  const nav=(id,label,icon,action)=>(
    <button key={id} type="button" onClick={()=>{setPage(id);setSidebar(false);if(action)action();}}
@@ -117,44 +125,75 @@ export default function RealizoStudio({accountId}){
       <Icon name={icon}/>{label}{page===id&&<span className="ml-auto h-2 w-2 rounded-full bg-[#E9898F]"/>}
    </button>
  );
- return <main className="min-h-screen bg-[#F7F3EE] text-[#251D37] flex flex-col">
-   <header className="h-[76px] shrink-0 bg-[#F7F3EE] border-b border-[#E7DDD8] px-5 sm:px-7 flex items-center justify-between gap-3">
-     <Link href="/studio" className="flex items-center gap-2.5 font-extrabold tracking-tight text-[24px]">
+ return <main className="realizo-app min-h-screen flex flex-col">
+   <header className="realizo-topbar shrink-0 px-5 sm:px-7 flex items-center justify-between gap-3">
+     <Link href="/studio" className="realizo-brand flex items-center gap-2.5 font-extrabold tracking-tight text-[24px]">
        <Mark/>realizo<span className="text-[#EF8B89]">.</span>
      </Link>
      <div className="flex items-center gap-3">
-       <Link href="/wallet" className="inline-flex gap-2 items-center rounded-full border border-[#E8DCE1] bg-white text-[#624779] font-bold text-[13px] px-4 py-2.5 hover:border-[#BAA0D3] transition">
+       <Link href="/wallet" className="realizo-balance inline-flex gap-2 items-center rounded-full font-bold text-[13px] px-4 py-2.5 transition">
          <Icon name="wallet" size={18}/>{wallet?usd(wallet.available_cents):'Mis créditos'}
        </Link>
-       <button onClick={()=>setSidebar(b=>!b)} type="button" className="lg:hidden w-10 h-10 grid place-items-center rounded-full bg-[#EDE4F5] text-[#6B5094]" aria-label="Abrir menú"><Icon name="sliders"/></button>
-       <button onClick={exit} type="button" className="hidden lg:grid w-10 h-10 place-items-center rounded-full bg-[#EFE9EA] text-[#6E6171] hover:bg-[#E9DDFE]" aria-label="Cerrar sesión" title="Cerrar sesión"><Icon name="exit"/></button>
+       <button onClick={()=>setSidebar(b=>!b)} type="button" className="realizo-icon-button lg:hidden w-10 h-10 grid place-items-center rounded-full" aria-label="Abrir menú"><Icon name="sliders"/></button>
+       <button onClick={exit} type="button" className="realizo-icon-button hidden lg:grid w-10 h-10 place-items-center rounded-full" aria-label="Cerrar sesión" title="Cerrar sesión"><Icon name="exit"/></button>
      </div>
    </header>
 
    <div className="flex flex-1 min-h-[calc(100vh-76px)]">
-    <aside className={(sidebar?'block':'hidden')+' lg:block w-full lg:w-[255px] shrink-0 border-r border-[#E9DFDD] bg-[#FFFCF9] p-5 lg:p-6 space-y-4'}>
-      <div className="hidden lg:block py-3 mb-5"><p className="text-[11px] tracking-[.18em] uppercase text-[#A58CB9] font-bold mb-2">Mi espacio</p><p className="text-lg font-extrabold leading-snug">Crea algo increíble<span className="text-[#F0928B]">.</span></p></div>
+    <aside className={(sidebar?'block':'hidden')+' realizo-sidebar lg:block w-full lg:w-[245px] shrink-0 p-5 lg:p-6 space-y-4'}>
+      <div className="hidden lg:block py-3 mb-5"><p className="realizo-kicker mb-2">WORKSPACE</p><p className="text-lg font-extrabold leading-snug">Estudio creativo<span className="realizo-orange">.</span></p></div>
       <nav aria-label="Menú de Realizo" className="space-y-2">
+       {nav('home','Inicio','video')}
        {nav('create','Crear video','video',startNewVideo)}
        {nav('videos','Mis videos','folder')}
        <Link href="/wallet" className={navBase+' text-[#756782] hover:bg-[#F7F0F7]'}><Icon name="wallet"/>Mis créditos<Icon name="chevron" size={14}/></Link>
       </nav>
-      <div className="hidden lg:block pt-7"><div className="rounded-[22px] bg-[#302347] text-white p-5 relative overflow-hidden">
+      <div className="hidden lg:block pt-7"><div className="rounded-[22px] realizo-sidebar-banner p-5 relative overflow-hidden">
         <div className="absolute w-24 h-24 -right-8 -top-10 rounded-full bg-[#D7A2D8]/20"/>
-        <p className="text-xs font-semibold text-[#F3BFAC] mb-2">Realizo Studio</p>
-        <p className="text-[17px] leading-6 font-extrabold">De la idea al video, en un solo lugar.</p>
+        <p className="realizo-kicker mb-2">REALIZO STUDIO</p>
+        <p className="text-[17px] leading-6 font-extrabold">Tu próxima gran campaña empieza aquí.</p>
         <div className="mt-5 flex gap-1.5 items-center"><span className="h-2 w-2 rounded-full bg-[#BBF2CD]"/><span className="text-[10px] text-[#DCCFEB]">Tu estudio creativo</span></div>
       </div></div>
       <button onClick={exit} className="lg:hidden mt-6 inline-flex items-center gap-2 text-sm text-[#765F88] px-4 py-2"><Icon name="exit"/>Cerrar sesión</button>
     </aside>
 
-    <div className="flex-1 min-w-0 px-4 sm:px-7 lg:px-10 py-8">
+    <div className="realizo-content flex-1 min-w-0 px-4 sm:px-7 lg:px-10 py-8">
+     {page==='home'&&<div className="realizo-home max-w-[1420px] mx-auto space-y-10">
+      <section className="realizo-hero">
+       <div className="realizo-hero-copy">
+        <p className="realizo-eyebrow"><span className="realizo-live-dot"/> REALIZO AI STUDIO <span className="realizo-eyebrow-divider"/> PUBLICIDAD CON IA</p>
+        <h1>De una imagen a un anuncio <em>que impacta.</em></h1>
+        <p className="realizo-hero-desc">Crea videos publicitarios con personajes realistas, historias que conectan y los mejores motores de video con IA. Tu idea, tu marca, tu estilo.</p>
+        <div className="realizo-hero-buttons">
+         <button type="button" className="realizo-primary-action" onClick={()=>chooseVisualFormat('ugc')}>Crear anuncio <span aria-hidden="true">↗</span></button>
+         <button type="button" className="realizo-secondary-action" onClick={()=>chooseCreatorMode('manual')}>Editor avanzado <Icon name="sliders" size={16}/></button>
+        </div>
+        <div className="realizo-hero-proof"><span>✦ IA que investiga</span><span>◉ UGC · Cine · Premium</span><span>↗ Precio antes de generar</span></div>
+       </div>
+       <div className="realizo-hero-visual" aria-hidden="true">
+        <div className="realizo-hero-light"/>
+        <div className="realizo-hero-film film-back"><div className="realizo-hero-film-tag">CINEMATIC</div><div className="realizo-hero-film-sphere"/><div className="realizo-hero-film-product"/></div>
+        <div className="realizo-hero-film film-front"><div className="realizo-hero-film-tag">UGC / 15S</div><div className="realizo-hero-film-avatar"/><div className="realizo-hero-film-caption"><span/><span/></div><span className="realizo-film-play">▶</span></div>
+        <div className="realizo-hero-stat"><small>✦ AI CREATIVE STUDIO</small><strong>Convierte ideas en historias visuales.</strong></div>
+       </div>
+      </section>
+      <div className="realizo-workflow-strip"><span><b>01</b> Tu producto</span><i/><span><b>02</b> Formato creativo</span><i/><span><b>03</b> Investigación y guion</span><i/><span><b>04</b> Video listo</span></div>
+      <RealizoVisualGallery onChoose={chooseVisualFormat}/>
+      <section className="realizo-quick-section">
+       <div className="realizo-section-heading"><div><p className="realizo-kicker">TU ESTUDIO, TUS REGLAS</p><h2>Elige cómo quieres crear<span>.</span></h2><p className="realizo-muted">Tres caminos, las mismas funciones que ya utilizas.</p></div></div>
+       <div className="realizo-quick-grid">
+        <button type="button" onClick={()=>chooseVisualFormat('ugc')} className="realizo-quick-card"><span className="realizo-quick-icon">✦</span><strong>La IA decide todo</strong><small>Investigación, ángulo y guiones publicitarios.</small><span>Comenzar ↗</span></button>
+        <button type="button" onClick={()=>chooseCreatorMode('automatic')} className="realizo-quick-card"><span className="realizo-quick-icon">◈</span><strong>Modo automático</strong><small>Prepara un brief sin costo de investigación IA.</small><span>Comenzar ↗</span></button>
+        <button type="button" onClick={()=>chooseCreatorMode('manual')} className="realizo-quick-card"><span className="realizo-quick-icon">⌘</span><strong>Modo manual</strong><small>Prompt, modelo, duración y controles avanzados.</small><span>Abrir editor ↗</span></button>
+       </div>
+      </section>
+     </div>}
      {page==='create'&&<>
-      <section className="max-w-[1230px] mx-auto mb-8">
+      <section className="realizo-page-heading max-w-[1230px] mx-auto mb-8">
         <p className="uppercase tracking-[.19em] text-[#8A61B5] font-bold text-[11px]">Estudio de creación</p>
         <div className="flex flex-wrap items-center justify-between gap-5 mt-2">
-          <div><h1 className="text-[33px] sm:text-[42px] tracking-[-.045em] font-extrabold leading-tight">{editorOpen?'Editor de video':'Convierte tu idea en video'}<span className="text-[#EB8A87]">.</span></h1>
-          <p className="mt-2 text-[#8E8197] text-sm">{editorOpen?'Elige el modelo y configura tu generación.':'Dale vida a tu producto en unos pocos pasos.'}</p></div>
+          <div><h1 className="text-[33px] sm:text-[42px] tracking-[-.045em] font-extrabold leading-tight">{editorOpen?'Editor de video':'Crea tu próximo anuncio'}<span className="text-[#EB8A87]">.</span></h1>
+          <p className="mt-2 text-[#8E8197] text-sm">{editorOpen?'Elige el modelo y configura tu generación.':'Del producto al anuncio, con un proceso visual y sencillo.'}</p></div>
           <button type="button" onClick={()=>{
             if(editorOpen && brief?.project_id){
               setResumeProjectId(brief.project_id);setCreatorMode('premium');
@@ -168,7 +207,7 @@ export default function RealizoStudio({accountId}){
       </section>
 
       {!editorOpen?<section className="max-w-[1230px] mx-auto space-y-6">
-        <div className="flex flex-wrap gap-3 rounded-[22px] border border-[#E5DAEA] bg-white p-3" aria-label="Modalidad de creación">
+        <div className="realizo-modes flex flex-wrap gap-3 rounded-[22px] p-3" aria-label="Modalidad de creación">
           {[
             ['automatic','Automático · sin costo IA'],
             ['manual','Manual · tu prompt'],
@@ -182,7 +221,7 @@ export default function RealizoStudio({accountId}){
           </button>)}
         </div>
         {creatorMode==='premium'?
-          <RealizoPremium key={'premium-'+createKey+'-'+(resumeProjectId||'new')}
+          <RealizoPremium initialStyle={formatPreset} key={'premium-'+createKey+'-'+(resumeProjectId||'new')}
             initialProjectId={resumeProjectId}
             onPrepare={setBrief} onOpenAdvanced={openEditor} onCreateNew={newPremiumProject}
             onWalletRefresh={refreshWallet}
@@ -200,7 +239,7 @@ export default function RealizoStudio({accountId}){
             setEditorOpen(false);
           }} className="text-[#6E4BD2] text-[13px] font-bold hover:underline">Editar concepto</button>
         </div>}
-        <div className="realizo-native-video rounded-[26px] overflow-hidden border border-[#E6DBE4] bg-[#FAF7F4] shadow-[0_16px_44px_rgba(51,38,83,.065)] h-[min(790px,calc(100vh-190px))] min-h-[605px]">
+        <div className="realizo-native-video rounded-[26px] overflow-hidden h-[min(790px,calc(100vh-190px))] min-h-[605px]">
           <VideoStudio locale="en" apiKey={null} persistenceScope={accountId} preparedBrief={brief}
             realizoBrand previewOnly freshCreation uploadAsset={uploadAsset}
             onWalletGenerate={onWalletGenerate} generationReady={generationReady}

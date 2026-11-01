@@ -1,0 +1,51 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const source=p=>readFileSync(p,'utf8');
+
+test('REALIZO premium visual workspace has actual navigation and three existing modes',()=>{
+ const studio=source('components/RealizoStudio.jsx');
+ assert.match(studio,/page===\x27home\x27/);
+ assert.match(studio,/nav\('home','Inicio','video'\)/);
+ assert.match(studio,/nav\('create','Crear video','video',startNewVideo\)/);
+ assert.match(studio,/nav\('videos','Mis videos','folder'\)/);
+ assert.match(studio,/RealizoVisualGallery onChoose=\{chooseVisualFormat\}/);
+ assert.match(studio,/function chooseVisualFormat\(format\)/);
+ assert.match(studio,/setCreatorMode\('premium'\)/);
+ assert.match(studio,/setFormatPreset\(format\)/);
+ assert.match(studio,/initialStyle=\{formatPreset\}/);
+ assert.match(studio,/chooseCreatorMode\('automatic'\)/);
+ assert.match(studio,/chooseCreatorMode\('manual'\)/);
+ assert.match(studio,/onWalletGenerate=\{onWalletGenerate\}/);
+ assert.match(studio,/persistenceScope=\{accountId\}/);
+ assert.match(studio,/generationReady=\{generationReady\}/);
+ assert.match(studio,/reopenPremiumProject\(item.id\)/);
+});
+test('format gallery cards are clickable and accurately labelled as styles, not fake ready-made templates',()=>{
+ const gallery=source('components/RealizoVisualGallery.jsx');
+ assert.match(gallery,/ugc/);assert.match(gallery,/cinematic/);
+ assert.match(gallery,/premium/);assert.match(gallery,/demo/);
+ assert.match(gallery,/onClick=\{\(\)=>onChoose\(item.id\)\}/);
+ assert.match(gallery,/Decorative mockups are format illustrations/);
+ assert.doesNotMatch(gallery,/fetch\(|router\.push|\/api\/wallet\/generate/);
+});
+test('visual overrides are scoped, no changes to backend, generation, billing or PayPal workflow',()=>{
+ const css=source('app/realizo-visual.css');
+ assert.match(css,/\.realizo-app/);
+ assert.match(css,/\.realizo-premium-skin/);
+ assert.match(css,/\.realizo-creator-skin/);
+ assert.match(css,/\.realizo-wallet-page/);
+ assert.match(css,/\.realizo-login-page/);
+ assert.match(css,/@media\(max-width:560px\)/);
+ assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
+ assert.match(source('app/layout.js'),/import '\.\/realizo-visual.css';/);
+ assert.match(source('app/wallet/page.jsx'),/onPaid=\{\(\)=>window.location.reload\(\)\} theme="dark"/);
+ assert.match(source('app/wallet/page.jsx'),/<PaypalTopup /);
+ assert.match(source('components/RealizoPremium.jsx'),/initialStyle='ugc'/);
+ assert.match(source('components/RealizoPremium.jsx'),/creative_style:initialStyle/);
+ const originalStudio=source('components/RealizoStudio.jsx');
+ assert.match(originalStudio,/fetch\('\/api\/wallet'/);
+ assert.match(originalStudio,/fetch\('\/api\/realizo\/jobs'/);
+ assert.match(originalStudio,/fetch\('\/api\/realizo\/ai-premium'/);
+ assert.match(originalStudio,/generateWithRealizoWallet/);
+});

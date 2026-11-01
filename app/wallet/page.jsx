@@ -7,7 +7,7 @@ const money = cents => new Intl.NumberFormat('es-EC',{style:'currency',currency:
 
 function Mark() {
   return <svg width="36" height="36" viewBox="0 0 56 56" fill="none" aria-hidden="true">
-    <defs><linearGradient id="realizo-wallet-mark" x1="0" y1="0" x2="54" y2="54"><stop stopColor="#FF987B"/><stop offset=".55" stopColor="#F469A6"/><stop offset="1" stopColor="#A279FF"/></linearGradient></defs>
+    <defs><linearGradient id="realizo-wallet-mark" x1="0" y1="0" x2="54" y2="54"><stop stopColor="#FFB76D"/><stop offset=".55" stopColor="#F49348"/><stop offset="1" stopColor="#A96032"/></linearGradient></defs>
     <rect width="56" height="56" rx="18" fill="url(#realizo-wallet-mark)"/><path d="M19 14.5v27l23-13.5L19 14.5Z" fill="#261C3C"/>
     <path d="M21.7 20.2 35 28l-13.3 7.8V20.2Z" fill="#FFF6EF"/><circle cx="43" cy="13" r="4.5" fill="#C6FFCB"/>
   </svg>;
@@ -38,7 +38,7 @@ export default function WalletPage(){
     finally{window.location.assign('/login');}
   }
   const entries={deposit:'Recarga',reserve:'Generación reservada',capture:'Video completado',release:'Reserva devuelta'};
-  return <main className="min-h-screen bg-[#F7F3EE] text-[#251D37]">
+  return <main className="realizo-wallet-page min-h-screen">
     <header className="border-b border-[#E8E0D9] bg-[#F7F3EE]">
       <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
         <Link href="/studio" className="inline-flex gap-2 items-center font-extrabold tracking-tight text-[23px]"><Mark/>realizo<span className="text-[#EC8E83]">.</span></Link>
@@ -76,7 +76,7 @@ export default function WalletPage(){
         <div className="grid lg:grid-cols-[1.2fr_.8fr] gap-5 items-start">
           <section className="rounded-[26px] bg-white border border-[#E7DFD8] p-6 sm:p-8">
             <h2 className="text-2xl tracking-tight font-extrabold mb-6">Recargar créditos</h2>
-            <PaypalTopup minCents={data.min_topup_cents} firstTopup={data.first_topup} onPaid={()=>window.location.reload()} theme="light"/>
+            <PaypalTopup minCents={data.min_topup_cents} firstTopup={data.first_topup} onPaid={()=>window.location.reload()} theme="dark"/>
           </section>
           <section className="rounded-[26px] bg-white border border-[#E7DFD8] p-6 sm:p-8">
             <h2 className="text-2xl tracking-tight font-extrabold mb-5">Actividad</h2>
