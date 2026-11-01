@@ -34,11 +34,11 @@ export async function POST(request,{params}){
   const conflicts=Array.isArray(findings.description_conflicts)?findings.description_conflicts:[];
   const claimsToVerify=Array.isArray(findings.claims_to_verify)?findings.claims_to_verify:[];
   const correction=String(body.correction||'').trim().slice(0,700);
-  // One concise seller responsibility acknowledgement, not a spelling
-  // correction form. Material photo/fact discrepancies remain visible.
-  // Facts not established by the research stay visible in the report and
-  // are not promoted to verified claims. No extra customer confirmation
-  // step is needed to proceed with a truthful creative proposal.
+  // One seller-side acknowledgement at the FINAL approval, not before
+  // research. It does not prove any product claims or waive applicable rules.
+  if(body.seller_claims_confirmed!==true)
+    return Response.json({error:'seller_claims_confirmation_required'},{status:422});
+  // Keep reported evidence separate from seller-authored marketing copy.
   const userPrompt=String(body.prompt||concept.video_prompt).trim();
   if(userPrompt.length<10||userPrompt.length>5500)
     return Response.json({error:'invalid_prompt'},{status:400});
