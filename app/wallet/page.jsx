@@ -38,7 +38,7 @@ export default function WalletPage(){
     finally{window.location.assign('/login');}
   }
   const entries={deposit:'Recarga',reserve:'Generación reservada',capture:'Video completado',release:'Reserva devuelta'};
-  return <main className="min-h-screen bg-[#F7F3EE] text-[#251D37]">
+  return <main className="realizo-wallet-page min-h-screen">
     <header className="border-b border-[#E8E0D9] bg-[#F7F3EE]">
       <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
         <Link href="/studio" className="inline-flex gap-2 items-center font-extrabold tracking-tight text-[23px]"><Mark/>realizo<span className="text-[#EC8E83]">.</span></Link>
