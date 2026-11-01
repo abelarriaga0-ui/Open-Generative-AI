@@ -1,6 +1,7 @@
 import {getWalletEnvironment,requireWalletUser,jsonError} from '@/lib/wallet/server';
 import {enforceSameOrigin} from '@/lib/wallet/access-auth';
 import {safeResearchResponse} from '@/lib/realizo-creative/ai-premium';
+import {resolvePremiumVideoChoice} from '@/lib/realizo-creative/video-specs';
 import {signedMediaUrl} from '@/lib/realizo-creative/media';
 import {buildCommercialDirectorPackage,normalizeProductCopy} from '@/lib/realizo-creative/sales-director';
 
@@ -51,8 +52,16 @@ export async function POST(request,{params}){
   const shotPreference=['auto','single','multi'].includes(body.shot_preference)?body.shot_preference:'auto';
   const directorConcept={...concept,video_prompt:userPrompt,spoken_script:userSpeech};
   const modelId=project.video_model_id||'seedance-2.5-omni-reference';
-  const duration=Number(project.video_duration_seconds)||8;
-  const workflowId=project.video_workflow_id||null;
+  let videoChoice;
+  try{
+    videoChoice=resolvePremiumVideoChoice(modelId,body.video_duration_seconds??project.video_duration_seconds);
+  }catch{
+    return Response.json({error:'invalid_video_configuration'},{status:422});
+  }
+  // Final duration is chosen AFTER research at no new AI charge.
+  // The same exact model must explicitly support it.
+  const duration=videoChoice.duration;
+  const workflowId=videoChoice.workflowId;
   const director=buildCommercialDirectorPackage({
     concept:directorConcept,productName:normalizeProductCopy(project.product_name),
     description:normalizeProductCopy(project.description),cta:concept.cta||project.cta,
@@ -64,8 +73,8 @@ export async function POST(request,{params}){
   // statements visibly distinguishable from claims substantiated by sources.
   const finalPrompt=director.prompt.slice(0,5500);
   await db.prepare(
-    "UPDATE realizo_ai_projects SET status='approved',selected_concept=?,approved_prompt=?,updated_at=datetime('now') WHERE id=? AND user_id=?"
-  ).bind(selection,finalPrompt,id,user.id).run();
+    "UPDATE realizo_ai_projects SET status='approved',video_duration_seconds=?,selected_concept=?,approved_prompt=?,updated_at=datetime('now') WHERE id=? AND user_id=?"
+  ).bind(duration,selection,finalPrompt,id,user.id).run();
   project=await db.prepare('SELECT * FROM realizo_ai_projects WHERE id=? AND user_id=?')
     .bind(id,user.id).first();
   const asset=await db.prepare(

@@ -39,7 +39,7 @@ export async function GET(request,{params}){
       try{
         const response=await readOpenAIResearch(env,project.provider_response_id);
         if(response.status==='completed'){
-          const {report,sources,quality}=parseResearchResult(response,{creativeStyle:project.creative_style||'auto',duration:project.video_duration_seconds||8,requireGrounding:true});
+          const {report,sources,quality}=parseResearchResult(response,{creativeStyle:project.creative_style||'auto',duration:project.video_duration_seconds||8,requireGrounding:true,productName:project.product_name||'',description:project.description||'',language:project.video_language||'es'});
           // Mark conflicts as needs_review, but give customer all 3 concepts.
           const status='ready'; // Three researched concepts are available immediately; no extra approval screens.
           await db.prepare(
