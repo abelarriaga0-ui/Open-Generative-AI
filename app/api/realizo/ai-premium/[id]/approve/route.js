@@ -4,6 +4,7 @@ import {safeResearchResponse} from '@/lib/realizo-creative/ai-premium';
 import {resolvePremiumVideoChoice} from '@/lib/realizo-creative/video-specs';
 import {signedMediaUrl} from '@/lib/realizo-creative/media';
 import {buildCommercialDirectorPackage,normalizeProductCopy} from '@/lib/realizo-creative/sales-director';
+import {acceptsSellerConfirmation} from '@/lib/realizo-creative/approval-consent';
 
 export const dynamic='force-dynamic';
 export async function POST(request,{params}){
@@ -41,8 +42,7 @@ export async function POST(request,{params}){
   // Current clients still display and require the explicit checkbox; reject
   // a caller who *explicitly* supplies false. Acknowledgement is not proof
   // that a product claim is true and does not waive applicable obligations.
-  if(Object.prototype.hasOwnProperty.call(body,'seller_claims_confirmed') &&
-     body.seller_claims_confirmed!==true)
+  if(!acceptsSellerConfirmation(body))
     return Response.json({error:'seller_claims_confirmation_required'},{status:422});
   // Keep reported evidence separate from seller-authored marketing copy.
   const userPrompt=String(body.prompt||concept.video_prompt).trim();
