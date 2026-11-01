@@ -8,9 +8,9 @@ function BrandMark({ size = 44 }) {
     <svg width={size} height={size} viewBox="0 0 56 56" fill="none" aria-hidden="true">
       <defs>
         <linearGradient id="realizo-signin-mark" x1="2" y1="7" x2="52" y2="52">
-          <stop stopColor="#FF987B" />
-          <stop offset=".53" stopColor="#F469A6" />
-          <stop offset="1" stopColor="#A279FF" />
+          <stop stopColor="#FFB76D" />
+          <stop offset=".53" stopColor="#F49348" />
+          <stop offset="1" stopColor="#A96032" />
         </linearGradient>
       </defs>
       <rect width="56" height="56" rx="18" fill="url(#realizo-signin-mark)" />
