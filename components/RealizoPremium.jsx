@@ -63,9 +63,11 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
  const [editedPrompt,setEditedPrompt]=useState('');
  const [editedSpeech,setEditedSpeech]=useState('');
  const [reviewDuration,setReviewDuration]=useState(null);
+ const [sellerConfirmed,setSellerConfirmed]=useState(false);
  const [style,setStyle]=useState('ugc'),[shotPreference,setShotPreference]=useState('auto');
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
  const fileRef=useRef(null),keyRef=useRef(null);
+ const manualSpeechRef=useRef(false),manualPromptRef=useRef(false);
  useEffect(()=>{
   let active=true;
   fetch('/api/realizo/ai-premium',{cache:'no-store',credentials:'same-origin'})
@@ -136,9 +138,16 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
   if(project?.id)setReviewDuration(Number(project.video_duration_seconds)||8);
  },[project?.id,project?.video_duration_seconds]);
  useEffect(()=>{
+  manualSpeechRef.current=false;
+  manualPromptRef.current=false;
+  setSellerConfirmed(false);
+ },[project?.id,selection]);
+ useEffect(()=>{
   const chosen=project?.concepts?.[selection];
-  setEditedPrompt(chosen?.video_prompt||'');
-  setEditedSpeech(chosen?improveSalesScript(chosen.spoken_script||chosen.script||'',{
+  if(!manualPromptRef.current)setEditedPrompt(chosen?.video_prompt||'');
+  // Once the seller edits a line, do NOT overwrite the seller's exact words
+  // when they change runtime, format, or the project refreshes.
+  if(!manualSpeechRef.current)setEditedSpeech(chosen?improveSalesScript(chosen.spoken_script||chosen.script||'',{
    seconds:reviewDuration||Number(project?.video_duration_seconds)||8,
    style:project?.creative_style==='auto'?(chosen.creative_style||style):project?.creative_style,
    productName:project?.product_name||'',
@@ -206,10 +215,13 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({index:selection,prompt:editedPrompt,speech:editedSpeech,style,
      video_duration_seconds:reviewDuration||project.video_duration_seconds,
+     seller_claims_confirmed:sellerConfirmed,
      shot_preference:shotPreference}),
    });
    const json=await r.json().catch(()=>({}));
-   if(!r.ok)throw Error(json.error==='ugc_speech_timing_invalid'?
+   if(!r.ok)throw Error(json.error==='seller_claims_confirmation_required'?
+    'Confirma que revisaste las afirmaciones de tu anuncio.':
+    json.error==='ugc_speech_timing_invalid'?
     'Ajusta el diálogo UGC para que encaje en los segundos elegidos. No se cobrará otra investigación.':
     json.error==='review_product_responsibility'?
     'Acepta la declaración de responsabilidad comercial antes de aprobar.':
@@ -539,7 +551,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
 
         <div className="rounded-xl bg-[#F8F3FC] p-4">
          <p className="text-xs font-bold text-[#7555A5]">Guion hablado · {languages.find(([code])=>code===(project.video_language||'es'))?.[1]||'Español'}</p>
-         <textarea value={editedSpeech} onChange={e=>setEditedSpeech(e.target.value)}
+         <textarea value={editedSpeech} onChange={e=>{manualSpeechRef.current=true;setEditedSpeech(e.target.value)}}
           aria-label="Editar guion hablado sin costo adicional"
           className={field+' mt-2 min-h-[95px] text-sm'} maxLength={650}/>
          <p className="text-xs text-[#816D8F] mt-1">Edita el gancho, la explicación y el cierre sin pagar otra investigación. {style==='ugc'?
@@ -584,12 +596,18 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
         <details className="rounded-xl border border-[#E7DCEF] p-4">
          <summary className="cursor-pointer text-sm font-bold">Editar prompt técnico (avanzado)</summary>
          <p className="text-xs text-[#7C6C88] mt-2">El motor puede recibir instrucciones técnicas en inglés; el guion hablado se solicita en el idioma elegido. La voz nativa depende del modelo de video seleccionado.</p>
-         <textarea value={editedPrompt} onChange={e=>setEditedPrompt(e.target.value)}
+         <textarea value={editedPrompt} onChange={e=>{manualPromptRef.current=true;setEditedPrompt(e.target.value)}}
            className={field+' mt-3 min-h-[155px]'} maxLength={5500}/>
         </details>
       </div>}
+      <label className="flex items-start gap-2 text-sm text-[#675678]">
+       <input type="checkbox" checked={sellerConfirmed}
+        onChange={e=>setSellerConfirmed(e.target.checked)}
+        className="mt-1"/>
+       <span>Confirmo que revisé el guion y las afirmaciones comerciales que autorizo.</span>
+      </label>
       <button type="button" onClick={approve}
-       disabled={busy}
+       disabled={busy||!sellerConfirmed}
         className="rounded-2xl bg-[#6D48CB] text-white font-bold py-3.5 px-6 disabled:opacity-50">
         {busy?'Guardando…':'Aprobar concepto y elegir modelo de video'}
       </button>
