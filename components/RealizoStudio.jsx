@@ -144,7 +144,7 @@ export default function RealizoStudio({accountId}){
       <div className="hidden lg:block py-3 mb-5"><p className="realizo-kicker mb-2">WORKSPACE</p><p className="text-lg font-extrabold leading-snug">Estudio creativo<span className="realizo-orange">.</span></p></div>
       <nav aria-label="Menú de Realizo" className="space-y-2">
        {nav('home','Inicio','video')}
-       {nav('create','Crear video','sliders',startNewVideo)}
+       {nav('create','Crear video','video',startNewVideo)}
        {nav('videos','Mis videos','folder')}
        <Link href="/wallet" className={navBase+' text-[#756782] hover:bg-[#F7F0F7]'}><Icon name="wallet"/>Mis créditos<Icon name="chevron" size={14}/></Link>
       </nav>
