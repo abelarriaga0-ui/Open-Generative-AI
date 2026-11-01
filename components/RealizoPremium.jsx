@@ -58,7 +58,7 @@ const fmt=status=>({
 export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,onCreateNew,onWalletRefresh,initialStyle='ugc',initialProjectId=null}){
  const [config,setConfig]=useState(null),[image,setImage]=useState(null);
  const [product,setProduct]=useState({product_name:'',description:'',audience:'',
-  angle:'auto',market:'EC',video_language:'es',cta:'',creative_style:'ugc',video_model_id:'',video_duration_seconds:''});
+  angle:'auto',market:'EC',video_language:'es',cta:'',creative_style:initialStyle,video_model_id:'',video_duration_seconds:''});
  const [project,setProject]=useState(null),[selection,setSelection]=useState(0);
  const [editedPrompt,setEditedPrompt]=useState('');
  const [editedSpeech,setEditedSpeech]=useState('');
