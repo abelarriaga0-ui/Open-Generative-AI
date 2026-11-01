@@ -101,7 +101,7 @@ export default function RealizoCreator({accountId,onPrepare,onOpenAdvanced}) {
  };
  const options=[{n:1,name:'Producto',icon:'image'},{n:2,name:'Enfoque',icon:'spark'},{n:3,name:'Preparar',icon:'film'}];
  const hasImages=(primary?1:0)+references.length;
- return <div className="w-full max-w-[1230px] mx-auto">
+ return <div className="realizo-creator-skin w-full max-w-[1230px] mx-auto">
   <div className="flex flex-wrap items-center gap-2 mb-7" aria-label="Pasos para crear video">
    {options.map(o=><button key={o.n} type="button" onClick={()=>setActiveStep(o.n)}
       className={'inline-flex items-center gap-2.5 rounded-full px-4 py-2.5 text-[13px] font-semibold transition '+(activeStep===o.n?'bg-[#6F4ED0] text-white':'bg-white text-[#756685] border border-[#E6DBE1] hover:border-[#BBA5D8]')}>
