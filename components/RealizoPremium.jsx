@@ -512,7 +512,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
 
       {findings.selected_sales_angle&&<div className="mb-3 rounded-xl bg-[#F5EDF9] px-4 py-3">
        <p className="text-xs text-[#806A91]">Ángulo recomendado por la investigación</p>
-       <p className="text-sm font-bold">{findings.selected_sales_angle}</p>
+       <p className="text-sm font-bold">{String(findings.selected_sales_angle).split(/[.;]/)[0].trim()}</p>
       </div>}
       <div className="grid sm:grid-cols-3 gap-3">
        {concepts.map((c,i)=>{
