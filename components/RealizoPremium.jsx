@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import {optimizeImage} from '@/lib/realizo-creative/optimize-image';
+import {improveSalesScript,voiceBudget} from '@/lib/realizo-creative/sales-storyboard';
 
 const angles=[
  ['auto','Que la IA investigue y elija'],['problem','Problema → solución'],
@@ -61,6 +62,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
  const [project,setProject]=useState(null),[selection,setSelection]=useState(0);
  const [editedPrompt,setEditedPrompt]=useState('');
  const [editedSpeech,setEditedSpeech]=useState('');
+ const [reviewDuration,setReviewDuration]=useState(null);
  const [style,setStyle]=useState('ugc'),[shotPreference,setShotPreference]=useState('auto');
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
  const fileRef=useRef(null),keyRef=useRef(null);
@@ -131,9 +133,19 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
   }
  },[project?.id,project?.concepts]);
  useEffect(()=>{
-  setEditedPrompt(project?.concepts?.[selection]?.video_prompt||'');
-  setEditedSpeech(project?.concepts?.[selection]?.spoken_script||project?.concepts?.[selection]?.script||'');
- },[project?.concepts,selection]);
+  if(project?.id)setReviewDuration(Number(project.video_duration_seconds)||8);
+ },[project?.id,project?.video_duration_seconds]);
+ useEffect(()=>{
+  const chosen=project?.concepts?.[selection];
+  setEditedPrompt(chosen?.video_prompt||'');
+  setEditedSpeech(chosen?improveSalesScript(chosen.spoken_script||chosen.script||'',{
+   seconds:reviewDuration||Number(project?.video_duration_seconds)||8,
+   style:project?.creative_style==='auto'?(chosen.creative_style||style):project?.creative_style,
+   productName:project?.product_name||'',
+   description:project?.description||'',
+   concept:chosen,report:project?.findings||{},language:project?.video_language||'es',
+  }):'');
+ },[project?.concepts,selection,reviewDuration]);
  useEffect(()=>{
   if(project?.id)setStyle(project.creative_style||'auto');
  },[project?.id,project?.creative_style]);
@@ -193,6 +205,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
    const r=await fetch('/api/realizo/ai-premium/'+encodeURIComponent(project.id)+'/approve',{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({index:selection,prompt:editedPrompt,speech:editedSpeech,style,
+     video_duration_seconds:reviewDuration||project.video_duration_seconds,
      shot_preference:shotPreference}),
    });
    const json=await r.json().catch(()=>({}));
@@ -212,9 +225,8 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
  const selectedModel=videoOptions.find(m=>m.id===product.video_model_id);
  const availableDurations=selectedModel?.durations||[];
  const spokenWords=editedSpeech.trim()?editedSpeech.trim().split(/\s+/).length:0;
- const durationSpeech=Number(project?.video_duration_seconds)||8;
- const speechMin=Math.max(5,Math.floor(durationSpeech*1.4));
- const speechMax=Math.floor(durationSpeech*2.4);
+ const durationSpeech=Number(reviewDuration||project?.video_duration_seconds)||8;
+ const {minimum:speechMin,maximum:speechMax,target:speechTarget}=voiceBudget(durationSpeech,style==='auto'?'ugc':style);
  const selectedProvider=selectedModel?.provider||'';
  const selectedFamily=selectedModel?.family_id||'';
  const providerOptions=Array.from(new Map(videoOptions.map(m=>[
@@ -433,7 +445,20 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
      </div>}
     {project.status==='needs_review'&&!ready&&<p className="text-sm text-[#9A6257]">La investigación necesita revisión técnica antes de volver a intentarse. No se volverá a cobrar automáticamente.</p>}
     {ready&&<>
-      <p className="text-sm font-semibold text-[#6B4B8C] rounded-xl bg-[#F3EBFA] p-3">Configuración investigada: {project.video_model_id} · {project.video_duration_seconds||8} segundos · {creativeStyles.find(([id])=>id===(project.creative_style||'auto'))?.[2]||'Automático'}. No se vuelve a consultar la IA al elegir concepto.</p>
+      <div className="text-sm font-semibold text-[#6B4B8C] rounded-xl bg-[#F3EBFA] p-3 space-y-2">
+       <p>Motor: {project.video_model_id} · {creativeStyles.find(([id])=>id===(project.creative_style||'auto'))?.[2]||'Automático'}. Sin nueva investigación al elegir concepto.</p>
+       <label className="flex flex-wrap items-center gap-2">
+        Duración del video:
+        <select aria-label="Duración final del video" className="rounded-lg border border-[#C6A8E5] bg-white px-3 py-2 text-[#4F2E83]"
+         value={reviewDuration||project.video_duration_seconds||8}
+         onChange={e=>setReviewDuration(Number(e.target.value))}>
+         {(config?.video_options||[]).find(m=>m.id===project.video_model_id)?.durations?.map(n=>
+          <option value={n} key={n}>{n} segundos</option>)||
+          <option value={project.video_duration_seconds}>{project.video_duration_seconds} segundos</option>}
+        </select>
+        <span className="font-normal text-xs">Puedes cambiarla sin pagar otra investigación. El guion se ajustará.</span>
+       </label>
+      </div>
 
       {project.owner_cost_audit&&<div className="rounded-xl border border-[#C9DAE5] bg-[#F1F7FD] p-4 text-xs text-[#496079] space-y-1">
        <p className="font-bold">Auditoría privada · costo de OpenAI</p>
@@ -518,7 +543,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
           aria-label="Editar guion hablado sin costo adicional"
           className={field+' mt-2 min-h-[95px] text-sm'} maxLength={650}/>
          <p className="text-xs text-[#816D8F] mt-1">Edita el gancho, la explicación y el cierre sin pagar otra investigación. {style==='ugc'?
-           spokenWords+' palabras · objetivo '+speechMin+'–'+speechMax+' para '+durationSpeech+' s.':
+           spokenWords+' palabras · objetivo '+speechMin+'–'+speechMax+' (ideal '+speechTarget+') para '+durationSpeech+' s.':
            'El guion debe caber en '+durationSpeech+' segundos.'}</p>
          <details className="mt-3 text-xs text-[#7A6988]">
           <summary className="cursor-pointer">Mostrar los planos</summary>
