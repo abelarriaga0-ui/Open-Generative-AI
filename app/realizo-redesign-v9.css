@@ -1,0 +1,230 @@
+/*
+ * REALIZO V9 / Creative Commerce Studio
+ * Scoped visual-only changes. No generation engine, payments or API mutation.
+ * Existing control behavior and keyboard navigation remain unchanged.
+ */
+.realizo-app,.realizo-wallet-page{
+ --rz-canvas:#090a0d;--rz-surface:#14161b;--rz-raised:#1b1d23;--rz-line:#303239;
+ --rz-primary:#f5a04c;--rz-soft:#e9b885;--rz-muted:#999ba6;--rz-text:#faf9f7;
+ background:
+  radial-gradient(ellipse 55% 40% at 87% -12%,rgba(227,137,49,.105),transparent 72%),
+  radial-gradient(ellipse 43% 30% at 12% 45%,rgba(86,75,117,.07),transparent 77%),#090a0d;
+ color:var(--rz-text);
+}
+.realizo-topbar{
+ height:72px!important;background:rgba(9,10,13,.92)!important;
+ border-bottom:1px solid #282a31!important;backdrop-filter:blur(18px);
+ position:sticky!important;top:0;z-index:60!important;
+}
+.realizo-brand{font-weight:900;letter-spacing:-.06em!important}
+.realizo-brand svg{width:34px;height:34px;filter:none}
+.realizo-balance{min-height:39px;background:#1b1d23!important;border-color:#424046!important;font-variant-numeric:tabular-nums}
+.realizo-frame{min-height:calc(100vh - 72px)}
+.realizo-sidebar{
+ background:linear-gradient(180deg,#111217 0%,#101116 68%,#131016 100%)!important;
+ border-color:#282a30!important;
+}
+.realizo-sidebar .realizo-nav-link{
+ padding:12px 14px!important;font-weight:650!important;font-size:13px!important;
+ border-radius:13px!important;letter-spacing:-.01em;min-height:45px
+}
+.realizo-sidebar .realizo-nav-link[aria-current=page]{
+ color:#ffbd81!important;border:1px solid #785439!important;
+ background:linear-gradient(95deg,#342821,#242126)!important;
+ box-shadow:inset 3px 0 0 #ff9f43
+}
+.realizo-sidebar .realizo-nav-link:not([aria-current=page]):hover{
+ background:#202229!important;color:#fff!important
+}
+.realizo-sidebar-banner{
+ background:linear-gradient(155deg,#2f2729,#161820 65%)!important;
+ border:1px solid #564239!important;
+ box-shadow:0 16px 42px #0002
+}
+.realizo-sidebar-banner p:not(.realizo-kicker){color:#f2ece9}
+.realizo-content{padding-top:20px!important;padding-bottom:72px!important}
+.realizo-contextbar{
+ display:flex;align-items:center;gap:12px;margin:0 auto 28px;
+ font-size:10px;letter-spacing:.12em;font-weight:750;color:#757782
+}
+.realizo-contextbar strong{color:#c4c3cb;font-weight:750;letter-spacing:.07em}
+.realizo-contextbar-right{margin-left:auto;color:#696b75;font-size:9px}
+.realizo-home{max-width:1450px!important;gap:37px}
+.realizo-hero{
+ min-height:505px!important;border-radius:25px!important;
+ border:1px solid #343038!important;
+ background:linear-gradient(106deg,#201b1e 0%,#141419 48%,#211b1b 100%)!important;
+ box-shadow:0 25px 90px #0005!important;
+}
+.realizo-hero-copy{padding:clamp(35px,5vw,75px)!important}
+.realizo-hero h1{font-weight:900!important;max-width:730px;line-height:1.035!important;font-size:clamp(42px,4.25vw,73px)!important}
+.realizo-hero h1 em{background:linear-gradient(115deg,#ffe0b4,#f59a49);color:transparent;background-clip:text}
+.realizo-hero-desc{max-width:540px!important;line-height:1.68!important;color:#b5b0b6!important}
+.realizo-eyebrow{color:#f1b477!important;letter-spacing:.11em;font-size:10px}
+.realizo-hero-proof{gap:14px!important;margin-top:34px!important}
+.realizo-hero-proof span{display:flex;align-items:center;gap:8px;color:#c0b8b5;font-size:11px}
+.realizo-hero-proof span i{display:inline-block;height:5px;width:5px;border-radius:50%;background:#f4a85d;box-shadow:0 0 9px #e78b47}
+.realizo-primary-action{
+ border-radius:13px!important;min-height:52px!important;
+ box-shadow:0 12px 28px #dd874b30!important;font-size:13px
+}
+.realizo-secondary-action{background:rgba(255,255,255,.065)!important;border-color:#5b4b49!important;border-radius:13px!important}
+.realizo-secondary-action:hover{background:#2c2729!important}
+/* Editorial video mockups: illustrations, not falsely presented as generated footage */
+.realizo-hero-composition{overflow:hidden;min-height:500px;position:relative;isolation:isolate}
+.realizo-hero-orbit{position:absolute;inset:5% 0 0 -5%;background:radial-gradient(ellipse at 57% 42%,#a66e4538 0%,transparent 62%),radial-gradient(ellipse at 25% 88%,#6c6d9a25,transparent 55%)}
+.realizo-hero-shot{
+ width:215px;height:368px;position:absolute;top:49px;z-index:2;overflow:hidden;
+ border-radius:19px;border:1px solid #ffffff44;
+ box-shadow:0 28px 58px #0009,inset 0 0 0 4px #ffffff06;
+}
+.realizo-hero-shot-left{left:8%;transform:rotate(-9deg);background:radial-gradient(ellipse at 52% 20%,#ad8b75 0%,#4b3936 43%,#1a1a1d 82%)}
+.realizo-hero-shot-right{right:9%;top:69px;transform:rotate(8deg);background:radial-gradient(ellipse at 43% 24%,#c18c61,#3e2725 51%,#151219 87%)}
+.realizo-hero-shot-top{position:absolute;z-index:5;left:14px;right:14px;top:17px;display:flex;justify-content:space-between;color:#fff;letter-spacing:.11em;font-size:9px;font-weight:850;text-shadow:0 2px 6px #0008}
+.realizo-hero-portrait{position:absolute;inset:38px 0 0;overflow:hidden}
+.realizo-hero-portrait-face{position:absolute;left:25%;top:15%;width:107px;height:137px;background:radial-gradient(circle at 45% 33%,#e5ae92,#aa765e 60%,#5a3c34 85%);border-radius:46% 46% 46% 46%;box-shadow:0 -20px 0 -4px #242023}
+.realizo-hero-portrait-shirt{position:absolute;left:-11%;right:-11%;bottom:-30px;height:185px;border-radius:52% 52% 0 0;background:linear-gradient(125deg,#1d262d,#36363e,#121a21)}
+.realizo-hero-shot-caption{position:absolute;z-index:5;left:17%;right:17%;bottom:40px;display:grid;gap:8px}
+.realizo-hero-shot-caption span{width:100%;height:10px;border-radius:3px;background:#fff;box-shadow:0 2px 12px #0006}
+.realizo-hero-shot-caption span:last-child{width:72%;background:#ffe1b4;margin:auto}
+.realizo-hero-plinth{position:absolute;width:185px;height:50px;left:15px;bottom:36px;background:linear-gradient(#a28772,#402e2d);border-radius:50%;box-shadow:0 20px 25px #0008}
+.realizo-hero-bottle{position:absolute;bottom:72px;left:calc(50% - 34px);width:69px;height:158px;border-radius:13px 13px 9px 9px;border:1px solid #ffffff66;background:linear-gradient(90deg,#301e1c 10%,#b78b62 35%,#52312b 70%,#21141c);box-shadow:inset 6px 0 9px #ffffff1c,13px 17px 20px #0006}
+.realizo-hero-bottle:before{content:"";position:absolute;top:-21px;left:21px;width:26px;height:22px;border-radius:4px 4px 1px 1px;background:#16191d;box-shadow:inset 3px 0 3px #8e8580}
+.realizo-hero-bottle span{position:absolute;top:44px;left:8px;right:8px;height:49px;border-top:1px solid #ffffff33;border-bottom:1px solid #ffffff33;background:#2b2427aa}
+.realizo-hero-product-glow{position:absolute;left:30%;bottom:35px;width:40%;height:20px;background:#ffbf8099;filter:blur(35px)}
+.realizo-floating-chip{
+ z-index:7;position:absolute;bottom:50px;left:23%;display:flex;align-items:center;gap:12px;
+ padding:12px 18px;border-radius:15px;background:#171921e8;
+ border:1px solid #69626b;box-shadow:0 17px 40px #000b;
+}
+.realizo-floating-icon{height:32px;width:32px;display:grid;place-items:center;background:#443022;color:#ffd29c;border-radius:11px}
+.realizo-floating-chip b,.realizo-floating-chip small{display:block}
+.realizo-floating-chip b{font-size:11px;color:#fff}
+.realizo-floating-chip small{font-size:10px;color:#a3a0a8;margin-top:3px}
+.realizo-hero-editline{position:absolute;bottom:18px;left:12%;right:12%;display:flex;gap:12px;align-items:center;color:#f7d4b3;font-size:10px;letter-spacing:.14em}
+.realizo-hero-editline i{flex:1;height:3px;border-radius:3px;background:linear-gradient(90deg,#e29d5b 22%,#59515a 22%,#59515a 68%,#e29d5b 68%);opacity:.9}
+.realizo-workflow-strip{background:#13151b!important;border-color:#2c2e37!important;padding:18px 24px!important}
+.realizo-workflow-strip span{color:#d2cbd0}
+.realizo-workflow-strip b{color:#f8a453}
+.realizo-home-explore{
+ display:flex;gap:16px;align-items:center;justify-content:space-between;
+ padding:0 3px;color:#a5a4ad;font-size:13px;
+}
+.realizo-home-explore button{
+ color:#ffc08b;font-size:12px;font-weight:800;display:inline-flex;gap:9px;align-items:center;
+ border-bottom:1px solid #9c684d;padding:8px 0
+}
+.realizo-format-card{border-radius:18px!important;box-shadow:0 12px 38px #0002;background:#171920!important}
+.realizo-format-scene{height:214px!important}
+.realizo-format-card:hover{transform:translateY(-5px);box-shadow:0 15px 35px #0005}
+.realizo-section-heading{margin-bottom:19px}
+.realizo-quick-card{min-height:177px!important;transition:transform .2s ease,border-color .2s ease!important}
+.realizo-quick-card strong{font-size:16px!important}
+.realizo-quick-icon{background:#352822!important}
+.realizo-page-intro{padding:16px 0 30px}
+.realizo-page-intro h1{font-size:clamp(37px,4vw,59px);font-weight:900;letter-spacing:-.065em;line-height:1.1;margin:12px 0}
+.realizo-page-intro h1 em,.realizo-library-top h2 em{font-style:normal;color:#ffad6a}
+.realizo-page-intro>p:last-child{font-size:14px;color:#a5a6b1;line-height:1.7;max-width:680px}
+.realizo-library-top{display:flex;justify-content:space-between;gap:25px;align-items:end;margin-bottom:20px}
+.realizo-library-top h2{font-size:clamp(23px,2.6vw,35px);font-weight:900;letter-spacing:-.055em;margin:12px 0}
+.realizo-library-top p:not(.realizo-kicker){font-size:13px;color:#aaa8b3;line-height:1.6}
+.realizo-library-count{font-size:11px;color:#d6a976;background:#29231f;border:1px solid #594337;border-radius:99px;white-space:nowrap;padding:9px 14px}
+.realizo-library-filters{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:24px}
+.realizo-library-filters button{border-radius:100px;border:1px solid #393b44;background:#191b22;padding:9px 19px;color:#b9b8c1;font-size:12px;font-weight:700;transition:.2s}
+.realizo-library-filters button[aria-pressed=true]{border-color:#a26b47;background:#503322;color:#ffcc9f}
+.realizo-library-filters button:hover{border-color:#d38a56}
+.realizo-template-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:17px}
+.realizo-template-card{background:#16181f;border:1px solid #34363e;border-radius:20px;overflow:hidden;min-width:0;transition:transform .2s,border-color .2s}
+.realizo-template-card:hover{transform:translateY(-4px);border-color:#9c6f51}
+.realizo-template-preview{height:265px;position:relative;overflow:hidden;isolation:isolate;background:#342b2f}
+.realizo-template-preview.realzo-t-people{background:radial-gradient(ellipse at 40% 20%,#ad927b,#4c3e3a 52%,#1a2026)}
+.realizo-template-preview.realzo-t-people-alt{background:radial-gradient(ellipse at 50% 21%,#af846d,#534648 52%,#252e33)}
+.realizo-template-preview.realzo-t-story{background:radial-gradient(ellipse at 65% 25%,#bc794d,#4d3633 43%,#141b23)}
+.realizo-template-preview.realzo-t-night{background:radial-gradient(ellipse at 50% 25%,#657b93,#302c3d 46%,#0d1420)}
+.realizo-template-preview.realzo-t-lux{background:radial-gradient(ellipse at 58% 20%,#a58a76,#453333 58%,#16171d)}
+.realizo-template-preview.realzo-t-clean{background:radial-gradient(ellipse at 52% 30%,#a5a094,#746e67 42%,#333339)}
+.realizo-template-preview.realzo-t-demo{background:radial-gradient(ellipse at 55% 30%,#7e998e,#364846 50%,#181f24)}
+.realizo-template-preview.realzo-t-explainer{background:radial-gradient(ellipse at 55% 25%,#91898c,#4e4350 50%,#202027)}
+.realizo-template-light{position:absolute;inset:-30%;background:linear-gradient(118deg,transparent 24%,#fff2d012 53%,transparent 66%);transform:rotate(11deg)}
+.realizo-template-human{display:none;position:absolute;inset:0}
+.realzo-t-people .realizo-template-human,.realzo-t-people-alt .realizo-template-human{display:block}
+.realizo-template-face{position:absolute;left:33%;top:16%;width:95px;height:118px;border-radius:45%;background:radial-gradient(ellipse at 50% 40%,#e0aa88,#ab755f 69%,#483931);box-shadow:0 -14px 0 -2px #202026}
+.realizo-template-shirt{position:absolute;left:9%;right:9%;bottom:-26%;height:65%;border-radius:47% 47% 0 0;background:linear-gradient(130deg,#273137,#48413e,#1d2126)}
+.realizo-template-prop{position:absolute;left:calc(50% - 32px);top:26%;height:130px;width:64px;border-radius:12px 12px 6px 6px;border:1px solid #ffe3c477;background:linear-gradient(90deg,#231d24,#b48562,#39252a);box-shadow:0 23px 33px #0007}
+.realizo-template-prop:before{content:"";position:absolute;height:18px;width:27px;background:#1d1d22;top:-18px;left:18px;border-radius:4px 4px 0 0}
+.realizo-template-prop span{position:absolute;inset:35% 12%;height:25%;border-top:1px solid #fdd6af66;border-bottom:1px solid #fdd6af66}
+.realzo-t-people .realizo-template-prop,.realzo-t-people-alt .realizo-template-prop{transform:scale(.63) rotate(-13deg);left:66%;top:47%}
+.realizo-template-filmgrain{position:absolute;inset:0;background:linear-gradient(0deg,#060609b7,transparent 56%)}
+.realizo-template-poster{position:absolute;left:18px;right:18px;bottom:21px;color:white;z-index:2}
+.realizo-template-poster span{display:block;font-size:9px;letter-spacing:.2em;color:#f7ca9b;font-weight:850;margin-bottom:7px}
+.realizo-template-poster strong{display:block;max-width:205px;font-size:22px;font-weight:850;line-height:1.08;letter-spacing:-.055em;text-shadow:0 2px 6px #0008}
+.realizo-template-time{position:absolute;top:13px;right:14px;background:#080a0c99;border:1px solid #ffffff3b;border-radius:6px;padding:5px 8px;color:#fff;font-size:10px;font-weight:700}
+.realizo-template-info{padding:19px}
+.realizo-template-meta{display:flex;justify-content:space-between;font-size:10px;color:#ab9a8d;letter-spacing:.08em}
+.realizo-template-info h3{font-size:16px;font-weight:850;margin:11px 0 8px;letter-spacing:-.025em}
+.realizo-template-info p{font-size:12px;color:#a6a4af;line-height:1.55;min-height:56px}
+.realizo-template-info button{border-top:1px solid #34343e;margin-top:16px;padding:13px 0 0;width:100%;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#ffbb7e;font-weight:800}
+.realizo-library-disclaimer{margin:24px 2px 0;color:#8a8c99;font-size:11px;line-height:1.55}
+.realizo-videos-intro{color:#a5a2ad;margin-top:8px;font-size:13px}
+.realizo-videos-page [class*="bg-white"][class*="border"]{border-radius:20px!important;background:#161920!important;border-color:#33353f!important}
+.realizo-videos-page :is(article)[class*="bg-[#"]{background:#202128!important;border-color:#393b45!important;overflow:hidden}
+.realizo-videos-page :is(article) video{background:#0a0c11}
+.realizo-videos-page article a,.realizo-videos-page article button{color:#ffb578!important}
+.realizo-page-heading h1{font-size:clamp(33px,3.4vw,48px)!important;font-weight:900}
+.realizo-create-flow{max-width:1250px}
+.realizo-modes{padding:8px!important;border-radius:15px!important;gap:7px!important}
+.realizo-modes button{flex:1;white-space:normal!important;min-width:150px}
+.realizo-modes button[aria-pressed=true]{
+ background:linear-gradient(125deg,#efaa68,#f48d37)!important;
+ color:#241711!important;border-color:#e89a55!important;
+ box-shadow:0 6px 18px #f4a05930
+}
+.realizo-modes button[aria-pressed=false]{background:transparent!important;border-color:transparent!important}
+.realizo-premium-skin>div:first-child[class*="bg-gradient"]{
+ background:linear-gradient(120deg,#241f24 0%,#282026 45%,#332525 100%)!important;
+ border:1px solid #624435;box-shadow:inset 0 0 75px #ff9d3c09;
+}
+.realizo-premium-skin>div:first-child h2{font-size:clamp(24px,2.8vw,38px)!important;letter-spacing:-.048em}
+.realizo-premium-skin>div:first-child p{max-width:630px}
+.realizo-premium-skin .grid button{transition:transform .16s ease,border-color .16s}
+.realizo-premium-skin .grid button[aria-pressed=true]{box-shadow:inset 0 0 0 1px #e79f653f,0 9px 26px #0004!important}
+.realizo-premium-skin .grid button:hover:not(:disabled){transform:translateY(-1px)}
+.realizo-premium-skin details>summary{color:#f2b67c;cursor:pointer}
+.realizo-premium-skin label{line-height:1.4}
+.realizo-creator-skin h2,.realizo-premium-skin h2{letter-spacing:-.035em}
+.realizo-wallet-page .grid>section{box-shadow:0 15px 45px #0003}
+.realizo-wallet-page input:focus-visible,.realizo-app :is(button,a,input,textarea,select):focus-visible{outline:2px solid #ffb87d!important;outline-offset:3px}
+@media (max-width:1250px){.realizo-template-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.realizo-hero-shot-left{left:2%}.realizo-hero-shot-right{right:3%}}
+@media (max-width:1050px){.realizo-template-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.realizo-hero-composition{min-height:460px}.realizo-hero-shot{transform:none;width:195px;height:330px}.realizo-hero-shot-left{left:2%}.realizo-hero-shot-right{right:5%}}
+@media (max-width:767px){
+ .realizo-contextbar-right{display:none}
+ .realizo-hero{min-height:0!important}
+ .realizo-hero h1{font-size:clamp(35px,9vw,48px)!important}
+ .realizo-hero-composition{min-height:310px!important}
+ .realizo-hero-shot{width:148px;height:250px;top:20px}
+ .realizo-hero-shot-left{left:17%;transform:rotate(-7deg)}
+ .realizo-hero-shot-right{right:17%;top:31px;transform:rotate(8deg)}
+ .realizo-hero-portrait-face{left:24%;top:16%;transform:scale(.8);transform-origin:top left}
+ .realizo-hero-bottle{transform:scale(.73);transform-origin:bottom center}
+ .realizo-floating-chip{left:auto;right:9%;bottom:9px;padding:9px 12px}
+ .realizo-floating-chip small{display:none}
+ .realizo-hero-editline{display:none}
+ .realizo-library-top{display:block}
+ .realizo-library-count{display:inline-block;margin-top:14px}
+ .realizo-home-explore{align-items:flex-start;flex-direction:column}
+ .realizo-workflow-strip{padding:16px!important}
+ .realizo-template-grid{gap:12px}
+}
+@media(max-width:470px){
+ .realizo-template-grid{grid-template-columns:1fr}
+ .realizo-template-preview{height:250px}
+ .realizo-format-scene{height:170px!important}
+ .realizo-format-card{min-width:0}
+ .realizo-hero-shot-left{left:9%}
+ .realizo-hero-shot-right{right:9%}
+ .realizo-modes button{min-width:100%}
+ .realizo-hero-proof{gap:12px}
+}
+@media(prefers-reduced-motion:reduce){
+ .realizo-app *,.realizo-wallet-page *{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
