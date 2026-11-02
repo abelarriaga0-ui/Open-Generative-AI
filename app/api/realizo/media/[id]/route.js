@@ -21,7 +21,7 @@ export async function GET(request,{params}) {
     if(!row||expiry>row.expires_at)return Response.json({error:'not_found'},{status:404});
     let stream,size;
     if(row.object_key.startsWith('d1:')){
-      if(env.REALIZO_ENV!=='sandbox')return Response.json({error:'not_found'},{status:404});
+      if(env.REALIZO_ENV!=='sandbox' && env.REALIZO_MEDIA_D1_FALLBACK!=='true')return Response.json({error:'not_found'},{status:404});
       const content=await env.WALLETS_DB.prepare('SELECT body FROM realizo_media_binary_sandbox WHERE asset_id=?').bind(id).first();
       if(!Array.isArray(content?.body))return Response.json({error:'not_found'},{status:404});
       stream=Uint8Array.from(content.body);size=stream.byteLength;
