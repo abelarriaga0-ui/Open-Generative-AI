@@ -24,15 +24,19 @@ test('Google and email redirects target video studio instead of wallet',()=>{
   assert.match(email,/router.replace\('\/studio'\)/);
   assert.doesNotMatch(google,/new URL\('\/wallet'/);
 });
-test('first party studio requires authenticated D1 session before rendering original editor',()=>{
+test('native Studio renders public showcase but gates video creation and private API access',()=>{
   const s=readFileSync('app/studio/[[...slug]]/page.js','utf8');
   assert.match(s,/getOwnSession\(env\)/);
-  assert.match(s,/if \(!user\) redirect\('\/login'\)/);
-  assert.match(s,/RealizoStudio accountId=\{user.id\}/);
+  assert.match(s,/RealizoStudio accountId=\{user\?\.id\|\|null\} guest=\{!user\}/);
+  assert.doesNotMatch(s,/if \(!user\) redirect\('\/login'\)/);
   const editor=readFileSync('components/RealizoStudio.jsx','utf8');
   assert.match(editor,/VideoStudio/);
   assert.match(editor,/persistenceScope=\{accountId\}/);
   assert.match(editor,/previewOnly/);
+  assert.match(editor,/function startNewVideo\(\)\{\s*if\(guest\)return requireLogin\(\)/);
+  assert.match(editor,/if\(guest\|\|page!=='videos'\)return/);
+  const wallet=readFileSync('app/api/wallet/route.js','utf8');
+  assert.match(wallet,/requireWalletUser/);
 });
 test('original video studio remains in place, no client BYOK key or paid requests enabled',()=>{
   const video=readFileSync('packages/studio/src/components/VideoStudio.jsx','utf8');
