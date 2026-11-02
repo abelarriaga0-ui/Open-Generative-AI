@@ -2257,6 +2257,8 @@ export default function VideoStudio({
         duration:selectedDuration,
         style:preparedBrief.creative_style,
         shotPreference:preparedBrief.shot_preference,
+        castMode:preparedBrief.cast_mode||'with_people',
+        audioMode:preparedBrief.audio_mode||'no_voice',
         productGeometry:preparedBrief.product_visual_geometry||null,
         imageProvided:true,
       }):null;
@@ -2351,7 +2353,12 @@ export default function VideoStudio({
         if (currentModel?.hasPrompt && trimmedPrompt) {
           v2vParams.prompt = trimmedPrompt;
         }
-        res = onWalletGenerate && generationReady ? await onWalletGenerate(v2vParams) : await processV2V(apiKey, v2vParams);
+        res = onWalletGenerate && generationReady ? await onWalletGenerate(v2vParams,{creativeContext:preparedBrief?.project_id?{
+           project_id:preparedBrief.project_id,
+           cast_mode:preparedBrief.cast_mode,
+           audio_mode:preparedBrief.audio_mode||'no_voice',
+           creative_style:preparedBrief.creative_style,
+          }:null}) : await processV2V(apiKey, v2vParams);
         if (!res?.url) throw new Error(copy.errors.noVideoUrlReturned);
 
         const genId = res.request_id || res.id || Date.now().toString();
@@ -2389,7 +2396,16 @@ export default function VideoStudio({
         if (!grouped && selectedQuality) i2vParams.quality = selectedQuality;
         if (showEffect && selectedEffect) i2vParams.name = selectedEffect;
 
-        res = onWalletGenerate && generationReady ? await onWalletGenerate(i2vParams) : await generateI2V(apiKey, i2vParams);
+        res = onWalletGenerate && generationReady
+          ? await onWalletGenerate(i2vParams,{
+             creativeContext:preparedBrief?.project_id?{
+              project_id:preparedBrief.project_id,
+              cast_mode:preparedBrief.cast_mode,
+              audio_mode:preparedBrief.audio_mode||'no_voice',
+              creative_style:preparedBrief.creative_style,
+             }:null
+            })
+          : await generateI2V(apiKey, i2vParams);
         if (!res?.url) throw new Error(copy.errors.noVideoUrlReturned);
 
         const genId = res.request_id || res.id || Date.now().toString();
@@ -2400,7 +2416,7 @@ export default function VideoStudio({
           id: genId,
           url: res.url,
           prompt: trimmedPrompt,
-          spoken_script:preparedBrief?.spoken_script||scriptFromPrompt(trimmedPrompt),
+          spoken_script:preparedBrief?.audio_mode==='no_voice'&&['premium','cinematic'].includes(preparedBrief?.creative_style)?'':(preparedBrief?.spoken_script||scriptFromPrompt(trimmedPrompt)),
           model: selectedModel,
           ...(!grouped ? {
             ...(aspectRatios.length > 0 ? { aspect_ratio: selectedAr } : {}),
@@ -2440,7 +2456,12 @@ export default function VideoStudio({
         if (!grouped && resolutions.length > 0) params.resolution = selectedResolution;
         if (!grouped && !selectedVeoTool && selectedQuality) params.quality = selectedQuality;
 
-        res = onWalletGenerate && generationReady ? await onWalletGenerate(params) : await generateVideo(apiKey, params);
+        res = onWalletGenerate && generationReady ? await onWalletGenerate(params,{creativeContext:preparedBrief?.project_id?{
+           project_id:preparedBrief.project_id,
+           cast_mode:preparedBrief.cast_mode,
+           audio_mode:preparedBrief.audio_mode||'no_voice',
+           creative_style:preparedBrief.creative_style,
+          }:null}) : await generateVideo(apiKey, params);
         if (!res?.url) throw new Error(copy.errors.noVideoUrlReturned);
 
         const genId = res.request_id || res.id || Date.now().toString();

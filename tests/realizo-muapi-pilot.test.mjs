@@ -18,7 +18,7 @@ const env={
  REALIZO_AUTH_PEPPER:'a'.repeat(64),
 };
 test('only exact allowlisted owner can activate one real-credits Sandbox job',()=>{
- assert.equal(isMuapiGenerationEnabled(env,user),true);
+ assert.equal(isMuapiGenerationEnabled(env,user),false);
  assert.equal(isMuapiGenerationEnabled(env,{id:'not-owner'}),false);
  assert.equal(isMuapiGenerationEnabled(env),false);
  assert.equal(isPilotAccount(env,user),true);
@@ -51,7 +51,8 @@ test('the one-call quota is consumed once even when clients race',async()=>{
    },
  };
  const guarded={...env,WALLETS_DB:db};
- assert.equal(await getPilotSlotsRemaining(guarded,user),1);
+ // In emergency containment the public Sandbox never reports spendable pilot slots.
+ assert.equal(await getPilotSlotsRemaining(guarded,user),0);
  assert.equal(await claimPilotSlot(guarded,user,'job-a'),true);
  assert.equal(await claimPilotSlot(guarded,user,'job-b'),false);
  assert.equal(await getPilotSlotsRemaining(guarded,user),0);

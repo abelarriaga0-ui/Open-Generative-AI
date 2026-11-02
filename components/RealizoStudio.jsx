@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { optimizeImage } from '@/lib/realizo-creative/optimize-image';
 import { generateWithRealizoWallet } from '@/lib/realizo-creative/wallet-generation';
+import { downloadRealizoVideo } from '@/lib/realizo-creative/download-video';
 import { VideoStudio } from 'studio';
 import RealizoCreator from '@/components/RealizoCreator';
 import RealizoPremium from '@/components/RealizoPremium';
@@ -47,6 +48,8 @@ export default function RealizoStudio({accountId,guest=false}){
  const [jobsLoading,setJobsLoading]=useState(false);
  const [downloadJob,setDownloadJob]=useState(null);
  const [downloadError,setDownloadError]=useState('');
+ const [downloadProgress,setDownloadProgress]=useState('');
+ const [downloadReady,setDownloadReady]=useState(null);
  const [premiumProjects,setPremiumProjects]=useState([]);
  const [page,setPage]=useState('home');
  const [formatPreset,setFormatPreset]=useState('ugc');
@@ -86,12 +89,17 @@ export default function RealizoStudio({accountId,guest=false}){
    if(!root)return;
    const protect=()=>{
      root.querySelectorAll('video').forEach(video=>{
-       video.setAttribute('controlsList','nodownload noremoteplayback noplaybackrate');
+       // Native downloads are available for completed owned videos only.
+        const owned=video.dataset.realizoOwnedVideo==='true';
+        video.setAttribute('controlsList',owned
+          ?'noremoteplayback noplaybackrate'
+          :'nodownload noremoteplayback noplaybackrate');
        video.disablePictureInPicture=true;
      });
    };
    const preventMediaMenu=event=>{
-     if(event.target?.closest?.('video,.realizo-native-video,.realizo-template-modal'))
+     if(event.target?.closest?.('[data-realizo-owned-video="true"]'))return;
+      if(event.target?.closest?.('video,.realizo-native-video,.realizo-template-modal'))
        event.preventDefault();
    };
    const observer=new MutationObserver(protect);
@@ -101,7 +109,7 @@ export default function RealizoStudio({accountId,guest=false}){
    return ()=>{observer.disconnect();root.removeEventListener('contextmenu',preventMediaMenu)};
  },[]);
 
- const onWalletGenerate=useCallback(params=>generateWithRealizoWallet(params),[]);
+ const onWalletGenerate=useCallback((params,opts)=>generateWithRealizoWallet(params,opts),[]);
  useEffect(()=>{
    if(guest||page!=='videos')return;
    let cancelled=false;
@@ -328,9 +336,9 @@ export default function RealizoStudio({accountId,guest=false}){
           jobs.length?<div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {jobs.map(job=><article key={job.id} className="rounded-2xl border border-[#E9DEE2] bg-[#FAF7F4] overflow-hidden">
               <div className="h-32 bg-[#EBE1F6] flex items-center justify-center">
-                {job.video_url?<video src={job.video_url} controls controlsList="nodownload noremoteplayback noplaybackrate"
-            disablePictureInPicture onContextMenu={e=>e.preventDefault()}
-            preload="metadata" className="w-full h-full object-cover" />:
+                {job.video_url?<video src={job.video_url} controls
+            data-realizo-owned-video="true" controlsList="noremoteplayback noplaybackrate"
+            disablePictureInPicture preload="metadata" className="w-full h-full object-cover" />:
                  <Icon name="video" size={39}/>}
               </div>
               <div className="p-4 space-y-2">
@@ -339,15 +347,31 @@ export default function RealizoStudio({accountId,guest=false}){
                <span className="inline-flex text-[11px] rounded-full bg-[#EBE1F8] text-[#7155A1] px-3 py-1 font-semibold">
                 {job.status==='completed'?'Completado':job.status==='failed'?'No completado':job.status==='unknown'?'En revisión':'En proceso'}
                </span>
-               {job.video_url&&<button type="button" disabled={downloadJob===job.id}
-             onClick={async()=>{
-              setDownloadJob(job.id);setDownloadError('');
-              try{await downloadRealizoVideo(job.id)}catch(e){setDownloadError(e.message)}
-              finally{setDownloadJob(null)}
-             }}
-             className="block text-[#6E4BD2] underline text-sm font-semibold">
-             {downloadJob===job.id?'Preparando descarga…':'↓ Descargar con Realizo'}
-            </button>}
+               {job.video_url&&<div className="space-y-2">
+             <button type="button" disabled={Boolean(downloadJob)}
+              onClick={async()=>{
+               setDownloadJob(job.id);setDownloadError('');setDownloadReady(null);
+               setDownloadProgress('Conectando con tu video…');
+               try{
+                const ready=await downloadRealizoVideo(job.id,{onProgress:({loaded,total})=>{
+                 const size=(loaded/1048576).toFixed(1);
+                 setDownloadProgress(total?('Descargando '+Math.min(100,Math.round(loaded/total*100))+' % · '+size+' MB'):'Descargando '+size+' MB');
+                },directUrl:job.video_url});
+                setDownloadReady({...ready,jobId:job.id});
+                setDownloadProgress('Archivo listo. Si la descarga no comenzó, utiliza el enlace de abajo.');
+               }catch(e){setDownloadError(e?.message||'No se pudo descargar el video.');setDownloadProgress('');}
+               finally{setDownloadJob(null)}
+              }}
+              className="block text-[#6E4BD2] underline text-sm font-semibold disabled:opacity-50">
+              {downloadJob===job.id?'Preparando archivo…':'↓ Descargar con Realizo'}
+             </button>
+             {downloadJob===job.id&&<p role="status" className="text-xs text-[#7155A1]">{downloadProgress||'Preparando descarga…'}</p>}
+             {downloadReady?.jobId===job.id&&<div className="rounded-lg border border-[#C8B6E0] bg-[#F2EAFE] p-2 space-y-1">
+              <p role="status" className="text-xs text-[#674B8D]">{downloadProgress}</p>
+              <a href={downloadReady.url} download={downloadReady.filename} className="text-sm font-semibold underline text-[#6E4BD2]">Descargar MP4 ahora</a>
+             </div>}
+             {downloadError&&<p role="alert" className="text-xs text-red-700">{downloadError} Si se reproduce el video, abre su menú de tres puntos (⋮) y elige Descargar, o haz clic derecho y selecciona Guardar video como.</p>}
+            </div>}
               </div>
             </article>)}
           </div>:

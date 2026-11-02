@@ -3,6 +3,7 @@ import {enforceSameOrigin} from '@/lib/wallet/access-auth';
 import {isMuapiGenerationEnabled} from '@/lib/wallet/generation-policy';
 import {isOwnerMultiModelSandbox} from '@/lib/wallet/multi-model-access';
 import {quoteLiveVideo,ensureOwnedMedia,userFacingQuoteError} from '@/lib/wallet/live-video-models';
+import {verifyPremiumGeneration} from '@/lib/realizo-creative/premium-generation-gate';
 
 export const dynamic='force-dynamic';
 export async function POST(request) {
@@ -18,6 +19,8 @@ export async function POST(request) {
     if(Number(request.headers.get('content-length')||0)>125000)
       return Response.json({error:'payload_too_large'},{status:413});
     const body=await request.json();
+    const premiumError=await verifyPremiumGeneration(env.WALLETS_DB,user.id,body.model_id,body.input,body.creative_context);
+    if(premiumError)return Response.json({error:premiumError},{status:422});
     await ensureOwnedMedia(env,user,body.input);
     const quote=await quoteLiveVideo(body.model_id,body.input,env.MUAPI_API_KEY);
     const wallet=await env.WALLETS_DB.prepare(
@@ -30,7 +33,7 @@ export async function POST(request) {
       available_cents: wallet.available_cents,
       affordable: wallet.available_cents >= quote.provider_cost_cents,
       currency:'USD',
-      note:'Importe calculado de Muapi, sin recargo para el titular del crédito original. Se confirmará antes de gastar.'
+      note:'Precio calculado para esta configuración. Se confirmará antes de reservar créditos.'
     },{headers:{'Cache-Control':'private, no-store'}});
   }catch(err) {
     const code=userFacingQuoteError(err);

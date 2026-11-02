@@ -92,7 +92,8 @@ test('sandbox wallet gates reserve only after a validated quote and explicit con
  assert.match(generate,/quoteLiveVideo\(body.model_id,body.input,env.MUAPI_API_KEY\)/);
  assert.match(generate,/quote\.provider_cost_cents>body\.max_price_cents/);
  assert.match(generate,/createReservedJob/);
- assert.match(client,/window\.confirm\(confirmMessage\)/);
+ assert.match(client,/confirmRealizoChargeInline/);
+ assert.doesNotMatch(client,/window\.confirm/);
 });
 test('Premium photo selector retains original allowed models, health is sandbox only',async()=>{
  const {premiumVideoOptions}=await import('../lib/realizo-creative/video-specs.js');

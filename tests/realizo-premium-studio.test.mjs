@@ -45,5 +45,6 @@ test('original engine and safe billing gates are preserved unchanged',()=>{
   assert.match(editor,/onWalletGenerate && generationReady/);
   assert.match(editor,/previewOnly && !generationReady/);
   const guard=readFileSync('lib/wallet/generation-policy.js','utf8');
-  assert.match(guard,/REALIZO_MUAPI_PILOT_ACCOUNT_ID/);
+  assert.match(guard,/Emergency loss containment/);
+  assert.match(guard,/return false;/);
 });

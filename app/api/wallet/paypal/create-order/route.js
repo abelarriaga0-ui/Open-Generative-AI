@@ -11,6 +11,9 @@ export async function POST(request) {
     if (!user) return Response.json({ error: 'not_authenticated' }, { status: 401 });
     assertPaypalConfigured(env);
     paypalBaseUrl(env);
+    // Sandbox captures are not real merchant revenue. Freeze new fake wallet
+    // funding until verified live payments are configured and released.
+    if(env.PAYPAL_MODE!=='live')return Response.json({error:'real_payments_not_enabled',message:'Las recargas no están disponibles hasta habilitar cobros reales verificados.'},{status:503});
     if (!env.PAYPAL_WEBHOOK_ID) return Response.json({
       error: 'paypal_webhook_not_configured'
     }, { status: 503 });
@@ -44,7 +47,8 @@ export async function POST(request) {
         description: 'Créditos de generación Realizo (no transferibles)',
         amount: { currency_code: 'USD', value: usdFromCents(cents) },
       }],
-      payment_source: { paypal: { experience_context: { shipping_preference: 'NO_SHIPPING' } } },
+      // Do not force a PayPal Wallet payment source: secure CardFields must be
+      // able to attach a card to the order in the PayPal SDK when eligible.
     }, intentId);
     if (!ok || typeof data?.id !== 'string' || !/^[A-Z0-9]{10,25}$/.test(data.id)) {
       throw new Error('paypal_create_order_failed');

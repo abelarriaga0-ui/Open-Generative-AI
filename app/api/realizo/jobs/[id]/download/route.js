@@ -17,10 +17,29 @@ export async function POST(request,{params}){
     const job=await getGenerationJob(env.WALLETS_DB,user.id,id);
     const url=extractOwnedDownloadUrl(job);
     if(!url)return Response.json({error:'video_not_available'},{status:404});
-    // Muapi CDN may redirect a valid MP4 to its storage edge. Follow provider redirects
-    // after validating the original host and finished owned job; no user URL is accepted.
-    const remote=await fetch(url,{redirect:'follow',signal:AbortSignal.timeout(45000)});
-    if(!remote.ok||!remote.body)return Response.json({error:'video_unavailable',provider_status:remote.status},{status:502});
+    // The actual CDN accepts byte-range requests (206). Browser video playback
+    // uses ranges, while a no-range Worker request can be rejected upstream.
+    // Keep this server-to-server request owner-scoped; never trust a client URL.
+    let remote;
+    try{
+      remote=await fetch(url,{
+        method:'GET',redirect:'follow',
+        headers:{Range:'bytes=0-',Accept:'video/mp4,*/*'},
+        signal:AbortSignal.timeout(45000)
+      });
+      if(remote.status===416){
+        await remote.body?.cancel?.();
+        remote=await fetch(url,{method:'GET',redirect:'follow',
+          headers:{Accept:'video/mp4,*/*'},
+          signal:AbortSignal.timeout(45000)});
+      }
+    }catch{
+      return Response.json({error:'video_unavailable',provider_status:0},{status:502});
+    }
+    if(!remote.ok||!remote.body){
+      await remote.body?.cancel?.();
+      return Response.json({error:'video_unavailable',provider_status:remote.status},{status:502});
+    }
     const mime=remote.headers.get('content-type')||'';
     if(/text\/html|application\/json/i.test(mime))return Response.json({error:'provider_video_response_invalid'},{status:502});
     const len=Number(remote.headers.get('content-length')||0);

@@ -7,6 +7,7 @@ export async function POST(request) {
   if (!enforceSameOrigin(request)) return Response.json({ error: 'invalid_origin' }, { status: 403 });
   try {
     const env = await getWalletEnvironment();
+    if(env.PAYPAL_MODE!=='live')return Response.json({error:'real_payments_not_enabled'},{status:503});
     const user = await requireWalletUser(request, env);
     if (!user) return Response.json({ error: 'not_authenticated' }, { status: 401 });
     const body = await request.json();

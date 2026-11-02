@@ -63,15 +63,18 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
  const [templateChangeRequest,setTemplateChangeRequest]=useState('');
  const [templateSetting,setTemplateSetting]=useState('auto');
  const [product,setProduct]=useState({product_name:'',description:'',audience:'',
-  angle:template?.angle||'auto',market:'EC',video_language:'es',cta:'',creative_style:template?.style||initialStyle,video_model_id:'',video_duration_seconds:''});
+  angle:template?.angle||'auto',market:'EC',video_language:'es',cta:'',creative_style:template?.style||initialStyle,cast_mode:'with_people',audio_mode:'no_voice',video_model_id:'',video_duration_seconds:''});
  const [project,setProject]=useState(null),[selection,setSelection]=useState(0);
  const [editedPrompt,setEditedPrompt]=useState('');
  const [editedSpeech,setEditedSpeech]=useState('');
  const [reviewDuration,setReviewDuration]=useState(null);
  const [reviewModelId,setReviewModelId]=useState(null);
+ const [reviewCastMode,setReviewCastMode]=useState('with_people');
+ const [reviewAudioMode,setReviewAudioMode]=useState('no_voice');
  const [sellerConfirmed,setSellerConfirmed]=useState(false);
  const [style,setStyle]=useState(initialStyle),[shotPreference,setShotPreference]=useState('auto');
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
+ const [researchConfirm,setResearchConfirm]=useState(false);
  const fileRef=useRef(null),keyRef=useRef(null);
  const manualSpeechRef=useRef(false),manualPromptRef=useRef(false);
  useEffect(()=>{
@@ -144,8 +147,10 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
   if(project?.id){
    setReviewDuration(Number(project.video_duration_seconds)||8);
    setReviewModelId(project.video_model_id||null);
+   setReviewCastMode(project.cast_mode==='product_only'?'product_only':'with_people');
+   setReviewAudioMode(['no_voice','voiceover','dialogue'].includes(project.audio_mode)?project.audio_mode:'no_voice');
   }
- },[project?.id,project?.video_duration_seconds,project?.video_model_id]);
+ },[project?.id,project?.video_duration_seconds,project?.video_model_id,project?.cast_mode,project?.audio_mode]);
  useEffect(()=>{
   manualSpeechRef.current=false;
   manualPromptRef.current=false;
@@ -193,9 +198,8 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
   if(!Number.isInteger(price)||price<0)return setError('No se pudo cotizar la investigación.');
   if(config.billing_mode!=='paid'||price<=0||config.general_available_cents<price)
     return setError('Saldo real insuficiente para pagar la investigación. Necesitas fondos verificados.');
-  const message='Investigación IA: USD '+(price/100).toFixed(2)+
-    '. Modelo '+chosen.name+', duración '+product.video_duration_seconds+' segundos, estilo '+product.creative_style+'. Se reservará de tu billetera ahora y se cobrará al entregar los 3 conceptos. El video se cotiza aparte. ¿Confirmas el pago?';
-  if(!window.confirm(message))return;
+  if(!researchConfirm){setResearchConfirm(true);return;}
+  setResearchConfirm(false);
   setBusy(true);setError('');
   if(!keyRef.current)keyRef.current=crypto.randomUUID();
   try{
@@ -228,11 +232,13 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
      video_model_id:reviewModelId||project.video_model_id,
      video_duration_seconds:reviewDuration||project.video_duration_seconds,
      seller_claims_confirmed:sellerConfirmed,
-     shot_preference:shotPreference}),
+     shot_preference:shotPreference,cast_mode:reviewCastMode,audio_mode:reviewAudioMode}),
    });
    const json=await r.json().catch(()=>({}));
    if(!r.ok)throw Error(json.error==='seller_claims_confirmation_required'?
     'Confirma que revisaste las afirmaciones de tu anuncio.':
+    json.error==='premium_audio_script_required'?'Para voz en off o diálogo, escribe primero el texto que se escuchará. Para solo música, selecciona «Sin voces».':
+    json.error==='premium_audio_cast_conflict'?'El diálogo entre actores requiere «Con personas». Selecciona voz en off o sin voces.':
     json.error==='ugc_speech_timing_invalid'?
     'Ajusta el diálogo UGC para que encaje en los segundos elegidos. No se cobrará otra investigación.':
     json.error==='review_product_responsibility'?
@@ -378,6 +384,37 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
        <p className="text-xs text-[#6D518D]">UGC: una persona habla mirando a cámara, explica el producto, engancha desde el inicio y termina invitando a comprar.</p>}
      </div>
 
+     {(product.creative_style==='premium'||product.creative_style==='cinematic')&&!template&&<div className="space-y-2">
+      <p className="text-sm font-bold">¿Quién aparece en el anuncio?</p>
+      <div className="grid grid-cols-2 gap-2">
+       {[
+        ['product_only','📦 Solo producto','Solo envase, textura, luz y cortes de cine. Sin personas.'],
+        ['with_people','🎬 Con personas','Modelos en escenas de cine, sin estilo UGC.']
+       ].map(([id,label,description])=><button key={id} type="button" aria-pressed={product.cast_mode===id}
+        onClick={()=>{setProduct(p=>({...p,cast_mode:id,audio_mode:id==='product_only'&&p.audio_mode==='dialogue'?'no_voice':p.audio_mode}));keyRef.current=null;}} className={'rounded-xl border-2 p-3 text-left '+(product.cast_mode===id?'border-[#7650C6] bg-white':'border-[#E7DEEC] bg-white/60')}>
+        <strong className="block text-sm">{label}</strong><span className="block text-xs mt-1">{description}</span>
+       </button>)}
+      </div>
+     </div>}
+     {(product.creative_style==='premium'||product.creative_style==='cinematic')&&!template&&<div className="space-y-2">
+      <p className="text-sm font-bold">¿Cómo quieres el audio?</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+       {[
+        ['no_voice','🎼 Sin voces','Solo música instrumental y sonidos cinematográficos.'],
+        ['voiceover','🎙️ Voz en off','Narración profesional, sin locutor visible.'],
+        ['dialogue','🗣️ Con diálogo','Actores conversan entre sí, sin hablar al público.']
+       ].map(([id,label,description])=><button key={id} type="button"
+        disabled={id==='dialogue'&&product.cast_mode==='product_only'}
+        aria-pressed={product.audio_mode===id}
+        onClick={()=>change('audio_mode',id)}
+        className={'rounded-xl border-2 p-3 text-left disabled:opacity-40 '+(product.audio_mode===id?'border-[#7650C6] bg-white':'border-[#E7DEEC] bg-white/60')}>
+        <strong className="block text-sm">{label}</strong>
+        <span className="block text-xs mt-1">{description}</span>
+       </button>)}
+      </div>
+      {product.cast_mode==='product_only'&&<p className="text-xs text-[#866E94]">El diálogo entre actores requiere «Con personas». La voz en off sí se permite en «Solo producto».</p>}
+      <p className="text-xs text-[#866E94]">La generación de voces depende de las capacidades del modelo.</p>
+     </div>}
      <div className="grid sm:grid-cols-2 gap-3">
       <label className="block text-sm font-bold">Proveedor
        <select className={field+' mt-2'} disabled={Boolean(template)} value={selectedProvider}
@@ -450,8 +487,16 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
     <p className="text-xs text-[#755F88] rounded-xl bg-[#F8F3FC] p-3">
      Precio fijo: <strong>USD {((config?.customer_charge_cents||0)/100).toFixed(2)}</strong> por investigar y crear 3 conceptos. El video se cobra aparte.
     </p>
+    {researchConfirm&&<div role="region" aria-label="Confirmar investigación" className="rounded-2xl border border-[#B9A7D5] bg-white p-4 space-y-3">
+      <p className="font-bold text-[#4C3370]">Confirma tu investigación en Realizo</p>
+      <p className="text-sm">Se reservarán <strong>USD {((config?.customer_charge_cents||0)/100).toFixed(2)}</strong> de tu billetera. Al entregar los 3 conceptos se aplicará el cargo. La generación del video se cotiza por separado.</p>
+      <div className="flex gap-3 flex-wrap">
+       <button type="button" disabled={busy} onClick={start} className="rounded-xl bg-[#704CD4] text-white px-5 py-3 font-bold">Confirmar y continuar</button>
+       <button type="button" onClick={()=>setResearchConfirm(false)} className="rounded-xl border px-5 py-3">Cancelar</button>
+      </div>
+     </div>}
     <div className="flex flex-wrap gap-3">
-     <button type="button" disabled={busy||!config?.enabled||!image||!selectedModel||!product.video_duration_seconds}
+     <button type="button" disabled={busy||researchConfirm||!config?.enabled||!image||!selectedModel||!product.video_duration_seconds}
       onClick={start} className="rounded-2xl bg-[#704CD4] disabled:opacity-45 text-white px-6 py-3 font-bold">
       {busy?'Investigando…':'✦ Investigar y pagar $'+((config?.customer_charge_cents||0)/100).toFixed(2)}
      </button>
@@ -605,8 +650,8 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
       </div>
       {concepts[selection]&&<div className="space-y-3">
 
-        <div className="rounded-xl bg-[#F8F3FC] p-4">
-         <p className="text-xs font-bold text-[#7555A5]">Guion hablado · {languages.find(([code])=>code===(project.video_language||'es'))?.[1]||'Español'}</p>
+        {(!(style==='premium'||style==='cinematic')||reviewAudioMode!=='no_voice')&&<div className="rounded-xl bg-[#F8F3FC] p-4">
+         <p className="text-xs font-bold text-[#7555A5]">{style==='premium'||style==='cinematic'?(reviewAudioMode==='voiceover'?'Voz en off':'Diálogo entre actores'):'Guion hablado'} · {languages.find(([code])=>code===(project.video_language||'es'))?.[1]||'Español'}</p>
          <textarea value={editedSpeech} onChange={e=>{manualSpeechRef.current=true;setEditedSpeech(e.target.value)}}
           aria-label="Editar guion hablado sin costo adicional"
           className={field+' mt-2 min-h-[95px] text-sm'} maxLength={650}/>
@@ -619,7 +664,9 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
            {(concepts[selection].shots||[]).map((shot,i)=><li key={i}>{shot}</li>)}
           </ul>
          </details>
-        </div>
+        </div>}
+        {(style==='premium'||style==='cinematic')&&reviewAudioMode==='no_voice'&&
+         <p className="text-sm rounded-xl bg-[#F8F3FC] p-3">🎼 Sin voces: música instrumental y foley profesional. El guion hablado no se enviará.</p>}
         <div className="space-y-2">
          <p className="text-sm font-bold">¿Cómo quieres que se vea el anuncio?</p>
          {project.creative_style==='auto'
@@ -639,6 +686,36 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
             {creativeStyles.find(([id])=>id===style)?.[2]||'Automático'} · elegido antes de investigar.
             {style==='ugc'?' La voz es lo principal; los planos son apoyo.':''}
            </p>}
+         {(style==='premium'||style==='cinematic')&&!template&&<div className="space-y-2">
+          <p className="text-sm font-bold">¿Quién aparece en el video final?</p>
+          <div className="grid sm:grid-cols-2 gap-2">
+           {[
+            ['product_only','📦 Solo producto','Escenas de producto con cámara y luz premium.'],
+            ['with_people','🎬 Con personas','Modelos en escenas de cine, sin estilo UGC.']
+           ].map(([id,label,description])=><button key={id} type="button" aria-pressed={reviewCastMode===id}
+            onClick={()=>{setReviewCastMode(id);if(id==='product_only'&&reviewAudioMode==='dialogue')setReviewAudioMode('no_voice');}} className={'rounded-xl border-2 p-3 text-left '+(reviewCastMode===id?'border-[#7650C6] bg-[#F2EAFE]':'border-[#E7DEEC] bg-white')}>
+            <strong className="block text-sm">{label}</strong><span className="block text-xs mt-1">{description}</span>
+           </button>)}
+          </div>
+          <p className="text-xs text-[#71588B]">Puedes cambiarlo sin pagar otra investigación.</p>
+         </div>}
+         {(style==='premium'||style==='cinematic')&&!template&&<div className="space-y-2">
+          <p className="text-sm font-bold">¿Qué sonido tendrá el video?</p>
+          <div className="grid sm:grid-cols-3 gap-2">
+           {[
+            ['no_voice','🎼 Sin voces','Música y efectos; ninguna voz.'],
+            ['voiceover','🎙️ Voz en off','Locución profesional.'],
+            ['dialogue','🗣️ Diálogo','Actores conversan entre sí.']
+           ].map(([id,label,description])=><button key={id} type="button"
+            disabled={id==='dialogue'&&reviewCastMode==='product_only'}
+            aria-pressed={reviewAudioMode===id}
+            onClick={()=>setReviewAudioMode(id)}
+            className={'rounded-xl border-2 p-3 text-left disabled:opacity-40 '+(reviewAudioMode===id?'border-[#7650C6] bg-[#F2EAFE]':'border-[#E7DEEC] bg-white')}>
+            <strong className="block text-sm">{label}</strong><span className="block text-xs mt-1">{description}</span>
+           </button>)}
+          </div>
+          <p className="text-xs text-[#71588B]">Puedes cambiar el audio sin pagar otra investigación; la voz generada depende del modelo.</p>
+         </div>}
          <label className="block text-xs font-bold">Tomas
           <select className={field+' mt-2'} value={shotPreference} onChange={e=>setShotPreference(e.target.value)}>
            <option value="auto">La IA decide</option>

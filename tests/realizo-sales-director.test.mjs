@@ -45,7 +45,9 @@ test('cinematic mode and multi-shot selection are constrained by time not invent
  const c=buildCommercialDirectorPackage({concept,style:'cinematic',shotPreference:'multi',
  modelId:'seedance-2.5-omni-reference',duration:15});
  assert.match(c.prompt,/CINEMATOGRAPHIC/);
- assert.match(c.prompt,/5 coordinated shots/);
+ assert.match(c.prompt,/5 motivated shots/);
+ assert.match(c.prompt,/LUXURY BRAND FILM TIMELINE/);
+ assert.doesNotMatch(c.prompt,/NMF SALES STORY|UGC TALKING-HEAD SCHEDULE/);
  assert.doesNotMatch(c.prompt,/\b(?:free generation|automatically retry)\b/i);
 });
 test('Premium approved brief actually selects provider reference workflow and charges only after quote',()=>{
@@ -65,7 +67,8 @@ test('Premium approved brief actually selects provider reference workflow and ch
  assert.doesNotMatch(ui,/setCorrection/);
  const bridge=readFileSync('lib/realizo-creative/wallet-generation.js','utf8');
  assert.match(bridge,/\/api\/wallet\/quote/);
- assert.match(bridge,/window\.confirm/);
+ assert.match(bridge,/confirmRealizoChargeInline/);
+ assert.doesNotMatch(bridge,/window\.confirm/);
 });
 
 test('12-second UGC prioritizes a spoken buyer review over a five-shot silent montage',()=>{

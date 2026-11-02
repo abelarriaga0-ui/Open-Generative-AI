@@ -28,6 +28,15 @@ export default function PaypalTopup({ minCents, firstTopup, onPaid, theme = 'dar
   const [config, setConfig] = useState(null);
   const [error, setError] = useState(null);
   const [status, setStatus] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [cardAvailable,setCardAvailable]=useState(null);
+  const [retryCount,setRetryCount]=useState(0);
+  // This is a visible setup preference, NOT PayPal consent or a billing mandate.
+  const [autoTopupPreferred,setAutoTopupPreferred]=useState(true);
+  const amountRef=useRef(amount);
+  amountRef.current=amount;
+  const cardsRef=useRef(null);
+  const nameRef=useRef(null),numberRef=useRef(null),expiryRef=useRef(null),cvvRef=useRef(null);
   const node = useRef(null);
 
   useEffect(() => {
@@ -40,18 +49,21 @@ export default function PaypalTopup({ minCents, firstTopup, onPaid, theme = 'dar
       })
       .catch(failure => { if (active) setError(failure.message); });
     return () => { active = false; };
-  }, []);
+  }, [retryCount]);
 
   useEffect(() => {
     if (!config || !node.current) return;
     let mounted = true;
     let buttons = null;
+    let cardFields = null;
+    setLoading(true);
+    setCardAvailable(null);
 
     async function prepare() {
       const src = 'https://www.paypal.com/sdk/js?client-id=' +
-        encodeURIComponent(config.client_id) + '&currency=USD&intent=capture&components=buttons';
+        encodeURIComponent(config.client_id) + '&currency=USD&intent=capture&components=buttons,card-fields';
       const existing = document.querySelector('script[data-realizo-paypal="true"]');
-      if (existing && existing.src !== src) existing.remove();
+      if (existing && (existing.src !== src || !window.paypal)) existing.remove();
       if (!window.paypal) {
         const script = document.createElement('script');
         script.setAttribute('data-realizo-paypal', 'true');
@@ -59,54 +71,78 @@ export default function PaypalTopup({ minCents, firstTopup, onPaid, theme = 'dar
         script.async = true;
         await new Promise((resolve, reject) => {
           script.onload = resolve;
-          script.onerror = () => reject(new Error('No se pudo cargar PayPal.'));
+          script.onerror = () => reject(new Error('El módulo seguro de PayPal fue bloqueado o no respondió. Revisa la conexión y los bloqueadores del navegador; luego pulsa Reintentar.'));
           document.head.appendChild(script);
         });
       }
-      if (!mounted || !node.current || !window.paypal?.Buttons) return;
+      if (!mounted || !node.current || !window.paypal?.Buttons) {
+        throw new Error('PayPal no cargó los medios de pago. Pulsa Reintentar.');
+      }
+      const createOrder=async()=>{
+        const message=validateAmount(amountRef.current,minCents);
+        if(message){setError(message);throw new Error(message);}
+        const result=await postJson('/api/wallet/paypal/create-order',
+          {amount_usd:amountRef.current});
+        return result.order_id;
+      };
+      const onApprove=async(details)=>{
+        try{
+          setStatus('Verificando el pago con PayPal...');
+          const result=await postJson('/api/wallet/paypal/capture-order',
+            {order_id:details.orderID});
+          if(result.status==='paid'){
+            setError(null);
+            setStatus(config.mode==='sandbox'?'Pago de PRUEBA validado: saldo simulado acreditado en Realizo. No se realizó ningún cobro real ni se envió dinero a tu cuenta PayPal.':'Pago confirmado. Saldo acreditado en tu billetera.');
+            onPaid?.();
+          }else setStatus('Pago en verificación. No repitas el pago mientras se verifica.');
+        }catch(failure){
+          setError(failure.message);
+          setStatus('Comprueba tus movimientos antes de intentar otro pago.');
+        }
+      };
+      if(typeof window.paypal.CardFields==='function'){
+        cardFields=window.paypal.CardFields({createOrder,onApprove,
+          onError:()=>setError('No se pudo autorizar la tarjeta. Revisa tu actividad antes de volver a pagar.')});
+        if(cardFields.isEligible()){
+          cardsRef.current=cardFields;
+          await Promise.all([
+            cardFields.NameField().render('#realizo-paypal-card-name'),
+            cardFields.NumberField().render('#realizo-paypal-card-number'),
+            cardFields.ExpiryField().render('#realizo-paypal-card-expiry'),
+            cardFields.CVVField().render('#realizo-paypal-card-cvv')
+          ]);
+          if(mounted)setCardAvailable(true);
+        }else if(mounted)setCardAvailable(false);
+      }else if(mounted)setCardAvailable(false);
       buttons = window.paypal.Buttons({
         style: { layout: 'vertical', color: 'gold', shape: 'rect' },
         onClick: (_, actions) => {
           setStatus('');
-          const message = validateAmount(amount, minCents);
+          const message = validateAmount(amountRef.current, minCents);
           setError(message);
           return message ? actions.reject() : actions.resolve();
         },
-        createOrder: async () => {
-          const result = await postJson('/api/wallet/paypal/create-order',
-            { amount_usd: amount });
-          return result.order_id;
-        },
-        onApprove: async (details) => {
-          try {
-            setStatus('Verificando el pago con PayPal...');
-            const result = await postJson('/api/wallet/paypal/capture-order',
-              { order_id: details.orderID });
-            if (result.status === 'paid') {
-              setError(null);
-              setStatus('Pago confirmado. Saldo acreditado en tu billetera.');
-              if (onPaid) onPaid();
-            } else {
-              setStatus('Pago en verificación. Se acreditará al confirmarse.');
-            }
-          } catch (failure) {
-            setError(failure.message);
-            setStatus('Comprueba tus movimientos; no vuelvas a pagar si el cobro ya se realizó.');
-          }
-        },
+        createOrder,
+        onApprove,
         onError: () => setError('No se pudo completar el proceso de PayPal. Revisa si hubo algún cobro antes de reintentar.'),
         onCancel: () => setStatus('Pago cancelado. No se añadió saldo.'),
       });
       if (!buttons.isEligible()) {
-        setError('PayPal no está disponible para esta cuenta o navegador.');
+        if(!cardFields?.isEligible())setError('PayPal no habilitó botones ni tarjeta integrada para esta cuenta o navegador.');
         return;
       }
       await buttons.render(node.current);
     }
 
-    prepare().catch(failure => { if (mounted) setError(failure.message); });
-    return () => { mounted = false; try { buttons?.close(); } catch {} };
-  }, [config, amount, minCents, onPaid]);
+    prepare().catch(failure => { if (mounted) setError(failure.message); })
+      .finally(()=>{if(mounted)setLoading(false);});
+    return () => {
+      mounted = false; cardsRef.current=null;
+      try { buttons?.close(); } catch {}
+      if(node.current)node.current.replaceChildren();
+      for(const r of [nameRef,numberRef,expiryRef,cvvRef]) if(r.current)r.current.replaceChildren();
+    };
+  }, [config, minCents, onPaid, retryCount]);
 
   return (
     <div className="space-y-3">
@@ -120,12 +156,49 @@ export default function PaypalTopup({ minCents, firstTopup, onPaid, theme = 'dar
         className={theme === 'light' ? 'w-full rounded-2xl bg-[#F7F3EE] border border-[#DED4D8] px-4 py-3.5 text-[#251D37] outline-none focus:border-[#8F67C6]' : 'w-full rounded-lg bg-white/10 border border-white/20 px-4 py-3 text-white'}
         placeholder="20.00" />
       {config?.mode === 'sandbox' && (
-        <p className={theme === 'light' ? 'text-[#9B6B42] text-xs font-semibold' : 'text-amber-300 text-sm font-medium'}>PayPal Sandbox · Pago de prueba</p>
+        <p className={theme === 'light' ? 'text-[#9B6B42] text-xs font-semibold' : 'text-amber-300 text-sm font-medium'}>PayPal Sandbox · Pago de prueba (sin dinero real)</p>
       )}
       {!config && !error && <p className={theme === 'light' ? 'text-[#887B93] text-sm' : 'text-white/60 text-sm'}>Preparando PayPal...</p>}
+      {loading&&<p role="status" className="text-sm text-white/70">Preparando pago seguro…</p>}
       {error && <p role="alert" className={theme === 'light' ? 'text-[#AA5C43] text-sm' : 'text-amber-300 text-sm'}>{error}</p>}
+      {error&&<button type="button" onClick={()=>{setError(null);setConfig(null);setRetryCount(v=>v+1);}}
+        className="rounded-lg border border-amber-400 p-2 text-amber-300 text-sm">Reintentar carga de PayPal</button>}
       {status && <p role="status" className={theme === 'light' ? 'text-[#6E4BD2] text-sm' : 'text-cyan-300 text-sm'}>{status}</p>}
-      <div ref={node} aria-label="Botones de recarga con PayPal" />
+      <section aria-label="Pago con tarjeta en Realizo" className="space-y-3">
+        {cardAvailable===true&&<p className="font-bold">Pagar con tarjeta dentro de Realizo</p>}
+        <div className={cardAvailable===false?'hidden':'space-y-3'}>
+          <label className="block text-xs">Nombre de la tarjeta<div id="realizo-paypal-card-name" ref={nameRef} className="min-h-12 rounded-lg bg-white"/></label>
+          <label className="block text-xs">Número de tarjeta<div id="realizo-paypal-card-number" ref={numberRef} className="min-h-12 rounded-lg bg-white"/></label>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block text-xs">Vencimiento<div id="realizo-paypal-card-expiry" ref={expiryRef} className="min-h-12 rounded-lg bg-white"/></label>
+            <label className="block text-xs">CVV<div id="realizo-paypal-card-cvv" ref={cvvRef} className="min-h-12 rounded-lg bg-white"/></label>
+          </div>
+          {cardAvailable===true&&<button type="button" onClick={async()=>{
+            const message=validateAmount(amountRef.current,minCents);
+            if(message){setError(message);return;}
+            try{setError(null);await cardsRef.current?.submit();}
+            catch{setError('No se pudo autorizar la tarjeta. Comprueba tus movimientos antes de reintentar.');}
+          }} className="rounded-xl px-5 py-3 bg-[#F49A4B] text-[#261D36] font-bold">
+            Pagar con tarjeta
+          </button>}
+        </div>
+        {cardAvailable===false&&<p className="text-sm text-white/70">PayPal no ha habilitado el pago integrado con tarjeta para esta cuenta o región. Los datos de tarjetas nunca se solicitan directamente en Realizo.</p>}
+      </section>
+      <div ref={node} aria-label="Pagar con cuenta PayPal" />
+      <section className="space-y-2 rounded-xl border border-white/20 p-3">
+        <label className="flex gap-2 items-start text-sm">
+          <input type="checkbox" checked={autoTopupPreferred}
+            onChange={event=>setAutoTopupPreferred(event.target.checked)}
+            aria-describedby="realizo-auto-topup-explanation"/>
+          <span>Quiero configurar una recarga automática de <strong>$20</strong> cuando mi saldo llegue a <strong>$5</strong>.</span>
+        </label>
+        <p id="realizo-auto-topup-explanation" className="text-xs text-white/60">
+          {autoTopupPreferred
+            ? 'Preferencia seleccionada. Para activar los cargos automáticos tendrás que autorizar por separado un método de pago apto para pagos futuros.'
+            : 'Preferencia desmarcada. No se solicitará configurar recargas automáticas.'}
+          {' '}Actualmente no se ejecutan cargos automáticos.
+        </p>
+      </section>
     </div>
   );
 }
