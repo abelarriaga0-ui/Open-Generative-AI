@@ -1,8 +1,8 @@
 /* Separate Realizo template creator and real-video hover preview. */
-.realizo-template-video-frame{min-height:340px;isolation:isolate;cursor:default}
-.realizo-template-preview-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;background:#14121b;opacity:0;transition:opacity .2s;z-index:1}
+.realizo-template-video-frame{min-height:430px;aspect-ratio:9/16;isolation:isolate;cursor:default}
+.realizo-template-preview-video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center;background:#14121b;opacity:0;transition:opacity .2s;z-index:1}
 .realizo-template-preview-video.is-playing{opacity:1}
-.realizo-template-video-frame .realizo-v11-card-photo{z-index:0}
+.realizo-template-video-frame .realizo-v11-card-photo{z-index:0;background-image:url('/assets/realizo/templates/ugc-master-30s.jpg')!important;background-position:center!important;background-size:cover!important}
 .realizo-template-video-frame .realizo-v11-photo-fade{z-index:2;pointer-events:none}
 .realizo-template-video-frame .realizo-v11-duration{z-index:3}
 .realizo-template-video-frame .realizo-v11-play{z-index:4;cursor:pointer;padding:0}
@@ -56,4 +56,4 @@
 .realizo-template-result video{height:380px;max-width:100%;background:#0a0a0a;object-fit:contain}
 .realizo-template-result a,.realizo-template-result button{color:#ffc176;font-weight:800}
 .realizo-template-note{margin:15px 0;color:#a497a5;font-size:12px;line-height:1.5}
-@media(max-width:760px){.realizo-template-creator-grid{grid-template-columns:1fr}.realizo-template-panel{padding:17px;border-radius:18px}.realizo-template-two{grid-template-columns:1fr}.realizo-template-preview-card{max-width:none}.realizo-template-video-frame{min-height:270px}}
+@media(max-width:760px){.realizo-template-creator-grid{grid-template-columns:1fr}.realizo-template-panel{padding:17px;border-radius:18px}.realizo-template-two{grid-template-columns:1fr}.realizo-template-preview-card{max-width:none}.realizo-template-video-frame{min-height:330px}}
