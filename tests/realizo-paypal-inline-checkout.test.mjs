@@ -26,11 +26,15 @@ test('order funding is not forced to a PayPal wallet and credits only after capt
  assert.match(settlement,/confirmedCapture\(verifiedPaypalOrder, intent\)/);
  assert.match(settlement,/INSERT OR IGNORE INTO verified_deposits/);
 });
-test('do not pre-enroll anyone in auto-reload or run charges without a saved payment authorization',()=>{
+test('auto-reload setup checkbox defaults selected and stays editable without creating a payment mandate',()=>{
  const wallet=read('components/wallet/PaypalTopup.jsx');
  assert.match(wallet,/Recarga automática de \$20 al llegar a \$5/);
- assert.match(wallet,/type="checkbox" disabled checked=\{false\}/);
+ assert.match(wallet,/const \[autoTopupPreferred,setAutoTopupPreferred\]=useState\(true\)/);
+ assert.match(wallet,/type="checkbox" checked=\{autoTopupPreferred\}/);
+ assert.match(wallet,/onChange=\{event=>setAutoTopupPreferred\(event.target.checked\)\}/);
+ assert.doesNotMatch(wallet,/type="checkbox" disabled checked=\{false\}/);
  assert.match(wallet,/Actualmente no se ejecutan cargos automáticos/);
+ assert.match(wallet,/autorizar por separado un método de pago/);
  assert.doesNotMatch(wallet,/\/api\/wallet\/auto-topup\/charge/);
 });
 test('checkout stays locked to Sandbox; no accidental live PayPal calls',()=>{
