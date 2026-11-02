@@ -22,7 +22,7 @@ export async function POST(request) {
     try { cents = parseUsdCents(body?.amount_usd); }
     catch { return Response.json({ error: 'invalid_amount' }, { status: 400 }); }
     const first = await env.WALLETS_DB.prepare(
-      'SELECT COUNT(*) AS n FROM verified_deposits WHERE user_id=?'
+      "SELECT COUNT(*) AS n FROM verified_deposits WHERE user_id=? AND provider_environment='live'"
     ).bind(user.id).first();
     if (first.n === 0 && cents < 2000) {
       return Response.json({ error: 'first_topup_minimum_20_usd' }, { status: 400 });
