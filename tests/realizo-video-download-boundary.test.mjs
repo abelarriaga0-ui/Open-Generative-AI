@@ -6,14 +6,14 @@ import {TEMPLATE_PREVIEW_SRC} from '../lib/realizo-creative/template-video-input
 const read=p=>readFileSync(p,'utf8');
 test('preview never offers native video download controls or external provider fallback',()=>{
   const library=read('components/RealizoTemplateLibrary.jsx');
-  assert.equal(TEMPLATE_PREVIEW_SRC,'/assets/realizo/templates/ugc-preview-native-30s.mp4');
+  assert.equal(TEMPLATE_PREVIEW_SRC,'/assets/realizo/templates/ugc-preview-stream-30s.mp4');
   assert.match(library,/controlsList="nodownload noremoteplayback noplaybackrate"/);
   assert.match(library,/onContextMenu=\{blockSave\}/);
   assert.match(library,/realizo-template-safe-player/);
   assert.match(library,/realizo-template-preview-mark/);
   assert.doesNotMatch(library,/src=\{source\} controls\b|TEMPLATE_PREVIEW_PROVIDER_SRC/);
   assert.equal(existsSync('public/assets/realizo/templates/ugc-master-30s.mp4'),false);
-  assert.ok(statSync('public/assets/realizo/templates/ugc-preview-native-30s.mp4').size>3000000);
+  assert.ok(statSync('public/assets/realizo/templates/ugc-preview-stream-30s.mp4').size>3000000);
 });
 test('all generated videos use owner-only download button, not provider download links',()=>{
  const creator=read('components/RealizoTemplateCreator.jsx');
