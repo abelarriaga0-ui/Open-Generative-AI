@@ -69,6 +69,8 @@ export async function POST(request,{params}){
   // Final duration is chosen AFTER research at no new AI charge.
   // The same exact model must explicitly support it.
   const duration=videoChoice.duration;
+  if(selectedTemplate?.id==='ugc-vendedor'&&duration!==30)
+    return Response.json({error:'template_requires_30_seconds'},{status:422});
   const workflowId=videoChoice.workflowId;
   const director=buildCommercialDirectorPackage({
     concept:directorConcept,productName:normalizeProductCopy(project.product_name),
@@ -78,6 +80,7 @@ export async function POST(request,{params}){
     productGeometry:findings.product_visual_geometry||null,
     templateId:selectedTemplate?.id||null,templateActor:project.template_actor||'auto',
     templateSetting:project.template_setting||'auto',
+    templateChangeRequest:project.template_change_request||'',
   });
   // Preserve the seller's commercial intent while keeping unverified product
   // statements visibly distinguishable from claims substantiated by sources.
