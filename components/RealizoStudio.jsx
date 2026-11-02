@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { optimizeImage } from '@/lib/realizo-creative/optimize-image';
 import { generateWithRealizoWallet } from '@/lib/realizo-creative/wallet-generation';
 import { VideoStudio } from 'studio';
@@ -36,6 +36,7 @@ function Icon({name,size=20}){
 const usd=c=>new Intl.NumberFormat('es-EC',{style:'currency',currency:'USD'}).format((c||0)/100);
 const navBase='realizo-nav-link flex items-center gap-3 px-4 py-3 rounded-2xl transition w-full text-left font-semibold text-[14px]';
 export default function RealizoStudio({accountId,guest=false}){
+ const shellRef=useRef(null);
  const [wallet,setWallet]=useState(null);
  const [billableModelIds,setBillableModelIds]=useState([]);
  const [generationReady,setGenerationReady]=useState(false);
@@ -79,6 +80,26 @@ export default function RealizoStudio({accountId,guest=false}){
    }catch{}
  },[guest]);
  useEffect(()=>{if(!guest)refreshWallet()},[guest,refreshWallet]);
+ useEffect(()=>{
+   const root=shellRef.current;
+   if(!root)return;
+   const protect=()=>{
+     root.querySelectorAll('video').forEach(video=>{
+       video.setAttribute('controlsList','nodownload noremoteplayback noplaybackrate');
+       video.disablePictureInPicture=true;
+     });
+   };
+   const preventMediaMenu=event=>{
+     if(event.target?.closest?.('video,.realizo-native-video,.realizo-template-modal'))
+       event.preventDefault();
+   };
+   const observer=new MutationObserver(protect);
+   observer.observe(root,{childList:true,subtree:true});
+   root.addEventListener('contextmenu',preventMediaMenu);
+   protect();
+   return ()=>{observer.disconnect();root.removeEventListener('contextmenu',preventMediaMenu)};
+ },[]);
+
  const onWalletGenerate=useCallback(params=>generateWithRealizoWallet(params),[]);
  useEffect(()=>{
    if(guest||page!=='videos')return;
@@ -149,7 +170,7 @@ export default function RealizoStudio({accountId,guest=false}){
       <Icon name={icon}/>{label}{page===id&&<span className="ml-auto h-2 w-2 rounded-full bg-[#E9898F]"/>}
    </button>
  );
- return <main className="realizo-app min-h-screen flex flex-col">
+ return <main ref={shellRef} className="realizo-app min-h-screen flex flex-col">
    <header className="realizo-topbar shrink-0 px-5 sm:px-7 flex items-center justify-between gap-3">
      <Link href="/studio" className="realizo-brand flex items-center gap-2.5 font-extrabold tracking-tight text-[24px]">
        <Mark/>realizo<span className="text-[#EF8B89]">.</span>
