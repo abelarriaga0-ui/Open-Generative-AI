@@ -252,7 +252,7 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
          <RealizoTemplateLibrary onChoose={chooseAdTemplate}/>
         </>}
       </div>}
-     {page==='images'&&<ConversionTemplatesStudio onGenerationComplete={refreshWallet} onGenerationEnd={refreshWallet} />}
+     {page==='images'&&<ConversionTemplatesStudio guest={guest} onGenerationComplete={refreshWallet} onGenerationEnd={refreshWallet} />}
      {page==='create'&&<>
       <section className="realizo-page-heading max-w-[1230px] mx-auto mb-8">
         <p className="uppercase tracking-[.19em] text-[#B28059] font-bold text-[10px]">REALIZO STUDIO</p>
