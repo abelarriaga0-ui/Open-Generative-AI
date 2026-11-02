@@ -28,7 +28,9 @@ test('order funding is not forced to a PayPal wallet and credits only after capt
 });
 test('auto-reload setup checkbox defaults selected and stays editable without creating a payment mandate',()=>{
  const wallet=read('components/wallet/PaypalTopup.jsx');
- assert.match(wallet,/Recarga automática de \$20 al llegar a \$5/);
+ assert.match(wallet,/Quiero configurar una recarga automática de/);
+ assert.match(wallet,/\$20/);
+ assert.match(wallet,/\$5/);
  assert.match(wallet,/const \[autoTopupPreferred,setAutoTopupPreferred\]=useState\(true\)/);
  assert.match(wallet,/type="checkbox" checked=\{autoTopupPreferred\}/);
  assert.match(wallet,/onChange=\{event=>setAutoTopupPreferred\(event.target.checked\)\}/);
@@ -42,4 +44,19 @@ test('checkout stays locked to Sandbox; no accidental live PayPal calls',()=>{
  const cfg=JSON.parse(read('wrangler.auth-sandbox.jsonc'));
  assert.equal(cfg.vars.PAYPAL_MODE,'sandbox');
  assert.match(paypal,/if \(mode === 'live'\) throw new WalletSetupError/);
+});
+
+test('Sandbox payments and customer wallet clearly disclose that no real merchant money is transferred',()=>{
+ const checkout=read('components/wallet/PaypalTopup.jsx');
+ const wallet=read('app/wallet/page.jsx');
+ const payment=read('lib/wallet/paypal.js');
+ const route=read('app/api/wallet/paypal/capture-order/route.js');
+ assert.match(checkout,/Pago de PRUEBA validado: saldo simulado acreditado/);
+ assert.match(checkout,/No se realizó ningún cobro real/);
+ assert.match(wallet,/Modo de pruebas — no hay dinero real/);
+ assert.match(wallet,/Saldo de prueba disponible/);
+ assert.match(wallet,/Recarga de prueba/);
+ assert.match(payment,/https:\/\/api-m\.sandbox\.paypal\.com/);
+ assert.match(payment,/confirmedCapture\(verifiedPaypalOrder, intent\)/);
+ assert.match(route,/settlePaypalOrder\(env\.WALLETS_DB, orderId, fetched\.data/);
 });
