@@ -15,6 +15,7 @@ export default async function StudioPage({ params }) {
   if (slug.length > 1 || (slug.length === 1 && slug[0] !== 'video')) redirect('/studio');
   const env = await getWalletEnvironment();
   const user = await getOwnSession(env);
-  if (!user) redirect('/login');
-  return <RealizoStudio accountId={user.id} />;
+  // Public creative showroom: visitors can browse styles and the empty library.
+  // All wallet, video generation and project endpoints still require auth.
+  return <RealizoStudio accountId={user?.id||null} guest={!user} />;
 }
