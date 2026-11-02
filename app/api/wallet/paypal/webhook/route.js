@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request) {
   try {
     const env = await getWalletEnvironment();
+    if(env.PAYPAL_MODE!=='live')return Response.json({error:'real_payments_not_enabled'},{status:503});
     if (!env.PAYPAL_WEBHOOK_ID) {
       return Response.json({ error: 'paypal_webhook_not_configured' }, { status: 503 });
     }
