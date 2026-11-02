@@ -57,3 +57,18 @@ test('premium research and manual creation retain edits and controls',()=>{
  assert.match(creator,/onChange={e=>setPrepared\(p=>\(\{\.\.\.p,prompt:e.target.value\}\)\)}/);
  assert.match(creator,/onPrepare\(next\);onOpenAdvanced\(\)/);
 });
+
+test('Crear video defaults to premium AI everywhere, while free and manual modes stay selectable',()=>{
+ assert.match(root,/\[creatorMode,setCreatorMode\]=useState\('premium'\)/);
+ const start=root.match(/function startNewVideo\(\)\{([\s\S]*?)\n \}/)?.[1];
+ assert.ok(start,'must find startNewVideo');
+ assert.match(start,/setCreatorMode\('premium'\)/);
+ assert.doesNotMatch(start,/setCreatorMode\('automatic'\)/);
+ const section=root.slice(root.indexOf('aria-label="Modalidad de creación"'),root.indexOf("{creatorMode==='premium'?"));
+ assert.ok(section.indexOf("['premium','✦ Crear con IA · Recomendado']")<section.indexOf("['automatic','Sin investigación IA']"));
+ assert.ok(section.indexOf("['automatic','Sin investigación IA']")<section.indexOf("['manual','Manual · tu prompt']"));
+ assert.match(section,/data-primary-mode=\{id==='premium'\?'true':undefined\}/);
+ assert.match(root,/onUseAutomatic=\{\(\)=>chooseCreatorMode\('automatic'\)\}/);
+ assert.match(root,/if\(mode==='manual'\)openEditor\(\)/);
+ assert.match(css,/\.realizo-modes button\[data-primary-mode="true"\]/);
+});
