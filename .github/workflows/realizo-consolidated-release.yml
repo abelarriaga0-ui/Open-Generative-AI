@@ -59,6 +59,12 @@ jobs:
           console.log('Existing identity, media and AI project record counts preserved.');
           JS
           npx wrangler d1 migrations apply WALLETS_DB --config wrangler.consolidated.jsonc --remote
+          npx wrangler d1 execute WALLETS_DB --config wrangler.consolidated.jsonc --remote --command "SELECT CASE WHEN (SELECT COUNT(*) FROM sqlite_master WHERE type='trigger' AND name IN ('paypal_live_first_topup_minimum','paypal_live_first_verified_deposit_minimum'))=2 THEN 1 ELSE 0 END AS live_first_payment_minimum_guard;" > /tmp/realizo-live-guard.json
+          node - <<'JS'
+          const s=require('node:fs').readFileSync('/tmp/realizo-live-guard.json','utf8');
+          if(!/"live_first_payment_minimum_guard"\s*:\s*1/.test(s))throw Error('First Live deposit guard missing');
+          console.log('Live USD 20 first payment SQL triggers verified.');
+          JS
       - name: Deploy current studio to the SAME original URL and preserve existing Worker secrets
         run: npx opennextjs-cloudflare deploy --config wrangler.consolidated.jsonc
       - name: Verify public studio, login, content catalog, and blocked anonymous wallet
