@@ -499,14 +499,14 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
        <p>Motor: {project.video_model_id} · {creativeStyles.find(([id])=>id===(project.creative_style||'auto'))?.[2]||'Automático'}. Sin nueva investigación al elegir concepto.</p>
        <label className="flex flex-wrap items-center gap-2">
         Duración del video:
-        <select aria-label="Duración final del video" className="rounded-lg border border-[#C6A8E5] bg-white px-3 py-2 text-[#4F2E83]"
+        <select aria-label="Duración final del video" disabled={Boolean(template||project?.template_id)} className="rounded-lg border border-[#C6A8E5] bg-white px-3 py-2 text-[#4F2E83]"
          value={reviewDuration||project.video_duration_seconds||8}
          onChange={e=>setReviewDuration(Number(e.target.value))}>
          {(config?.video_options||[]).find(m=>m.id===project.video_model_id)?.durations?.map(n=>
           <option value={n} key={n}>{n} segundos</option>)||
           <option value={project.video_duration_seconds}>{project.video_duration_seconds} segundos</option>}
         </select>
-        <span className="font-normal text-xs">Puedes cambiarla sin pagar otra investigación. El guion se ajustará.</span>
+        <span className="font-normal text-xs">{template||project?.template_id?"Duración fija de la plantilla maestra: 30 s.":"Puedes cambiarla sin pagar otra investigación. El guion se ajustará."}</span>
        </label>
       </div>
 
