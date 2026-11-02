@@ -127,9 +127,8 @@ export default function RealizoTemplateCreator({onBack,onWalletRefresh,onViewVid
  return <section className="realizo-template-creator" aria-label="Crear video desde plantilla">
    <button type="button" className="realizo-template-back" onClick={onBack}>← Volver a plantillas</button>
    <div className="realizo-template-creator-head">
-     <span className="realizo-v11-eyebrow">PLANTILLA MAESTRA</span>
-     <h1>UGC Vendedor <em>· 30 segundos</em></h1>
-     <p>Sube tu producto y adapta el anuncio original. Cámara, montaje, duración y modelo permanecen iguales.</p>
+     <span className="realizo-v11-eyebrow">CREAR DESDE PLANTILLA</span>
+     <h1>Tu producto. <em>Este video.</em></h1>
      <div className="realizo-template-chips"><span>Muapi · Seedance 2.5</span><span>30 s</span><span>9:16</span><span>Español</span></div>
    </div>
    <div className="realizo-template-creator-grid">
@@ -151,8 +150,7 @@ export default function RealizoTemplateCreator({onBack,onWalletRefresh,onViewVid
        </label>
      </div>
      <div className="realizo-template-panel">
-       <h2>Personalización <span>(opcional)</span></h2>
-       <p>Por defecto se conserva el hombre y el baño del anuncio original.</p>
+       <h2>Ajustes <span>opcionales</span></h2>
        <div className="realizo-template-two">
         <label>Personaje
           <select className={inputClass} value={actor} disabled={busy||Boolean(jobId)}
@@ -168,7 +166,7 @@ export default function RealizoTemplateCreator({onBack,onWalletRefresh,onViewVid
        </div>
        <label>¿Qué quieres cambiar?
          <textarea className={inputClass} rows={4} maxLength={350} disabled={busy||Boolean(jobId)}
-          placeholder="Ej. Cambia el personaje por una mujer. Mantén todo lo demás igual."
+          placeholder="Ej. Cambia al hombre por una mujer"
           value={changeRequest} onChange={e=>{setChangeRequest(e.target.value);invalidate()}}/>
        </label>
        {!quote&&!jobId&&<button className="realizo-template-primary" type="button" disabled={busy}
@@ -199,6 +197,6 @@ export default function RealizoTemplateCreator({onBack,onWalletRefresh,onViewVid
        </div>}
      </div>
    </div>
-   <p className="realizo-template-note">El video mantiene el mismo prompt y estructura de la plantilla. El resultado visual puede variar porque Muapi genera cada toma con IA.</p>
+   <p className="realizo-template-note">El resultado puede variar entre generaciones.</p>
  </section>;
 }
