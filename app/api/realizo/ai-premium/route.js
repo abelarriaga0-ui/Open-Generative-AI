@@ -84,12 +84,12 @@ export async function POST(request){
   }
   const projectId=crypto.randomUUID(), orderId=crypto.randomUUID();
   const ins=db.prepare(
-   'INSERT INTO realizo_ai_projects (id,user_id,primary_asset_id,product_name,description,audience,sales_angle,market_code,cta,request_key,status,research_model,billing_type,premium_price_cents,research_fingerprint,pricing_version,video_language,video_model_id,video_duration_seconds,video_workflow_id,creative_style,template_id,template_actor,template_setting) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+   'INSERT INTO realizo_ai_projects (id,user_id,primary_asset_id,product_name,description,audience,sales_angle,market_code,cta,request_key,status,research_model,billing_type,premium_price_cents,research_fingerprint,pricing_version,video_language,video_model_id,video_duration_seconds,video_workflow_id,creative_style,template_id,template_actor,template_setting,template_change_request) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
   ).bind(projectId,user.id,data.assetId,data.productName,data.description,data.audience,
     data.angle,data.market,data.cta,data.requestKey,'created',env.OPENAI_PREMIUM_MODEL,
     access.mode,access.price_cents,fp,PREMIUM_PRICING_VERSION,data.videoLanguage,
     data.modelId,data.duration,data.workflowId,data.creativeStyle,
-    data.templateId,data.templateActor,data.templateSetting);
+    data.templateId,data.templateActor,data.templateSetting,data.templateChangeRequest);
   try{
    // D1 batch is transactional: both the project and its premium reservation
    // succeed together, or neither succeeds. Never call OpenAI first.

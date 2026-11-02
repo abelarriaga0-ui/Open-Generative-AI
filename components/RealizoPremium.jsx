@@ -59,7 +59,8 @@ const fmt=status=>({
 export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,onCreateNew,onWalletRefresh,initialStyle='ugc',initialProjectId=null,initialTemplateId=null}){
  const [config,setConfig]=useState(null),[image,setImage]=useState(null);
  const template=getAdTemplate(initialTemplateId);
- const [templateActor,setTemplateActor]=useState('auto');
+ const [templateActor,setTemplateActor]=useState('hombre');
+ const [templateChangeRequest,setTemplateChangeRequest]=useState('');
  const [templateSetting,setTemplateSetting]=useState('auto');
  const [product,setProduct]=useState({product_name:'',description:'',audience:'',
   angle:template?.angle||'auto',market:'EC',video_language:'es',cta:'',creative_style:template?.style||initialStyle,video_model_id:'',video_duration_seconds:''});
@@ -80,10 +81,10 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
      setConfig(v);
      // Choose Seedance 2.5 as the starting engine; users can change freely
      // before committing the single paid investigation.
-     const recommended=preferredVideoModel(v.video_options||[]);
+     const recommended=template?(v.video_options||[]).find(m=>m.id==='seedance-2.5-intl-omni-reference'):preferredVideoModel(v.video_options||[]);
      if(recommended)setProduct(prev=>prev.video_model_id?prev:{
       ...prev,video_model_id:recommended.id,
-      video_duration_seconds:preferredDuration(recommended,template?.duration||prev.video_duration_seconds),
+      video_duration_seconds:template?30:preferredDuration(recommended,prev.video_duration_seconds),
      });
      // Fresh creation is the default. Only restore a previous investigation
      // after the owner explicitly selects it from "Mis videos".
@@ -197,7 +198,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
    const r=await fetch('/api/realizo/ai-premium',{
     method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({...product,template_id:template?.id||null,
-      template_actor:templateActor,template_setting:templateSetting,
+      template_actor:templateActor,template_setting:templateSetting,template_change_request:templateChangeRequest,
       primary_asset_id:image.id,request_key:keyRef.current,
       max_price_cents:price,pricing_version:config.pricing_version}),
    });
@@ -258,6 +259,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
  const availableModes=Object.keys(videoModes).filter(role=>familyModels.some(m=>m.image_role===role));
  const variantsForMode=familyModels.filter(m=>m.image_role===selectedModel?.image_role);
  const chooseVideoModel=next=>{
+  if(template)return; // master model cannot be changed
    if(!next)return;
    setProduct(prev=>({
     ...prev,video_model_id:next.id,
@@ -289,20 +291,25 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
   {error&&<div role="alert" className="rounded-2xl border border-[#EEB9AB] bg-[#FFF0E9] px-5 py-3 text-sm text-[#914F40]">{error}</div>}
   {template&&!project&&<div className="realizo-v11-template-brief">
    <div><span>CREACIÓN DESDE PLANTILLA</span><h3>{template.name}</h3>
-    <p>{template.description} Se mantienen cámara, estructura de venta, transiciones, efectos y audio.</p></div>
+    <p>{template.description} Solo se reemplaza el producto, su uso y el diálogo. Imagen de referencia: no se sube el video maestro.</p></div>
    <div className="realizo-v11-template-beats">{templatePlan(template,Number(product.video_duration_seconds)||template.duration).map(b=>
     <span key={b.key}><b>{b.start}–{b.end}s</b> {b.label}</span>)}</div>
    <div className="realizo-v11-template-options">
     <label>Personaje
      <select value={templateActor} onChange={e=>setTemplateActor(e.target.value)}>
-      <option value="auto">La IA decide</option><option value="hombre">Hombre</option><option value="mujer">Mujer</option>
+      <option value="hombre">Hombre (original)</option><option value="mujer">Mujer</option>
      </select>
     </label>
     <label>Escenario
      <input value={templateSetting==='auto'?'':templateSetting} onChange={e=>setTemplateSetting(e.target.value||'auto')}
-      maxLength={120} placeholder="La IA decide o escribe un escenario"/>
+      maxLength={120} placeholder="Baño de casa (original)"/>
     </label>
    </div>
+   <label className="block mt-3 text-sm font-bold text-[#F5E8E1]">¿Qué quieres cambiar? (opcional)
+    <textarea className="mt-2 w-full rounded-xl border border-[#51464F] bg-[#17161D] p-3 text-white" rows={2}
+     maxLength={400} value={templateChangeRequest} onChange={e=>setTemplateChangeRequest(e.target.value)}
+     placeholder="Ej. Cambia al hombre por una mujer, conserva todo lo demás."/>
+   </label>
   </div>}
   {!project&&<div className="grid lg:grid-cols-[.9fr_1.1fr] gap-5">
    <section className={card+' space-y-4'}>
@@ -335,13 +342,13 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
        </select>
      </label>
      <label className="block text-sm font-bold">Ángulo de venta
-       <select className={field+' mt-2'} value={product.angle} onChange={e=>change('angle',e.target.value)}>
+       <select className={field+' mt-2'} disabled={Boolean(template)} value={product.angle} onChange={e=>change('angle',e.target.value)}>
         {angles.map(([v,n])=><option key={v} value={v}>{n}</option>)}
        </select>
      </label>
     </div>
     <label className="block text-sm font-bold">Idioma de voz y video
-     <select className={field+' mt-2'} value={product.video_language} onChange={e=>change('video_language',e.target.value)}>
+     <select className={field+' mt-2'} disabled={Boolean(template)} value={product.video_language} onChange={e=>change('video_language',e.target.value)}>
       {languages.map(([code,name])=><option key={code} value={code}>{name}</option>)}
      </select>
     </label>
@@ -366,14 +373,14 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
 
      <div className="grid sm:grid-cols-2 gap-3">
       <label className="block text-sm font-bold">Proveedor
-       <select className={field+' mt-2'} value={selectedProvider}
+       <select className={field+' mt-2'} disabled={Boolean(template)} value={selectedProvider}
         onChange={e=>chooseVideoModel(preferredVideoModel(
          videoOptions.filter(m=>m.provider===e.target.value)))}>
         {providerOptions.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}
        </select>
       </label>
       <label className="block text-sm font-bold">Modelo y versión
-       <select className={field+' mt-2'} value={selectedFamily}
+       <select className={field+' mt-2'} disabled={Boolean(template)} value={selectedFamily}
         onChange={e=>chooseVideoModel(preferredVideoModel(
          providerModels.filter(m=>m.family_id===e.target.value)))}>
         {familyOptions.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}
@@ -385,7 +392,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
       <div className="grid sm:grid-cols-3 gap-2">
        {availableModes.map(mode=>{
         const [emoji,label,description]=videoModes[mode];
-        return <button key={mode} type="button" onClick={()=>chooseVideoModel(preferredVideoModel(
+        return <button key={mode} type="button" disabled={Boolean(template)} onClick={()=>chooseVideoModel(preferredVideoModel(
           familyModels.filter(m=>m.image_role===mode)))}
           aria-pressed={selectedModel?.image_role===mode}
           className={'rounded-xl border-2 p-3 text-left transition '+(
@@ -403,7 +410,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
        Opciones avanzadas del motor · {variantsForMode.length} variantes
       </summary>
       <label className="block text-xs font-bold mt-3">Variante específica
-       <select className={field+' mt-2 text-sm'} value={product.video_model_id}
+       <select className={field+' mt-2 text-sm'} disabled={Boolean(template)} value={product.video_model_id}
         onChange={e=>chooseVideoModel(variantsForMode.find(m=>m.id===e.target.value))}>
         {variantsForMode.map(model=><option key={model.id} value={model.id}>
          {model.variant_label||model.name}
@@ -413,7 +420,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
      </details>}
      {selectedModel&&<>
       <label className="block text-sm font-bold">Duración disponible
-       <select className={field+' mt-2'} value={product.video_duration_seconds}
+       <select className={field+' mt-2'} disabled={Boolean(template)} value={product.video_duration_seconds}
         onChange={e=>change('video_duration_seconds',Number(e.target.value))}>
         {availableDurations.map(n=><option key={n} value={n}>{n} segundos</option>)}
        </select>
@@ -492,14 +499,14 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
        <p>Motor: {project.video_model_id} · {creativeStyles.find(([id])=>id===(project.creative_style||'auto'))?.[2]||'Automático'}. Sin nueva investigación al elegir concepto.</p>
        <label className="flex flex-wrap items-center gap-2">
         Duración del video:
-        <select aria-label="Duración final del video" className="rounded-lg border border-[#C6A8E5] bg-white px-3 py-2 text-[#4F2E83]"
+        <select aria-label="Duración final del video" disabled={Boolean(template||project?.template_id)} className="rounded-lg border border-[#C6A8E5] bg-white px-3 py-2 text-[#4F2E83]"
          value={reviewDuration||project.video_duration_seconds||8}
          onChange={e=>setReviewDuration(Number(e.target.value))}>
          {(config?.video_options||[]).find(m=>m.id===project.video_model_id)?.durations?.map(n=>
           <option value={n} key={n}>{n} segundos</option>)||
           <option value={project.video_duration_seconds}>{project.video_duration_seconds} segundos</option>}
         </select>
-        <span className="font-normal text-xs">Puedes cambiarla sin pagar otra investigación. El guion se ajustará.</span>
+        <span className="font-normal text-xs">{template||project?.template_id?"Duración fija de la plantilla maestra: 30 s.":"Puedes cambiarla sin pagar otra investigación. El guion se ajustará."}</span>
        </label>
       </div>
 

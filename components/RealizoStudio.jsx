@@ -283,7 +283,7 @@ export default function RealizoStudio({accountId,guest=false}){
           </button>)}
         </div>
         {creatorMode==='premium'?
-          <RealizoPremium initialStyle={formatPreset} initialTemplateId={templateId} key={'premium-'+createKey+'-'+(resumeProjectId||'new')}
+          <RealizoPremium initialStyle={formatPreset} initialTemplateId={templateId} key={'premium-'+createKey+'-'+(resumeProjectId||'new')+'-'+(templateId||'free')}
             initialProjectId={resumeProjectId}
             onPrepare={setBrief} onOpenAdvanced={openEditor} onCreateNew={newPremiumProject}
             onWalletRefresh={refreshWallet}
