@@ -1,0 +1,79 @@
+name: Realizo - native 720p preview and download fix to Sandbox
+on:
+  push:
+    branches: [feature/realizo-native-resolution-preview]
+    paths: ['.github/workflows/realizo-native-preview-download-sandbox.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: realizo-native-quality-download-sandbox
+  cancel-in-progress: false
+jobs:
+  verify-and-deploy:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/feature/realizo-native-resolution-preview'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      NEXT_TELEMETRY_DISABLED: '1'
+      REALIZO_ENV: sandbox
+      REALIZO_AUTH_PROVIDER: native
+      PAYPAL_MODE: sandbox
+    steps:
+      - uses: actions/checkout@v4
+        with: {submodules: recursive}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Verify Sandbox and native-preview media
+        run: |
+          node scripts/check-realizo-auth-sandbox.mjs
+          npm run wallet:preflight:sandbox
+          test -s public/assets/realizo/templates/ugc-preview-native-30s.mp4
+          test ! -e public/assets/realizo/templates/ugc-preview-30s.mp4
+          test ! -e public/assets/realizo/templates/ugc-master-30s.mp4
+      - name: Verify native 720 by 1280 video and preserved duration
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          data=Path('public/assets/realizo/templates/ugc-preview-native-30s.mp4').read_bytes()
+          assert len(data)>3_000_000
+          assert b'ftyp' in data[:128]
+          assert b'moov' in data and b'mdat' in data
+          print('PASS: native-quality MP4 media validated')
+          PY
+      - name: Test video download boundaries and Muapi template
+        run: |
+          node --test tests/realizo-video-download-boundary.test.mjs \
+            tests/realizo-template-independent-flow.test.mjs \
+            tests/realizo-muapi-master-ugc30.test.mjs
+      - name: Build full Cloudflare Sandbox Realizo app
+        run: npm run cloudflare:build:realizo-auth-sandbox
+      - name: Full wallet and UI regressions
+        run: |
+          npm run test:wallet
+          node --test tests/realizo-ad-templates-v11.test.mjs \
+            tests/realizo-premium-studio.test.mjs
+          test -s .open-next/worker.js
+      - name: Publish ONLY auth Sandbox
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          node scripts/check-realizo-auth-sandbox.mjs
+          npx --no-install opennextjs-cloudflare deploy --config wrangler.auth-sandbox.jsonc
+      - name: Validate new native-resolution preview is served and wallet remains private
+        run: |
+          node --input-type=module <<'JS'
+          const base='https://realizo-auth-sandbox.abelarriaga0.workers.dev';
+          const media=await fetch(base+'/assets/realizo/templates/ugc-preview-native-30s.mp4',{method:'HEAD',signal:AbortSignal.timeout(20000)});
+          if(!media.ok||!/video\/mp4/i.test(media.headers.get('content-type')||''))throw Error('Native media unavailable: '+media.status);
+          const len=Number(media.headers.get('content-length')||0);
+          if(len<3000000)throw Error('Preview unexpectedly low quality: '+len);
+          const wallet=await fetch(base+'/api/wallet',{signal:AbortSignal.timeout(20000)});
+          if(wallet.status!==401)throw Error('Wallet access control failed: '+wallet.status);
+          console.log('PASS: 720p preview present; owner-only wallet; no paid video request.');
+          JS
