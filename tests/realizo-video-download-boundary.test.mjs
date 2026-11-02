@@ -47,6 +47,7 @@ test('download resolver rejects other users, unfinished jobs and untrusted URLs'
 test('downloads are submitted as native browser POST attachments, not delayed Blob click',()=>{
  const client=read('lib/realizo-creative/download-video.js');
  const api=read('app/api/realizo/jobs/[id]/download/route.js');
+ assert.match(client,/export async function downloadRealizoVideo/);
  assert.match(client,/form\.method='POST'/);
  assert.match(client,/form\.submit\(\)/);
  assert.match(client,/encodeURIComponent\(jobId\)/);
