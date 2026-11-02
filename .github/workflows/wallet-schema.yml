@@ -85,12 +85,12 @@ jobs:
           set -euo pipefail
           test -n "$CLOUDFLARE_API_TOKEN"
           node scripts/check-realizo-auth-sandbox.mjs
-          if npx --no-install wrangler d1 execute realizo-wallets-sandbox --remote --config wrangler.auth-sandbox.jsonc --command "SELECT cast_mode FROM realizo_ai_projects LIMIT 1;" >/dev/null 2>&1; then
+          if npx --yes wrangler@4.156.2 d1 execute realizo-wallets-sandbox --remote --config wrangler.auth-sandbox.jsonc --command "SELECT cast_mode FROM realizo_ai_projects LIMIT 1;" >/dev/null 2>&1; then
             echo "Cast schema already installed in isolated Sandbox"
           else
-            npx --no-install wrangler d1 execute realizo-wallets-sandbox --remote --config wrangler.auth-sandbox.jsonc --file scripts/realizo-premium-cast-sandbox.sql --yes
+            npx --yes wrangler@4.156.2 d1 execute realizo-wallets-sandbox --remote --config wrangler.auth-sandbox.jsonc --file scripts/realizo-premium-cast-sandbox.sql --yes
           fi
-          npx --no-install wrangler d1 execute realizo-wallets-sandbox --remote --config wrangler.auth-sandbox.jsonc --command "SELECT cast_mode FROM realizo_ai_projects LIMIT 1;" >/dev/null
+          npx --yes wrangler@4.156.2 d1 execute realizo-wallets-sandbox --remote --config wrangler.auth-sandbox.jsonc --command "SELECT cast_mode FROM realizo_ai_projects LIMIT 1;" >/dev/null
       - name: Build isolated sandbox Worker
         run: |
           npm run cloudflare:build:realizo-auth-sandbox
