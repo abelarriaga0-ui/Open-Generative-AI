@@ -6,6 +6,8 @@ on:
       - '.github/workflows/realizo-pricing-fix-sandbox-v3.yml'
       - 'lib/realizo-creative/wallet-generation.js'
       - 'components/RealizoTemplateCreator.jsx'
+      - 'components/RealizoPremium.jsx'
+      - 'app/api/wallet/generate/route.js'
       - 'app/api/wallet/quote/route.js'
       - 'tests/realizo-inline-charge-white-label.test.mjs'
       - 'tests/realizo-wallet-engine.test.mjs'
