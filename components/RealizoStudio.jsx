@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { optimizeImage } from '@/lib/realizo-creative/optimize-image';
 import { generateWithRealizoWallet } from '@/lib/realizo-creative/wallet-generation';
+import { downloadRealizoVideo } from '@/lib/realizo-creative/download-video';
 import { VideoStudio } from 'studio';
 import RealizoCreator from '@/components/RealizoCreator';
 import RealizoPremium from '@/components/RealizoPremium';
