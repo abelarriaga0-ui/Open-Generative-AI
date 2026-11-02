@@ -1,0 +1,33 @@
+name: Realizo provider pricing connectivity diagnostics (read only)
+on:
+  push:
+    branches: [fix/realizo-live-provider-costs]
+    paths: ['.github/workflows/realizo-live-costs-check.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  read-only-pricing:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Diagnose Muapi public pricing API without using or exposing any key
+        run: |
+          node --input-type=module <<'JS'
+          const endpoints=[
+           'https://api.muapi.ai/api/v1/models',
+           'https://api.muapi.ai/api/v1/models/kling-o1-reference-to-video'
+          ];
+          for(const url of endpoints){
+           try{
+            const response=await fetch(url,{signal:AbortSignal.timeout(13000)});
+            const data=await response.json().catch(()=>null);
+            console.log(new URL(url).pathname,'status',response.status,'type',response.headers.get('content-type'),
+             'models?',Array.isArray(data?.models),'single model?',typeof data?.name==='string',
+             'has error?',Boolean(data?.detail || data?.error));
+           }catch(e){console.log(new URL(url).pathname,'network_failure',e.name)}
+          }
+          JS
