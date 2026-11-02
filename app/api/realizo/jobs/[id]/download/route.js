@@ -17,14 +17,19 @@ export async function POST(request,{params}){
     const job=await getGenerationJob(env.WALLETS_DB,user.id,id);
     const url=extractOwnedDownloadUrl(job);
     if(!url)return Response.json({error:'video_not_available'},{status:404});
-    const remote=await fetch(url,{redirect:'error',signal:AbortSignal.timeout(18000)});
-    if(!remote.ok||!remote.body)return Response.json({error:'video_unavailable'},{status:502});
+    // Muapi CDN may redirect a valid MP4 to its storage edge. Follow provider redirects
+    // after validating the original host and finished owned job; no user URL is accepted.
+    const remote=await fetch(url,{redirect:'follow',signal:AbortSignal.timeout(45000)});
+    if(!remote.ok||!remote.body)return Response.json({error:'video_unavailable',provider_status:remote.status},{status:502});
+    const mime=remote.headers.get('content-type')||'';
+    if(/text\/html|application\/json/i.test(mime))return Response.json({error:'provider_video_response_invalid'},{status:502});
     const len=Number(remote.headers.get('content-length')||0);
     return new Response(remote.body,{headers:{
       'Content-Type':'video/mp4',
       'Content-Disposition':'attachment; filename="realizo-'+id+'.mp4"',
       'Cache-Control':'private, no-store, max-age=0',
       'X-Content-Type-Options':'nosniff',
+      'Access-Control-Expose-Headers':'Content-Disposition',
       ...(len>0&&len<500000000?{'Content-Length':String(len)}:{})
     }});
   }catch(e){return jsonError(e);}
