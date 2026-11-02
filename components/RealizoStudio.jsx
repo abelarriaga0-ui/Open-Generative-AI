@@ -356,7 +356,7 @@ export default function RealizoStudio({accountId,guest=false}){
                 const ready=await downloadRealizoVideo(job.id,{onProgress:({loaded,total})=>{
                  const size=(loaded/1048576).toFixed(1);
                  setDownloadProgress(total?('Descargando '+Math.min(100,Math.round(loaded/total*100))+' % · '+size+' MB'):'Descargando '+size+' MB');
-                }});
+                },directUrl:job.video_url});
                 setDownloadReady({...ready,jobId:job.id});
                 setDownloadProgress('Archivo listo. Si la descarga no comenzó, utiliza el enlace de abajo.');
                }catch(e){setDownloadError(e?.message||'No se pudo descargar el video.');setDownloadProgress('');}
