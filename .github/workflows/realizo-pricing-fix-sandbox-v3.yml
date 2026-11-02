@@ -11,6 +11,7 @@ on:
       - 'app/api/wallet/quote/route.js'
       - 'tests/realizo-inline-charge-white-label.test.mjs'
       - 'tests/realizo-wallet-engine.test.mjs'
+      - 'tests/realizo-sales-director.test.mjs'
   workflow_dispatch:
 permissions: {contents: read}
 concurrency:
