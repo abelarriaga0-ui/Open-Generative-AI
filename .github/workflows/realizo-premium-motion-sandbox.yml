@@ -68,3 +68,5 @@ jobs:
           if(wallet.status!==401)throw Error('Private wallet exposed');
           console.log('PASS: premium motion sandbox public, secure wallet, no AI costs.');
           JS
+
+# Re-run after correcting UI callback assertion.
