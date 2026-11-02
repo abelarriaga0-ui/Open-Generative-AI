@@ -8,6 +8,7 @@ import RealizoCreator from '@/components/RealizoCreator';
 import RealizoPremium from '@/components/RealizoPremium';
 import RealizoVisualGallery from '@/components/RealizoVisualGallery';
 import RealizoTemplateLibrary from '@/components/RealizoTemplateLibrary';
+import {getAdTemplate} from '@/lib/realizo-creative/ad-templates';
 
 function Mark() {
   return <svg width="37" height="37" viewBox="0 0 56 56" fill="none" aria-hidden="true">
@@ -44,6 +45,7 @@ export default function RealizoStudio({accountId,guest=false}){
  const [premiumProjects,setPremiumProjects]=useState([]);
  const [page,setPage]=useState('home');
  const [formatPreset,setFormatPreset]=useState('ugc');
+ const [templateId,setTemplateId]=useState(null);
  const [brief,setBrief]=useState(null);
  const [editorOpen,setEditorOpen]=useState(false);
  const [creatorMode,setCreatorMode]=useState('premium');
@@ -100,33 +102,42 @@ export default function RealizoStudio({accountId,guest=false}){
  function startNewVideo(){
    if(guest)return requireLogin();
    setPage('create');setEditorOpen(false);setBrief(null);setFormatPreset('ugc');
-   setCreatorMode('premium');setResumeProjectId(null);
+   setCreatorMode('premium');setResumeProjectId(null);setTemplateId(null);
    setCreateKey(current=>current+1);setSidebar(false);
  }
  function newPremiumProject(){
    if(guest)return requireLogin();
-   setBrief(null);setEditorOpen(false);setResumeProjectId(null);setFormatPreset('ugc');
+   setBrief(null);setEditorOpen(false);setResumeProjectId(null);setFormatPreset('ugc');setTemplateId(null);
    setCreateKey(current=>current+1);setCreatorMode('premium');setPage('create');
  }
  function reopenPremiumProject(projectId){
    if(guest)return requireLogin();
    if(!/^[a-f0-9-]{36}$/i.test(projectId))return;
-   setBrief(null);setEditorOpen(false);setResumeProjectId(projectId);
+   setBrief(null);setEditorOpen(false);setResumeProjectId(projectId);setTemplateId(null);
    setCreateKey(current=>current+1);setCreatorMode('premium');
    setPage('create');setSidebar(false);
  }
  function chooseCreatorMode(mode){
    if(guest)return requireLogin();
    setPage('create');setSidebar(false);
-   setBrief(null);setResumeProjectId(null);setCreateKey(current=>current+1);
+   setBrief(null);setResumeProjectId(null);setTemplateId(null);setCreateKey(current=>current+1);
    setCreatorMode(mode);
    if(mode==='manual')openEditor();
  }
  function chooseVisualFormat(format){
   if(guest)return requireLogin();
   setBrief(null);setEditorOpen(false);setResumeProjectId(null);
-  setFormatPreset(format);setCreatorMode('premium');setPage('create');
+  setFormatPreset(format);setTemplateId(null);setCreatorMode('premium');setPage('create');
   setCreateKey(x=>x+1);setSidebar(false);
+ }
+ function chooseAdTemplate(id){
+  if(guest)return requireLogin();
+  const item=getAdTemplate(id);
+  if(!item)return;
+  setBrief(null);setEditorOpen(false);setResumeProjectId(null);
+  setTemplateId(item.id);setFormatPreset(item.style);
+  setCreatorMode('premium');setPage('create');setSidebar(false);
+  setCreateKey(x=>x+1);
  }
  const nav=(id,label,icon,action)=>(
    <button key={id} type="button" onClick={()=>{setPage(id);setSidebar(false);if(action)action();}}
@@ -140,6 +151,12 @@ export default function RealizoStudio({accountId,guest=false}){
      <Link href="/studio" className="realizo-brand flex items-center gap-2.5 font-extrabold tracking-tight text-[24px]">
        <Mark/>realizo<span className="text-[#EF8B89]">.</span>
      </Link>
+     <nav className="realizo-v11-topnav" aria-label="Navegación principal">
+       <button type="button" aria-current={page==='home'?'page':undefined} onClick={()=>setPage('home')}>Inicio</button>
+       <button type="button" aria-current={page==='templates'?'page':undefined} onClick={()=>setPage('templates')}>Plantillas</button>
+       <button type="button" onClick={startNewVideo}>Crear video</button>
+       <button type="button" onClick={()=>setPage('videos')}>Mis videos</button>
+      </nav>
      <div className="flex items-center gap-3">
        {guest?<Link href={loginUrl} className="realizo-login-cta inline-flex items-center gap-2 rounded-full font-bold text-[13px] px-5 py-2.5 transition">
          Iniciar sesión <Icon name="arrow" size={16}/>
@@ -154,11 +171,11 @@ export default function RealizoStudio({accountId,guest=false}){
 
    <div className="flex flex-1 min-h-[calc(100vh-76px)]">
     <aside className={(sidebar?'block':'hidden')+' realizo-sidebar lg:block w-full lg:w-[245px] shrink-0 p-5 lg:p-6 space-y-4'}>
-      <div className="hidden lg:block py-3 mb-5"><p className="realizo-kicker mb-2">WORKSPACE</p><p className="text-lg font-extrabold leading-snug">Estudio creativo<span className="realizo-orange">.</span></p></div>
+      <div className="hidden lg:block py-3 mb-5"><p className="realizo-kicker mb-2">REALIZO AI STUDIO</p><p className="text-lg font-extrabold leading-snug">Estudio creativo<span className="realizo-orange">.</span></p></div>
       <nav aria-label="Menú de Realizo" className="space-y-2">
        {nav('home','Inicio','video')}
        {nav('create','Crear video','video',startNewVideo)}
-       {nav('templates','Estilos e ideas','sliders')}
+       {nav('templates','Plantillas','sliders')}
        {nav('videos','Mis videos','folder')}
        <Link href={guest?loginUrl:'/wallet'} className={navBase+' text-[#756782] hover:bg-[#F7F0F7]'}><Icon name="wallet"/>Mis créditos{guest?<Icon name="chevron" size={14}/>:<Icon name="chevron" size={14}/>}</Link>
       </nav>
@@ -174,40 +191,42 @@ export default function RealizoStudio({accountId,guest=false}){
     <div className="realizo-content flex-1 min-w-0 px-4 sm:px-7 lg:px-10 py-8">
      <div className="realizo-contextbar max-w-[1420px] mx-auto" aria-label="Espacio actual">
       <span>WORKSPACE</span><span aria-hidden="true">/</span>
-      <strong>{page==='home'?'Inicio':page==='create'?'Crear anuncio':page==='templates'?'Estilos e ideas':'Mis videos'}</strong>
+      <strong>{page==='home'?'Inicio':page==='create'?'Crear anuncio':page==='templates'?'Plantillas':'Mis videos'}</strong>
       <span className="realizo-contextbar-right">REALIZO AI STUDIO</span>
      </div>
      {page==='home'&&<div className="realizo-home max-w-[1420px] mx-auto space-y-10">
-      <section className="realizo-hero">
-       <div className="realizo-hero-copy">
-        <p className="realizo-eyebrow"><span className="realizo-live-dot"/> REALIZO AI STUDIO <span className="realizo-eyebrow-divider"/> PUBLICIDAD CON IA</p>
-        <h1>De una imagen a un anuncio <em>que impacta.</em></h1>
-        <p className="realizo-hero-desc">Del producto a una campaña que cuenta una historia. Videos UGC, cinematográficos y premium con IA, pensados para conectar con tus compradores.</p>
-        <div className="realizo-hero-buttons">
-         <button type="button" className="realizo-primary-action" onClick={()=>chooseVisualFormat('ugc')}>Crear anuncio <span aria-hidden="true">↗</span></button>
-         <button type="button" className="realizo-secondary-action" onClick={()=>setPage('templates')}>Explorar estilos <Icon name="arrow" size={16}/></button>
+      <section className="realizo-v11-hero" aria-label="Crea anuncios con IA">
+       <div className="realizo-v11-hero-glow"/>
+       <div className="realizo-v11-hero-content">
+        <span className="realizo-v11-brow">REALIZO AI STUDIO</span>
+        <h1>Crea videos publicitarios <em>con IA</em></h1>
+        <p>Genera anuncios UGC, premium y cinematográficos listos para vender.</p>
+        <div className="realizo-v11-hero-actions">
+         <button type="button" className="realizo-v11-primary" onClick={startNewVideo}>✦ &nbsp; Crear video con IA</button>
+         <button type="button" className="realizo-v11-secondary" onClick={()=>setPage('templates')}>▦ &nbsp; Explorar plantillas</button>
         </div>
-        <div className="realizo-hero-proof"><span><i/> Investigación creativa</span><span><i/> Guion comercial</span><span><i/> Precio visible</span></div>
        </div>
-       <div className="realizo-hero-visual realizo-hero-composition" aria-hidden="true">
-        <div className="realizo-hero-orbit"/>
-        <div className="realizo-hero-shot realizo-hero-shot-left">
-         <div className="realizo-hero-shot-top"><span>01 / UGC</span><span>9:16</span></div>
-         <div className="realizo-hero-portrait"><span className="realizo-hero-portrait-face"/><span className="realizo-hero-portrait-shirt"/></div>
-         <div className="realizo-hero-shot-caption"><span/> <span/></div>
-        </div>
-        <div className="realizo-hero-shot realizo-hero-shot-right">
-         <div className="realizo-hero-shot-top"><span>02 / PRODUCT</span><span>9:16</span></div>
-         <div className="realizo-hero-plinth"/><div className="realizo-hero-bottle"><span/></div>
-         <div className="realizo-hero-product-glow"/>
-        </div>
-        <div className="realizo-floating-chip"><span className="realizo-floating-icon">✦</span><div><b>Dirección creativa</b><small>Una idea, múltiples estilos</small></div></div>
-        <div className="realizo-hero-editline"><span>● REC</span><i/><span>00:15</span></div>
+       <div className="realizo-v11-hero-stage" aria-hidden="true">
+        <div className="realizo-v11-hero-scene realizo-v11-hero-scene-a"/>
+        <div className="realizo-v11-hero-scene realizo-v11-hero-scene-b"/>
+        <div className="realizo-v11-hero-scene realizo-v11-hero-scene-c"/>
+        <div className="realizo-v11-hero-play">▶</div>
        </div>
       </section>
-      <div className="realizo-workflow-strip"><span><b>01</b> Tu producto</span><i/><span><b>02</b> Formato creativo</span><i/><span><b>03</b> Investigación y guion</span><i/><span><b>04</b> Video listo</span></div>
-      <RealizoVisualGallery onChoose={chooseVisualFormat}/>
-      <div className="realizo-home-explore"><span>¿Buscas otra forma de contar tu historia?</span><button type="button" onClick={()=>setPage('templates')}>Explorar biblioteca de estilos <Icon name="arrow" size={16}/></button></div>
+      <div className="realizo-v11-benefits">
+       <div><span>ϟ</span><p><strong>Rápido y sencillo</strong><small>Del producto al anuncio con IA.</small></p></div>
+       <div><span>⬡</span><p><strong>Plantillas profesionales</strong><small>Dirección creativa reutilizable.</small></p></div>
+       <div><span>☆</span><p><strong>Diversos estilos</strong><small>UGC, premium, demo y más.</small></p></div>
+      </div>
+      <div className="realizo-v11-featured-head"><h2>Plantillas destacadas</h2>
+       <button type="button" onClick={()=>setPage('templates')}>Ver todas las plantillas →</button>
+      </div>
+      <RealizoTemplateLibrary featured onChoose={chooseAdTemplate}/>
+      <div className="realizo-v11-how"><strong>✦ &nbsp; ¿Cómo funciona?</strong>
+       <span><b>1</b> Elige una plantilla</span><i>→</i>
+       <span><b>2</b> Añade tu producto</span><i>→</i>
+       <span><b>3</b> Genera con IA</span>
+      </div>
       <section className="realizo-quick-section">
        <div className="realizo-section-heading"><div><p className="realizo-kicker">TU ESTUDIO, TUS REGLAS</p><h2>Elige cómo quieres crear<span>.</span></h2><p className="realizo-muted">Tres caminos, las mismas funciones que ya utilizas.</p></div></div>
        <div className="realizo-quick-grid">
@@ -223,7 +242,7 @@ export default function RealizoStudio({accountId,guest=false}){
         <h1>Tu anuncio, tu <em>estilo.</em></h1>
         <p>Descubre una dirección visual y crea tu propia versión con el producto, personaje y motor que prefieras.</p>
        </div>
-       <RealizoTemplateLibrary onChoose={chooseVisualFormat}/>
+       <RealizoTemplateLibrary onChoose={chooseAdTemplate}/>
       </div>}
      {page==='create'&&<>
       <section className="realizo-page-heading max-w-[1230px] mx-auto mb-8">
@@ -244,6 +263,11 @@ export default function RealizoStudio({accountId,guest=false}){
       </section>
 
       {!editorOpen?<section className="realizo-create-flow max-w-[1230px] mx-auto space-y-6">
+        {templateId&&<div className="realizo-v11-selected-template">
+          <span>PLANTILLA SELECCIONADA</span><strong>{getAdTemplate(templateId)?.name}</strong>
+          <p>La estructura, el ritmo y las transiciones quedan preparados. Cambia el producto, actor, escenario o mensaje.</p>
+          <button type="button" onClick={()=>{setPage('templates');setTemplateId(null)}}>Cambiar plantilla</button>
+        </div>}
         <div className="realizo-modes flex flex-wrap gap-3 rounded-[22px] p-3" aria-label="Modalidad de creación">
           {[
             ['premium','✦ Crear con IA · Recomendado'],
@@ -259,7 +283,7 @@ export default function RealizoStudio({accountId,guest=false}){
           </button>)}
         </div>
         {creatorMode==='premium'?
-          <RealizoPremium initialStyle={formatPreset} key={'premium-'+createKey+'-'+(resumeProjectId||'new')}
+          <RealizoPremium initialStyle={formatPreset} initialTemplateId={templateId} key={'premium-'+createKey+'-'+(resumeProjectId||'new')}
             initialProjectId={resumeProjectId}
             onPrepare={setBrief} onOpenAdvanced={openEditor} onCreateNew={newPremiumProject}
             onWalletRefresh={refreshWallet}

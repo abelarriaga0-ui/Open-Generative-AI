@@ -5,6 +5,7 @@ import {resolvePremiumVideoChoice} from '@/lib/realizo-creative/video-specs';
 import {signedMediaUrl} from '@/lib/realizo-creative/media';
 import {buildCommercialDirectorPackage,normalizeProductCopy} from '@/lib/realizo-creative/sales-director';
 import {acceptsSellerConfirmation} from '@/lib/realizo-creative/approval-consent';
+import {getAdTemplate} from '@/lib/realizo-creative/ad-templates';
 
 export const dynamic='force-dynamic';
 export async function POST(request,{params}){
@@ -51,7 +52,8 @@ export async function POST(request,{params}){
   const style=['auto','ugc','cinematic','premium','demo'].includes(project.creative_style)
     ?project.creative_style:'auto';
   // Legacy projects with 'auto' may retain the old review-time style selection.
-  const finalStyle=style==='auto'&&['auto','ugc','cinematic','premium','demo'].includes(body.style)?body.style:style;
+  const selectedTemplate=getAdTemplate(project.template_id);
+  const finalStyle=selectedTemplate?.style||(style==='auto'&&['auto','ugc','cinematic','premium','demo'].includes(body.style)?body.style:style);
   const userSpeech=String(body.speech??concept.spoken_script??concept.script??'').trim();
   if(userSpeech.length>650)
     return Response.json({error:'invalid_spoken_script'},{status:400});
@@ -74,6 +76,8 @@ export async function POST(request,{params}){
     market:project.market_code,videoLanguage:project.video_language||'es',style:finalStyle,shotPreference,duration,
     imageProvided:true,modelId,workflowId,
     productGeometry:findings.product_visual_geometry||null,
+    templateId:selectedTemplate?.id||null,templateActor:project.template_actor||'auto',
+    templateSetting:project.template_setting||'auto',
   });
   // Preserve the seller's commercial intent while keeping unverified product
   // statements visibly distinguishable from claims substantiated by sources.
@@ -101,6 +105,7 @@ export async function POST(request,{params}){
       media_role:director.model_capabilities.imageRole==='product_reference'?'reference_only':
         director.model_capabilities.imageRole==='start_frame'?'start_frame':'none',creative_style:finalStyle,
       shot_preference:shotPreference,creative_concept:directorConcept,
+      template_id:selectedTemplate?.id||null,template_name:selectedTemplate?.name||null,
       overlay_cta:director.cta,spoken_script:director.spoken_script,
       product_claims_to_verify:claimsToVerify,
       product_visual_geometry:director.product_geometry,

@@ -19,6 +19,8 @@ on:
       - 'migrations/0018_realizo_premium_video_choice_cost_audit.sql'
       - 'migrations/0020_realizo_paid_research_without_daily_cap.sql'
       - 'migrations/0021_realizo_sandbox_owner_shared_ai_balance.sql'
+      - 'migrations/0022_realizo_ad_templates.sql'
+      - 'app/realizo-premium-v11.css'
       - 'tests/test_realizo_sandbox_owner_shared_wallet.py'
       - 'tests/test_realizo_paid_without_daily_limit.py'
       - 'tests/realizo-*.test.mjs'
@@ -39,7 +41,7 @@ jobs:
           cache: npm
       - name: Validate premium plan, price accounting and existing behavior
         run: |
-          node --test tests/realizo-studio-routing.test.mjs tests/realizo-public-guest-gallery-v10.test.mjs tests/realizo-studio-v9-design.test.mjs tests/realizo-visual-redesign.test.mjs tests/realizo-v8-seller-copy.test.mjs tests/realizo-v7-copy-duration.test.mjs tests/realizo-cinematic-hook-editing.test.mjs tests/realizo-nmf-sales-storyboard.test.mjs tests/realizo-local-subtitles.test.mjs tests/realizo-product-geometry.test.mjs tests/realizo-premium-recovery.test.mjs tests/realizo-grounded-research-formats.test.mjs tests/realizo-ugc-review-conversion.test.mjs tests/realizo-premium-hierarchical-picker.test.mjs tests/realizo-premium-duration-cost.test.mjs tests/realizo-ai-premium.test.mjs tests/realizo-premium-paid-languages.test.mjs tests/realizo-sales-director.test.mjs
+          node --test tests/realizo-ad-templates-v11.test.mjs tests/realizo-studio-routing.test.mjs tests/realizo-public-guest-gallery-v10.test.mjs tests/realizo-studio-v9-design.test.mjs tests/realizo-visual-redesign.test.mjs tests/realizo-v8-seller-copy.test.mjs tests/realizo-v7-copy-duration.test.mjs tests/realizo-cinematic-hook-editing.test.mjs tests/realizo-nmf-sales-storyboard.test.mjs tests/realizo-local-subtitles.test.mjs tests/realizo-product-geometry.test.mjs tests/realizo-premium-recovery.test.mjs tests/realizo-grounded-research-formats.test.mjs tests/realizo-ugc-review-conversion.test.mjs tests/realizo-premium-hierarchical-picker.test.mjs tests/realizo-premium-duration-cost.test.mjs tests/realizo-ai-premium.test.mjs tests/realizo-premium-paid-languages.test.mjs tests/realizo-sales-director.test.mjs
       - name: Check paid research has no artificial daily cap, wallet still protected
         run: python3 -m unittest discover -s tests -p 'test_realizo_paid_without_daily_limit.py' -v
       - name: Verify Sandbox owner wallet is shared while reserve/capture and other users remain protected

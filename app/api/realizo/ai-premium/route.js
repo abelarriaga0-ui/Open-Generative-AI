@@ -48,7 +48,12 @@ export async function POST(request){
   if(!access.enabled)return error('ai_premium_not_enabled',503);
   if(Number(request.headers.get('content-length')||0)>5000)return error('request_too_large',413);
   const body=await request.json();
-  const data=validatePremiumInput(body);
+  let data;
+  try{data=validatePremiumInput(body)}
+  catch(e){
+   if(e.message==='invalid_ad_template')return error('invalid_ad_template',422);
+   throw e;
+  }
   if(body.max_price_cents!==access.price_cents ||
      body.pricing_version!==PREMIUM_PRICING_VERSION) return error('price_changed_confirm_again',409);
   const db=env.WALLETS_DB;
@@ -79,11 +84,12 @@ export async function POST(request){
   }
   const projectId=crypto.randomUUID(), orderId=crypto.randomUUID();
   const ins=db.prepare(
-   'INSERT INTO realizo_ai_projects (id,user_id,primary_asset_id,product_name,description,audience,sales_angle,market_code,cta,request_key,status,research_model,billing_type,premium_price_cents,research_fingerprint,pricing_version,video_language,video_model_id,video_duration_seconds,video_workflow_id,creative_style) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+   'INSERT INTO realizo_ai_projects (id,user_id,primary_asset_id,product_name,description,audience,sales_angle,market_code,cta,request_key,status,research_model,billing_type,premium_price_cents,research_fingerprint,pricing_version,video_language,video_model_id,video_duration_seconds,video_workflow_id,creative_style,template_id,template_actor,template_setting) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
   ).bind(projectId,user.id,data.assetId,data.productName,data.description,data.audience,
     data.angle,data.market,data.cta,data.requestKey,'created',env.OPENAI_PREMIUM_MODEL,
     access.mode,access.price_cents,fp,PREMIUM_PRICING_VERSION,data.videoLanguage,
-    data.modelId,data.duration,data.workflowId,data.creativeStyle);
+    data.modelId,data.duration,data.workflowId,data.creativeStyle,
+    data.templateId,data.templateActor,data.templateSetting);
   try{
    // D1 batch is transactional: both the project and its premium reservation
    // succeed together, or neither succeeds. Never call OpenAI first.

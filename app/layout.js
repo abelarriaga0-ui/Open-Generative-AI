@@ -1,6 +1,7 @@
 import './globals.css';
 import './realizo-visual.css';
 import './realizo-redesign-v9.css';
+import './realizo-premium-v11.css';
 import { Inter } from "next/font/google";
 import { headers } from 'next/headers';
 import { getLocaleConfig } from '@/lib/locales';

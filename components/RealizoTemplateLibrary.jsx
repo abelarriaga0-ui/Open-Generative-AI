@@ -1,57 +1,44 @@
 'use client';
 import {useState} from 'react';
+import {AD_TEMPLATES} from '@/lib/realizo-creative/ad-templates';
 
-const looks=[
- {id:'ugc-real',style:'ugc',filter:'UGC',name:'Recomendación natural',description:'Creador a cámara, voz protagonista y producto en uso.',tone:'people',duration:'15 s',headline:'La rutina que sí encaja',tag:'UGC / PERSONA'},
- {id:'cine-story',style:'cinematic',filter:'Cine',name:'Historia que conecta',description:'Un problema cotidiano contado con lenguaje de cine.',tone:'story',duration:'15 s',headline:'El instante cambia',tag:'CINE / EMOCIÓN'},
- {id:'premium-hero',style:'premium',filter:'Premium',name:'Detalle de producto',description:'Texturas, luz, transiciones y valor percibido.',tone:'lux',duration:'12 s',headline:'Cada detalle cuenta',tag:'PREMIUM / PRODUCTO'},
- {id:'demo-proof',style:'demo',filter:'Demo',name:'Producto en acción',description:'Uso paso a paso con demostración clara.',tone:'demo',duration:'15 s',headline:'Míralo funcionar',tag:'DEMO / USO'},
- {id:'ugc-problem',style:'ugc',filter:'UGC',name:'Problema y solución',description:'Identificación inmediata y explicación conversada.',tone:'people-alt',duration:'20 s',headline:'¿Te ha pasado?',tag:'UGC / PROBLEMA'},
- {id:'cinematic-night',style:'cinematic',filter:'Cine',name:'Campaña sensorial',description:'Ritmo, movimiento, atmósfera y cierre comercial.',tone:'night',duration:'20 s',headline:'Hazlo inolvidable',tag:'CINE / ATMÓSFERA'},
- {id:'premium-clean',style:'premium',filter:'Premium',name:'Minimalista editorial',description:'Composición limpia y producto como protagonista.',tone:'clean',duration:'12 s',headline:'Menos es más',tag:'PREMIUM / EDITORIAL'},
- {id:'demo-explainer',style:'demo',filter:'Demo',name:'Tres beneficios',description:'Muestra varias ventajas con cortes explicativos.',tone:'explainer',duration:'20 s',headline:'Tres razones',tag:'DEMO / BENEFICIOS'},
-];
-
-function Preview({look,index}){
- // The photographic strip comes from an original image generated for this
- // REALIZO visual demo. These are still previews, never claimed as videos.
- return <div className="realizo-template-preview realizo-template-photo" aria-label={'Vista ilustrativa de '+look.name} role="img">
-  <div className={'realizo-template-photo-layer realizo-template-photo-'+(index+1)}/>
-  <div className="realizo-template-photo-shadow"/>
-  <div className="realizo-template-poster"><span>{look.tag}</span><strong>{look.headline}</strong></div>
-  <div className="realizo-template-time">{look.duration}</div>
- </div>;
-}
-export default function RealizoTemplateLibrary({onChoose}){
+const filters=['Todos','UGC','Premium','Demo','Cine','Ofertas'];
+export default function RealizoTemplateLibrary({onChoose,featured=false}){
  const [filter,setFilter]=useState('Todos');
- const filtered=filter==='Todos'?looks:looks.filter(x=>x.filter===filter);
- return <section className="realizo-library" aria-label="Biblioteca visual de estilos publicitarios">
-  <div className="realizo-library-top">
-   <div>
-    <p className="realizo-kicker">BIBLIOTECA CREATIVA</p>
-    <h2>Inspírate. Personaliza. <em>Crea.</em></h2>
-    <p>Explora estilos y arranca con la dirección visual adecuada para tu producto.</p>
-   </div>
-   <span className="realizo-library-count">{looks.length} estilos visuales</span>
-  </div>
-  <div className="realizo-library-filters" aria-label="Filtrar formatos">
-   {['Todos','UGC','Cine','Premium','Demo'].map(f=><button
-    key={f} type="button" aria-pressed={filter===f} onClick={()=>setFilter(f)}>{f}</button>)}
-  </div>
-  <div className="realizo-template-grid">
-   {filtered.map(look=><article className="realizo-template-card" key={look.id}>
-    <Preview look={look} index={looks.findIndex(item=>item.id===look.id)}/>
-    <div className="realizo-template-info">
-     <div className="realizo-template-meta"><span>{look.filter}</span><span>{look.duration}</span></div>
-     <h3>{look.name}</h3>
-     <p>{look.description}</p>
-     <button type="button" onClick={()=>onChoose(look.style)}
-      aria-label={'Crear video con estilo '+look.name}>
-      Crear en este estilo <span aria-hidden="true">↗</span>
-     </button>
-    </div>
+ const templates=featured?AD_TEMPLATES.slice(0,6):AD_TEMPLATES;
+ const items=filter==='Todos'?templates:templates.filter(item=>item.group===filter);
+ return <section className={'realizo-v11-library'+(featured?' realizo-v11-featured':'')} aria-label="Plantillas publicitarias reales">
+  {!featured&&<div className="realizo-v11-lib-head">
+   <div><span className="realizo-v11-eyebrow">BIBLIOTECA CREATIVA</span><h2>Tu anuncio, <em>tu estilo.</em></h2>
+    <p>Selecciona una estructura real: guion, tomas, ritmo y transiciones quedarán precargados.</p></div>
+   <span className="realizo-v11-count">{AD_TEMPLATES.length} plantillas</span>
+  </div>}
+  {!featured&&<div className="realizo-v11-filters" aria-label="Filtrar plantillas">
+   {filters.map(value=><button type="button" key={value} aria-pressed={filter===value}
+    onClick={()=>setFilter(value)}>{value}</button>)}
+  </div>}
+  <div className="realizo-v11-cards">
+   {items.map((item,i)=><article className="realizo-v11-card" key={item.id}>
+    <button type="button" className="realizo-v11-image-link"
+     onClick={()=>onChoose(item.id)} aria-label={'Usar plantilla '+item.name}>
+     <div className={'realizo-v11-card-photo realizo-v11-photo-'+item.visual} aria-hidden="true"/>
+     <div className="realizo-v11-photo-fade"/>
+     <span className="realizo-v11-duration">0:{String(item.duration).padStart(2,'0')}</span>
+     <span className="realizo-v11-play" aria-hidden="true">▶</span>
+     <div className="realizo-v11-card-overlay">
+      <h3>{item.name}</h3><p>{item.short}</p>
+      <span className="realizo-v11-tag">{item.icon} {item.tag}</span>
+     </div>
+    </button>
+    {!featured&&<div className="realizo-v11-card-extra">
+     <span>{item.group} · {item.duration} s sugeridos</span>
+     <p>{item.description}</p>
+    </div>}
+    <button type="button" className="realizo-v11-use" onClick={()=>onChoose(item.id)}>
+      Usar plantilla <span aria-hidden="true">→</span>
+    </button>
    </article>)}
   </div>
-  <p className="realizo-library-disclaimer">Vistas ilustrativas del estilo, no videos generados ni plantillas de movimientos exactos. La escena final se prepara con tu producto y el modelo que elijas.</p>
+  {!featured&&<p className="realizo-v11-disclaimer">Las fotos son vistas de estilo. Cada plantilla sí aplica su propia estructura narrativa, cámara y montaje al prompt; un modelo generativo no garantiza movimientos idénticos a una grabación de referencia.</p>}
  </section>;
 }
