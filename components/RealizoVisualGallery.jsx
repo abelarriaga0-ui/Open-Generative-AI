@@ -15,29 +15,13 @@ const items=[
   detail:'Muestra cómo se usa, cuenta por qué importa.',duration:'15 s',
   tone:'demo',icon:'▶'},
 ];
-// Decorative mockups are format illustrations, NOT previews of actual
-// generated videos or templates with promised fixed motion.
+// Decorative mockups are format illustrations, now using original generated
+// photographic examples rather than CSS-drawn people/products. They are NOT
+// playable video samples or exact-motion templates.
 function Scene({tone}){
- return <div className={'realizo-format-scene realizo-format-scene--'+tone} aria-hidden="true">
-  <div className="realizo-scene-glow"/>
-  {tone==='ugc'?<>
-   <div className="realizo-scene-avatar"><span className="realizo-scene-head"/><span className="realizo-scene-body"/></div>
-   <div className="realizo-scene-product mini"/>
-   <div className="realizo-scene-caption"><i/><i/><i/></div>
-  </>:tone==='cinema'?<>
-   <div className="realizo-scene-horizon"/>
-   <div className="realizo-scene-orbit"/>
-   <div className="realizo-scene-product cinematic"/>
-   <div className="realizo-scene-trim"/>
-  </>:tone==='luxury'?<>
-   <div className="realizo-scene-pedestal"/>
-   <div className="realizo-scene-product luxury"/>
-   <div className="realizo-scene-lens"/>
-  </>:<>
-   <div className="realizo-scene-step step-one"/><div className="realizo-scene-step step-two"/>
-   <div className="realizo-scene-product demo"/>
-   <div className="realizo-scene-demo-caption"><i/><i/></div>
-  </>}
+ return <div className={'realizo-format-scene realizo-photo-format realizo-photo-format--'+tone} aria-hidden="true">
+  <div className="realizo-photo-format-image"/>
+  <div className="realizo-photo-format-shade"/>
   <div className="realizo-scene-play"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="m8 5 12 7-12 7z"/></svg></div>
  </div>;
 }

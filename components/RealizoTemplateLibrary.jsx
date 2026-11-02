@@ -12,16 +12,13 @@ const looks=[
  {id:'demo-explainer',style:'demo',filter:'Demo',name:'Tres beneficios',description:'Muestra varias ventajas con cortes explicativos.',tone:'explainer',duration:'20 s',headline:'Tres razones',tag:'DEMO / BENEFICIOS'},
 ];
 
-function Preview({look}){
- return <div className={'realizo-template-preview realzo-t-'+look.tone} aria-hidden="true">
-  <div className="realizo-template-light"/>
-  <div className="realizo-template-human"><span className="realizo-template-face"/><span className="realizo-template-shirt"/></div>
-  <div className="realizo-template-prop"><span/></div>
-  <div className="realizo-template-filmgrain"/>
-  <div className="realizo-template-poster">
-   <span>{look.tag}</span>
-   <strong>{look.headline}</strong>
-  </div>
+function Preview({look,index}){
+ // The photographic strip comes from an original image generated for this
+ // REALIZO visual demo. These are still previews, never claimed as videos.
+ return <div className="realizo-template-preview realizo-template-photo" aria-label={'Vista ilustrativa de '+look.name} role="img">
+  <div className={'realizo-template-photo-layer realizo-template-photo-'+(index+1)}/>
+  <div className="realizo-template-photo-shadow"/>
+  <div className="realizo-template-poster"><span>{look.tag}</span><strong>{look.headline}</strong></div>
   <div className="realizo-template-time">{look.duration}</div>
  </div>;
 }
@@ -43,7 +40,7 @@ export default function RealizoTemplateLibrary({onChoose}){
   </div>
   <div className="realizo-template-grid">
    {filtered.map(look=><article className="realizo-template-card" key={look.id}>
-    <Preview look={look}/>
+    <Preview look={look} index={looks.findIndex(item=>item.id===look.id)}/>
     <div className="realizo-template-info">
      <div className="realizo-template-meta"><span>{look.filter}</span><span>{look.duration}</span></div>
      <h3>{look.name}</h3>

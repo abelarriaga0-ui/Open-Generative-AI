@@ -33,7 +33,7 @@ function Icon({name,size=20}){
 }
 const usd=c=>new Intl.NumberFormat('es-EC',{style:'currency',currency:'USD'}).format((c||0)/100);
 const navBase='realizo-nav-link flex items-center gap-3 px-4 py-3 rounded-2xl transition w-full text-left font-semibold text-[14px]';
-export default function RealizoStudio({accountId}){
+export default function RealizoStudio({accountId,guest=false}){
  const [wallet,setWallet]=useState(null);
  const [billableModelIds,setBillableModelIds]=useState([]);
  const [generationReady,setGenerationReady]=useState(false);
@@ -50,6 +50,8 @@ export default function RealizoStudio({accountId}){
  const [resumeProjectId,setResumeProjectId]=useState(null);
  const [createKey,setCreateKey]=useState(0);
  const [sidebar,setSidebar]=useState(false);
+ const loginUrl='/login';
+ function requireLogin(){window.location.assign(loginUrl)}
  const uploadAsset=useCallback(async(file)=>{
     const compressed=await optimizeImage(file);
     const body=new FormData();body.append('image',compressed);
@@ -59,6 +61,7 @@ export default function RealizoStudio({accountId}){
     return json.url;
  },[]);
  const refreshWallet=useCallback(async()=>{
+   if(guest)return;
    try{
      const r=await fetch('/api/wallet',{credentials:'same-origin',cache:'no-store'});
      if(!r.ok)return;
@@ -69,11 +72,11 @@ export default function RealizoStudio({accountId}){
      setPilotAvailable(Boolean(x?.generation_enabled));
      setGenerationReady(Boolean(x?.generation_enabled && (x?.wallet?.available_cents??0)>0));
    }catch{}
- },[]);
- useEffect(()=>{refreshWallet()},[refreshWallet]);
+ },[guest]);
+ useEffect(()=>{if(!guest)refreshWallet()},[guest,refreshWallet]);
  const onWalletGenerate=useCallback(params=>generateWithRealizoWallet(params),[]);
  useEffect(()=>{
-   if(page!=='videos')return;
+   if(guest||page!=='videos')return;
    let cancelled=false;
    setJobsLoading(true);
    // Videos generated and Premium research projects have separate histories.
@@ -88,34 +91,39 @@ export default function RealizoStudio({accountId}){
      setPremiumProjects(projects.status==='fulfilled'?(projects.value.projects||[]):[]);
    }).finally(()=>{if(!cancelled)setJobsLoading(false)});
    return ()=>{cancelled=true};
- },[page]);
+ },[page,guest]);
  async function exit(){
    try{await fetch('/api/auth/logout',{method:'POST',credentials:'same-origin'});}
    finally{window.location.assign('/login');}
  }
- function openEditor(){setEditorOpen(true);setPage('create');setSidebar(false)}
+ function openEditor(){if(guest)return requireLogin();setEditorOpen(true);setPage('create');setSidebar(false)}
  function startNewVideo(){
+   if(guest)return requireLogin();
    setPage('create');setEditorOpen(false);setBrief(null);setFormatPreset('ugc');
    setCreatorMode('premium');setResumeProjectId(null);
    setCreateKey(current=>current+1);setSidebar(false);
  }
  function newPremiumProject(){
+   if(guest)return requireLogin();
    setBrief(null);setEditorOpen(false);setResumeProjectId(null);setFormatPreset('ugc');
    setCreateKey(current=>current+1);setCreatorMode('premium');setPage('create');
  }
  function reopenPremiumProject(projectId){
+   if(guest)return requireLogin();
    if(!/^[a-f0-9-]{36}$/i.test(projectId))return;
    setBrief(null);setEditorOpen(false);setResumeProjectId(projectId);
    setCreateKey(current=>current+1);setCreatorMode('premium');
    setPage('create');setSidebar(false);
  }
  function chooseCreatorMode(mode){
+   if(guest)return requireLogin();
    setPage('create');setSidebar(false);
    setBrief(null);setResumeProjectId(null);setCreateKey(current=>current+1);
    setCreatorMode(mode);
    if(mode==='manual')openEditor();
  }
  function chooseVisualFormat(format){
+  if(guest)return requireLogin();
   setBrief(null);setEditorOpen(false);setResumeProjectId(null);
   setFormatPreset(format);setCreatorMode('premium');setPage('create');
   setCreateKey(x=>x+1);setSidebar(false);
@@ -133,11 +141,14 @@ export default function RealizoStudio({accountId}){
        <Mark/>realizo<span className="text-[#EF8B89]">.</span>
      </Link>
      <div className="flex items-center gap-3">
+       {guest?<Link href={loginUrl} className="realizo-login-cta inline-flex items-center gap-2 rounded-full font-bold text-[13px] px-5 py-2.5 transition">
+         Iniciar sesión <Icon name="arrow" size={16}/>
+       </Link>:
        <Link href="/wallet" className="realizo-balance inline-flex gap-2 items-center rounded-full font-bold text-[13px] px-4 py-2.5 transition">
          <Icon name="wallet" size={18}/>{wallet?usd(wallet.available_cents):'Mis créditos'}
-       </Link>
+       </Link>}
        <button onClick={()=>setSidebar(b=>!b)} type="button" className="realizo-icon-button lg:hidden w-10 h-10 grid place-items-center rounded-full" aria-label="Abrir menú"><Icon name="sliders"/></button>
-       <button onClick={exit} type="button" className="realizo-icon-button hidden lg:grid w-10 h-10 place-items-center rounded-full" aria-label="Cerrar sesión" title="Cerrar sesión"><Icon name="exit"/></button>
+       {!guest&&<button onClick={exit} type="button" className="realizo-icon-button hidden lg:grid w-10 h-10 place-items-center rounded-full" aria-label="Cerrar sesión" title="Cerrar sesión"><Icon name="exit"/></button>}
      </div>
    </header>
 
@@ -149,7 +160,7 @@ export default function RealizoStudio({accountId}){
        {nav('create','Crear video','video',startNewVideo)}
        {nav('templates','Estilos e ideas','sliders')}
        {nav('videos','Mis videos','folder')}
-       <Link href="/wallet" className={navBase+' text-[#756782] hover:bg-[#F7F0F7]'}><Icon name="wallet"/>Mis créditos<Icon name="chevron" size={14}/></Link>
+       <Link href={guest?loginUrl:'/wallet'} className={navBase+' text-[#756782] hover:bg-[#F7F0F7]'}><Icon name="wallet"/>Mis créditos{guest?<Icon name="chevron" size={14}/>:<Icon name="chevron" size={14}/>}</Link>
       </nav>
       <div className="hidden lg:block pt-7"><div className="rounded-[22px] realizo-sidebar-banner p-5 relative overflow-hidden">
         <div className="absolute w-24 h-24 -right-8 -top-10 rounded-full bg-[#D7A2D8]/20"/>
@@ -157,7 +168,7 @@ export default function RealizoStudio({accountId}){
         <p className="text-[17px] leading-6 font-extrabold">Tu próxima gran campaña empieza aquí.</p>
         <div className="mt-5 flex gap-1.5 items-center"><span className="h-2 w-2 rounded-full bg-[#BBF2CD]"/><span className="text-[10px] text-[#DCCFEB]">Tu estudio creativo</span></div>
       </div></div>
-      <button onClick={exit} className="lg:hidden mt-6 inline-flex items-center gap-2 text-sm text-[#765F88] px-4 py-2"><Icon name="exit"/>Cerrar sesión</button>
+      {guest?<Link href={loginUrl} className="lg:hidden mt-6 inline-flex items-center gap-2 text-sm text-[#fdb77b] px-4 py-2"><Icon name="arrow"/>Iniciar sesión</Link>:<button onClick={exit} className="lg:hidden mt-6 inline-flex items-center gap-2 text-sm text-[#765F88] px-4 py-2"><Icon name="exit"/>Cerrar sesión</button>}
     </aside>
 
     <div className="realizo-content flex-1 min-w-0 px-4 sm:px-7 lg:px-10 py-8">
@@ -285,6 +296,12 @@ export default function RealizoStudio({accountId}){
        <p className="uppercase tracking-[.19em] text-[#8A61B5] font-bold text-[11px] mb-2">Biblioteca</p>
        <h1 className="text-[36px] tracking-tight font-extrabold">Tu biblioteca creativa<span className="text-[#EB8A87]">.</span></h1>
        <p className="realizo-videos-intro">Todos tus anuncios y proyectos preparados, organizados en un mismo espacio.</p>
+       {guest?<div className="realizo-public-empty" role="region" aria-label="Videos para visitantes">
+         <div className="realizo-public-empty-icon"><Icon name="video" size={34}/></div>
+         <h2>Aún no tienes videos generados</h2>
+         <p>Explora los estilos de REALIZO y, cuando quieras crear tu primer anuncio, inicia sesión para guardar tus videos en un espacio propio.</p>
+         <button type="button" onClick={requireLogin}><Icon name="video" size={18}/> Generar video</button>
+       </div>:
        <div className="rounded-[25px] bg-white border border-[#E8DEDA] p-6 sm:p-8 mt-7">
          {jobsLoading?<p role="status" className="text-[#867A91]">Cargando tus videos…</p>:
           jobs.length?<div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -309,8 +326,8 @@ export default function RealizoStudio({accountId}){
            <p className="text-sm text-[#8E8294] mt-2">Tus videos aparecerán cuando completes una generación.</p>
            <button onClick={startNewVideo} className="inline-flex gap-2 items-center mt-6 rounded-2xl bg-[#6E4BD2] text-white font-bold px-5 py-3"><Icon name="video"/>Crear un video</button>
           </div>}
-       </div>
-       {premiumProjects.length>0&&<section className="rounded-[25px] bg-white border border-[#E8DEDA] p-6 sm:p-8 mt-6">
+       </div>}
+       {!guest&&premiumProjects.length>0&&<section className="rounded-[25px] bg-white border border-[#E8DEDA] p-6 sm:p-8 mt-6">
         <h2 className="text-xl font-extrabold">Proyectos Premium guardados</h2>
         <p className="text-sm text-[#8A7C90] mt-1 mb-4">Investigaciones y guiones anteriores, separados de los videos. Solo se reabren cuando tú lo decides.</p>
         <div className="grid sm:grid-cols-2 gap-3">

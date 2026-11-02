@@ -26,6 +26,8 @@ on:
       - 'tests/realizo-premium-studio.test.mjs'
       - 'components/wallet/**'
       - 'app/studio/**'
+      - 'public/assets/realizo/templates/**'
+      - 'tests/realizo-public-guest-gallery-v10.test.mjs'
       - 'app/wallet/**'
       - 'lib/wallet/request-policy.js'
       - 'lib/wallet/generation-policy.js'
@@ -161,6 +163,8 @@ jobs:
             return {status:r.status,body:(await r.text()).slice(0,3000)};
           };
           let login=await go('/login');if(login.status!==200 || !login.body.includes('Realizo'))throw Error('Login page unavailable');
+          const showcase=await go('/studio');
+          if(showcase.status!==200 || !showcase.body.includes('realizo'))throw Error('Public studio must be accessible without login');
           const features=await go('/api/auth/features');
           if(features.status!==200 || !JSON.parse(features.body).enabled)throw Error('Native auth flags not loaded');
           const wallet=await go('/api/wallet');

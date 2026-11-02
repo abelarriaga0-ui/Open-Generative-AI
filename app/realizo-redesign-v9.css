@@ -273,3 +273,65 @@
 @media(max-width:767px){
  .realizo-modes button[data-primary-mode="true"]{flex:1 1 100%}
 }
+
+/* V10 — guest browsing and original promotional photo examples. */
+.realizo-login-cta{
+  color:#181113;background:linear-gradient(120deg,#ffbc78,#f19438);
+  border:1px solid #ffc78f;box-shadow:0 7px 24px #ee92512c;
+}
+.realizo-login-cta:hover{filter:brightness(1.08)}
+.realizo-public-empty{
+  margin-top:30px;min-height:390px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;
+  padding:50px 26px;background:
+  radial-gradient(ellipse at 50% 0%,#a56a3723,transparent 65%),#17191f;
+  border:1px solid #36363e;border-radius:24px;
+}
+.realizo-public-empty-icon{
+  width:70px;height:70px;display:grid;place-items:center;
+  background:#3b2c25;border:1px solid #926248;color:#ffbd84;border-radius:21px;
+}
+.realizo-public-empty h2{font-size:clamp(22px,2.6vw,34px);font-weight:850;letter-spacing:-.04em;margin:24px 0 10px}
+.realizo-public-empty p{color:#a7a7b2;font-size:14px;line-height:1.7;max-width:530px}
+.realizo-public-empty button{
+  display:flex;align-items:center;gap:10px;color:#201713;font-size:13px;
+  font-weight:850;border-radius:13px;background:linear-gradient(115deg,#ffba70,#ef9139);
+  padding:13px 23px;margin-top:24px;
+}
+.realizo-public-empty button:hover{filter:brightness(1.09)}
+/* Six adjacent original generated photographs are stored as a small self-hosted
+   WebP sprite, avoiding external/CDN expiry and licensing dependencies. */
+.realizo-template-photo,.realizo-photo-format{background:#17191f!important;position:relative}
+.realizo-template-photo-layer,.realizo-photo-format-image{
+  position:absolute;inset:0;
+  background-image:url('/assets/realizo/templates/demo-photos.webp');
+  background-repeat:no-repeat;
+  background-size:600% 100%;
+  filter:saturate(1.11) contrast(1.05);
+  transition:transform .35s ease;
+}
+.realizo-template-card:hover .realizo-template-photo-layer,
+.realizo-format-card:hover .realizo-photo-format-image{transform:scale(1.03)}
+.realizo-template-photo-1 .realizo-template-photo-layer,
+.realizo-template-photo-1{--rz-photo-pos:0%}
+.realizo-template-photo-2{--rz-photo-pos:20%}
+.realizo-template-photo-3{--rz-photo-pos:20%}
+.realizo-template-photo-4{--rz-photo-pos:40%}
+.realizo-template-photo-5{--rz-photo-pos:60%}
+.realizo-template-photo-6{--rz-photo-pos:20%}
+.realizo-template-photo-7{--rz-photo-pos:20%}
+.realizo-template-photo-8{--rz-photo-pos:40%}
+.realizo-template-photo-layer{background-position-x:var(--rz-photo-pos,0%)}
+.realizo-template-photo-shadow,.realizo-photo-format-shade{
+  position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(0deg,rgba(7,8,11,.88) 0%,rgba(7,8,11,.12) 57%,transparent 78%);
+}
+.realizo-photo-format--ugc .realizo-photo-format-image{background-position-x:0%}
+.realizo-photo-format--cinema .realizo-photo-format-image{background-position-x:20%}
+.realizo-photo-format--luxury .realizo-photo-format-image{background-position-x:20%}
+.realizo-photo-format--demo .realizo-photo-format-image{background-position-x:40%}
+.realizo-template-photo-layer,.realizo-photo-format-image{background-position-y:center}
+.realizo-photo-format .realizo-scene-play{z-index:3;box-shadow:0 4px 20px #0009}
+.realizo-template-photo .realizo-template-time,
+.realizo-template-photo .realizo-template-poster{z-index:4}
+@media(max-width:767px){.realizo-public-empty{min-height:325px;padding:36px 18px}}
