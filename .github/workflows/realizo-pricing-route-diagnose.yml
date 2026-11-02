@@ -2,9 +2,11 @@ name: Realizo route guard diagnosis
 on:
   push:
     branches: [fix/realizo-unified-muapi-pricing-v3]
-    paths: ['.github/workflows/realizo-pricing-route-diagnose.yml']
+    paths:
+      - '.github/workflows/realizo-pricing-route-diagnose.yml'
   workflow_dispatch:
-permissions: {contents:read}
+permissions:
+  contents: read
 jobs:
   find-guard:
     runs-on: ubuntu-latest
