@@ -48,6 +48,8 @@ export default function RealizoStudio({accountId,guest=false}){
  const [jobsLoading,setJobsLoading]=useState(false);
  const [downloadJob,setDownloadJob]=useState(null);
  const [downloadError,setDownloadError]=useState('');
+ const [downloadProgress,setDownloadProgress]=useState('');
+ const [downloadReady,setDownloadReady]=useState(null);
  const [premiumProjects,setPremiumProjects]=useState([]);
  const [page,setPage]=useState('home');
  const [formatPreset,setFormatPreset]=useState('ugc');
@@ -340,15 +342,31 @@ export default function RealizoStudio({accountId,guest=false}){
                <span className="inline-flex text-[11px] rounded-full bg-[#EBE1F8] text-[#7155A1] px-3 py-1 font-semibold">
                 {job.status==='completed'?'Completado':job.status==='failed'?'No completado':job.status==='unknown'?'En revisión':'En proceso'}
                </span>
-               {job.video_url&&<button type="button" disabled={downloadJob===job.id}
-             onClick={async()=>{
-              setDownloadJob(job.id);setDownloadError('');
-              try{await downloadRealizoVideo(job.id)}catch(e){setDownloadError(e.message)}
-              finally{setDownloadJob(null)}
-             }}
-             className="block text-[#6E4BD2] underline text-sm font-semibold">
-             {downloadJob===job.id?'Preparando descarga…':'↓ Descargar con Realizo'}
-            </button>}
+               {job.video_url&&<div className="space-y-2">
+             <button type="button" disabled={Boolean(downloadJob)}
+              onClick={async()=>{
+               setDownloadJob(job.id);setDownloadError('');setDownloadReady(null);
+               setDownloadProgress('Conectando con tu video…');
+               try{
+                const ready=await downloadRealizoVideo(job.id,{onProgress:({loaded,total})=>{
+                 const size=(loaded/1048576).toFixed(1);
+                 setDownloadProgress(total?('Descargando '+Math.min(100,Math.round(loaded/total*100))+' % · '+size+' MB'):'Descargando '+size+' MB');
+                }});
+                setDownloadReady({...ready,jobId:job.id});
+                setDownloadProgress('Archivo listo. Si la descarga no comenzó, utiliza el enlace de abajo.');
+               }catch(e){setDownloadError(e?.message||'No se pudo descargar el video.');setDownloadProgress('');}
+               finally{setDownloadJob(null)}
+              }}
+              className="block text-[#6E4BD2] underline text-sm font-semibold disabled:opacity-50">
+              {downloadJob===job.id?'Preparando archivo…':'↓ Descargar con Realizo'}
+             </button>
+             {downloadJob===job.id&&<p role="status" className="text-xs text-[#7155A1]">{downloadProgress||'Preparando descarga…'}</p>}
+             {downloadReady?.jobId===job.id&&<div className="rounded-lg border border-[#C8B6E0] bg-[#F2EAFE] p-2 space-y-1">
+              <p role="status" className="text-xs text-[#674B8D]">{downloadProgress}</p>
+              <a href={downloadReady.url} download={downloadReady.filename} className="text-sm font-semibold underline text-[#6E4BD2]">Descargar MP4 ahora</a>
+             </div>}
+             {downloadError&&<p role="alert" className="text-xs text-red-700">{downloadError}</p>}
+            </div>}
               </div>
             </article>)}
           </div>:
