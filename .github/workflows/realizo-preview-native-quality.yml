@@ -1,0 +1,61 @@
+name: Realizo - restore original-quality preview
+on:
+  push:
+    branches: [feature/realizo-native-resolution-preview]
+    paths: ['.github/workflows/realizo-preview-native-quality.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  create-native-resolution-preview:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/feature/realizo-native-resolution-preview'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: true}
+      - name: Install FFmpeg and FFprobe
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-dejavu-core >/dev/null
+      - name: Rebuild preview from original Muapi output without scaling
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p public/assets/realizo/templates
+          curl -fL --retry 3 --connect-timeout 15 --max-time 120 \
+            'https://cdn.muapi.ai/outputs/generated/21797787-63de-48e3-b895-06396b1e55a9_07f12652.mp4' \
+            -o "$RUNNER_TEMP/ugc-source-original.mp4"
+          test "$(stat -c%s "$RUNNER_TEMP/ugc-source-original.mp4")" -gt 3000000
+          IN="$RUNNER_TEMP/ugc-source-original.mp4"
+          OUT="public/assets/realizo/templates/ugc-preview-native-30s.mp4"
+          SRC_DIM=$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 "$IN")
+          echo "Native source resolution: $SRC_DIM"
+          SRC_DURATION=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$IN")
+          echo "Source duration: $SRC_DURATION"
+          # No scale, no frame-rate reduction, no color or smoothing filters.
+          # Light Realizo branding keeps previews recognizably non-export assets.
+          ffmpeg -y -hide_banner -loglevel error -i "$IN" \
+            -vf "drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='REALIZO':fontsize=20:fontcolor=white@0.30:x=w-text_w-25:y=h-text_h-25:box=1:boxcolor=black@0.12:boxborderw=7" \
+            -c:v libx264 -preset slow -crf 16 -pix_fmt yuv420p \
+            -c:a copy -movflags +faststart "$OUT"
+          OUT_DIM=$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 "$OUT")
+          OUT_DURATION=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$OUT")
+          echo "Output resolution: $OUT_DIM; output duration: $OUT_DURATION"
+          test "$SRC_DIM" = "$OUT_DIM"
+          python3 - "$SRC_DURATION" "$OUT_DURATION" <<'PY'
+          import sys
+          a,b=map(float,sys.argv[1:])
+          assert a>25 and abs(a-b)<0.1, (a,b)
+          PY
+          test "$(stat -c%s "$OUT")" -gt 1000000
+          test "$(stat -c%s "$OUT")" -lt 90000000
+          echo "PASS: same native resolution / length / sound; high-quality encoding; no source video published."
+      - name: Commit full-resolution protected preview only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/assets/realizo/templates/ugc-preview-native-30s.mp4
+          git diff --cached --quiet && exit 0
+          git commit -m 'assets(realizo): full native resolution preview, no downscale'
+          git push origin HEAD:feature/realizo-native-resolution-preview

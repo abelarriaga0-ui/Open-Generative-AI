@@ -1,0 +1,61 @@
+name: Realizo - fix quote for image-only projects (Sandbox)
+on:
+  push:
+    branches: [fix/realizo-muapi-pricing-v2]
+    paths: ['.github/workflows/realizo-muapi-quote-fix-sandbox.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+concurrency:
+  group: realizo-muapi-quote-fix-sandbox
+  cancel-in-progress: false
+jobs:
+  verify-and-deploy:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/fix/realizo-muapi-pricing-v2'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      NEXT_TELEMETRY_DISABLED: '1'
+      REALIZO_ENV: sandbox
+      REALIZO_AUTH_PROVIDER: native
+      PAYPAL_MODE: sandbox
+    steps:
+      - uses: actions/checkout@v4
+        with: {submodules: recursive}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Keep only sandbox billing
+        run: |
+          node scripts/check-realizo-auth-sandbox.mjs
+          npm run wallet:preflight:sandbox
+      - name: Test missing video URL and free compatible motor selection
+        run: |
+          node --test tests/realizo-real-cost-dynamic-quote.test.mjs \
+            tests/realizo-premium-duration-cost.test.mjs \
+            tests/realizo-premium-hierarchical-picker.test.mjs \
+            tests/realizo-ai-premium.test.mjs
+          npm run test:wallet
+      - name: Compile isolated Realizo website
+        run: |
+          npm run cloudflare:build:realizo-auth-sandbox
+          test -s .open-next/worker.js
+      - name: Publish ONLY Realizo Sandbox - no production
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          node scripts/check-realizo-auth-sandbox.mjs
+          npx --no-install opennextjs-cloudflare deploy --config wrangler.auth-sandbox.jsonc
+      - name: Validate visible site and protected private wallet; never request generation
+        run: |
+          node --input-type=module <<'JS'
+          const origin='https://realizo-auth-sandbox.abelarriaga0.workers.dev';
+          const page=await fetch(origin+'/studio',{signal:AbortSignal.timeout(20000)});
+          if(page.status!==200)throw Error('Studio unreachable: '+page.status);
+          const wallet=await fetch(origin+'/api/wallet',{signal:AbortSignal.timeout(20000)});
+          if(wallet.status!==401)throw Error('Wallet public access regression');
+          console.log('PASS: website online, wallet private, no paid requests.');
+          JS

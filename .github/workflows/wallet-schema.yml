@@ -1,0 +1,153 @@
+name: Wallet schema checks
+on:
+  pull_request:
+    paths:
+      - "migrations/**"
+      - "lib/wallet/**"
+      - "app/api/wallet/**"
+      - "proxy.js"
+      - "wrangler*.jsonc"
+      - "tests/*wallet*"
+      - "tests/realizo-real-cost-dynamic-quote.test.mjs"
+      - "tests/realizo-inline-charge-white-label.test.mjs"
+      - "components/RealizoPremium.jsx"
+      - "components/wallet/PaypalTopup.jsx"
+      - "tests/realizo-paypal-inline-checkout.test.mjs"
+      - "tests/realizo-paypal-live-preflight.test.mjs"
+      - "components/RealizoStudio.jsx"
+      - "tests/realizo-video-download-boundary.test.mjs"
+      - "tests/realizo-owned-download-client.test.mjs"
+      - "tests/realizo-sandbox-download-route.test.mjs"
+      - "lib/wallet/request-policy.js"
+      - "components/RealizoStudio.jsx"
+      - "tests/realizo-premium-cast-director.test.mjs"
+      - "tests/realizo-premium-film-contract.test.mjs"
+      - "tests/realizo-premium-audio-choice.test.mjs"
+      - "lib/realizo-creative/audio-mode.js"
+      - "scripts/realizo-premium-audio-sandbox.sql"
+      - "lib/realizo-creative/premium-generation-gate.js"
+      - "lib/realizo-creative/**"
+      - "app/api/realizo/ai-premium/**"
+      - "tests/paypal-webhook-registration.test.mjs"
+      - "scripts/register-paypal-sandbox-webhook.mjs"
+      - "package.json"
+      - "scripts/check-wallet-syntax.mjs"
+      - ".github/workflows/wallet-schema.yml"
+  push:
+    branches:
+      - "feature/wallet-compartida-muapi"
+    paths:
+      - "migrations/**"
+      - "lib/wallet/**"
+      - "app/api/wallet/**"
+      - "proxy.js"
+      - "wrangler*.jsonc"
+      - "tests/*wallet*"
+      - "scripts/check-wallet-syntax.mjs"
+      - ".github/workflows/wallet-schema.yml"
+jobs:
+  sqlite-invariants:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Billeteras, Sandbox y sintaxis ESM (sin secretos ni servicios externos)
+        run: |
+          npm run test:wallet
+          node --test tests/realizo-paypal-live-preflight.test.mjs tests/realizo-paypal-inline-checkout.test.mjs
+
+  deploy-realizo-sandbox:
+    needs: sqlite-invariants
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 40 && github.event.pull_request.head.ref == 'fix/realizo-clear-errors-white-label-20261102' && github.event.pull_request.head.repo.full_name == 'abelarriaga0-ui/Open-Generative-AI' && github.repository == 'abelarriaga0-ui/Open-Generative-AI' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    permissions:
+      contents: read
+    env:
+      CI: 'true'
+      NEXT_TELEMETRY_DISABLED: '1'
+      REALIZO_ENV: sandbox
+      REALIZO_AUTH_PROVIDER: native
+      PAYPAL_MODE: sandbox
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Pin published Tailwind build dependency in isolated Sandbox runner
+        run: |
+          # Prevent npm from selecting unpublished @tailwindcss/node@4.3.4.
+          # Only the temporary runner package manifest changes, never production.
+          npm pkg set 'devDependencies.@tailwindcss/vite=4.3.3'
+      - name: Install locked dependencies
+        run: npm install --no-audit --no-fund --legacy-peer-deps
+      - name: Verify sandbox configuration and new error messages
+        run: |
+          node scripts/check-realizo-auth-sandbox.mjs
+          npm run wallet:preflight:sandbox
+          node --test tests/realizo-inline-charge-white-label.test.mjs tests/realizo-paypal-inline-checkout.test.mjs tests/realizo-real-cost-dynamic-quote.test.mjs tests/realizo-premium-cast-director.test.mjs tests/realizo-premium-film-contract.test.mjs tests/realizo-premium-audio-choice.test.mjs tests/realizo-gemini-reference-contract.test.mjs tests/realizo-video-download-boundary.test.mjs tests/realizo-owned-download-client.test.mjs tests/realizo-sandbox-download-route.test.mjs
+      - name: Prepare cast option in Sandbox D1 only
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          node scripts/check-realizo-auth-sandbox.mjs
+          if npx --yes wrangler@4.156.2 d1 execute realizo-wallets-sandbox --remote --config wrangler.auth-sandbox.jsonc --command "SELECT cast_mode FROM realizo_ai_projects LIMIT 1;" >/dev/null 2>&1; then
+            echo "Cast schema already installed in isolated Sandbox"
+          else
+            npx --yes wrangler@4.156.2 d1 execute realizo-wallets-sandbox --remote --config wrangler.auth-sandbox.jsonc --file scripts/realizo-premium-cast-sandbox.sql --yes
+          fi
+          npx --yes wrangler@4.156.2 d1 execute realizo-wallets-sandbox --remote --config wrangler.auth-sandbox.jsonc --command "SELECT cast_mode FROM realizo_ai_projects LIMIT 1;" >/dev/null
+          if npx --yes wrangler@4.156.2 d1 execute realizo-wallets-sandbox --remote --config wrangler.auth-sandbox.jsonc --command "SELECT audio_mode FROM realizo_ai_projects LIMIT 1;" >/dev/null 2>&1; then
+            echo "Film audio schema already installed in isolated Sandbox"
+          else
+            npx --yes wrangler@4.156.2 d1 execute realizo-wallets-sandbox --remote --config wrangler.auth-sandbox.jsonc --file scripts/realizo-premium-audio-sandbox.sql --yes
+          fi
+          npx --yes wrangler@4.156.2 d1 execute realizo-wallets-sandbox --remote --config wrangler.auth-sandbox.jsonc --command "SELECT audio_mode FROM realizo_ai_projects LIMIT 1;" >/dev/null
+      - name: Build isolated sandbox Worker
+        run: |
+          npm run cloudflare:build:realizo-auth-sandbox
+          test -s .open-next/worker.js
+      - name: Deploy Cloudflare auth Sandbox ONLY
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          node scripts/check-realizo-auth-sandbox.mjs
+          npx --no-install opennextjs-cloudflare deploy --config wrangler.auth-sandbox.jsonc
+      - name: Confirm live deployment and authenticated routes
+        run: |
+          node --input-type=module <<'JS'
+          const origin='https://realizo-auth-sandbox.abelarriaga0.workers.dev';
+          const url=origin+'/studio';
+          const r=await fetch(url,{signal:AbortSignal.timeout(30000)});
+          if(r.status!==200)throw Error('Sandbox studio HTTP '+r.status);
+          const wallet=await fetch(origin+'/api/wallet',{signal:AbortSignal.timeout(30000)});
+          if(wallet.status!==401)throw Error('Wallet auth HTTP '+wallet.status);
+          // This unauthenticated probe tests routing only. It must reach the
+          // owner-check and return 401 rather than the Sandbox proxy's 404.
+          const download=await fetch(origin+'/api/realizo/jobs/21797787-63de-48e3-b895-06396b1e55a9/download',{
+            method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},
+            signal:AbortSignal.timeout(30000),
+          });
+          if(download.status!==401){
+            const body=await download.json().catch(()=>({}));
+            throw Error('Sandbox download route blocked: HTTP '+download.status+' code '+(body.error||'non-json'));
+          }
+          console.log('Sandbox LIVE:',url,'studio:',r.status,'wallet access:',wallet.status,'owned download route unauth:',download.status);
+          JS

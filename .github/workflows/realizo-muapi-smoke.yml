@@ -1,0 +1,66 @@
+name: Realizo - verify Muapi live-credit pilot configuration
+on:
+  push:
+    branches: [feature/realizo-cloudflare-auth-videos]
+    paths: ['.github/workflows/realizo-muapi-smoke.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/feature/realizo-cloudflare-auth-videos'
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify secret names only, never print values
+        run: |
+          npm install --prefix "$RUNNER_TEMP/wrangler" --no-save --no-audit --no-fund wrangler@4.151.3 >/dev/null
+          "$RUNNER_TEMP/wrangler/node_modules/.bin/wrangler" secret list --name realizo-auth-sandbox > "$RUNNER_TEMP/secrets.json"
+          node --input-type=module <<'JS'
+          import {readFileSync} from 'node:fs';
+          const names=new Set(JSON.parse(readFileSync(process.env.RUNNER_TEMP+'/secrets.json','utf8')).map(s=>s.name));
+          for(const name of ['MUAPI_API_KEY','REALIZO_MUAPI_PILOT_ACCOUNT_ID','REALIZO_AUTH_PEPPER']){
+            const exists=names.has(name);
+            console.log('PRESENT_'+name+'='+exists);
+            if(!exists)throw Error('Required Realizo Sandbox secret missing: '+name);
+          }
+          JS
+      - name: Confirm exactly one pilot account, bonus, model price and unused slot
+        run: |
+          node --input-type=module <<'JS'
+          const uri='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+
+            '/d1/database/2561f6c8-bfb2-4ea4-8527-7fec29188edf/query';
+          const sql="SELECT (SELECT COUNT(*) FROM wallet_users WHERE auth_provider='realizo') AS account_count,"+
+            "(SELECT COUNT(*) FROM realizo_muapi_pilot_grants WHERE slot=1 AND amount_cents=35) AS grants,"+
+            "(SELECT COUNT(*) FROM realizo_muapi_pilot_uses WHERE slot=1) AS uses,"+
+            "(SELECT COUNT(*) FROM model_prices WHERE model_id='wan2.2-image-to-video' AND enabled=1 AND customer_price_cents=35 AND muapi_endpoint='wan2.2-image-to-video') AS price,"+
+            "(SELECT COUNT(*) FROM wallets WHERE user_id=(SELECT user_id FROM realizo_muapi_pilot_grants WHERE slot=1) AND available_cents>=35) AS funded";
+          const r=await fetch(uri,{method:'POST',headers:{
+            Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,
+            'Content-Type':'application/json'
+          },body:JSON.stringify({sql})});
+          if(!r.ok)throw Error('Cloudflare D1 pilot health unavailable: HTTP '+r.status);
+          const result=await r.json(),a=result.result?.[0]?.results?.[0];
+          if(!result.success||!a)throw Error('Could not inspect isolated pilot D1');
+          for(const [k,v] of Object.entries(a))console.log('PILOT_'+k.toUpperCase()+'='+v);
+          if(a.account_count!==1||a.grants!==1||a.price!==1||a.uses>1)
+            throw Error('Sandbox pilot has unexpected configuration');
+          if(a.uses===0 && a.funded!==1)throw Error('Pilot wallet is not funded');
+          JS
+      - name: Verify no anonymous access to wallet or videos
+        run: |
+          node --input-type=module <<'JS'
+          const base='https://realizo-auth-sandbox.abelarriaga0.workers.dev';
+          for(const path of ['/api/wallet','/api/realizo/jobs']){
+            const r=await fetch(base+path,{redirect:'manual',signal:AbortSignal.timeout(16000)});
+            console.log('ANONYMOUS_'+path+'='+r.status);
+            if(r.status!==401)throw Error('Anonymous access protection failed for '+path);
+          }
+          JS

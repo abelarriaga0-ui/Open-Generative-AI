@@ -1,0 +1,129 @@
+import {getWalletEnvironment,requireWalletUser,jsonError} from '@/lib/wallet/server';
+import {enforceSameOrigin} from '@/lib/wallet/access-auth';
+import {safeResearchResponse} from '@/lib/realizo-creative/ai-premium';
+import {resolvePremiumVideoChoice} from '@/lib/realizo-creative/video-specs';
+import {signedMediaUrl} from '@/lib/realizo-creative/media';
+import {buildCommercialDirectorPackage,normalizeProductCopy} from '@/lib/realizo-creative/sales-director';
+import {acceptsSellerConfirmation} from '@/lib/realizo-creative/approval-consent';
+import {getAdTemplate} from '@/lib/realizo-creative/ad-templates';
+import {normalizeCastMode,isFilmStyle} from '@/lib/realizo-creative/cast-mode';
+import {normalizeAudioMode,filmAudioValid} from '@/lib/realizo-creative/audio-mode';
+
+export const dynamic='force-dynamic';
+export async function POST(request,{params}){
+ if(!enforceSameOrigin(request))return Response.json({error:'invalid_origin'},{status:403});
+ try{
+  const env=await getWalletEnvironment();
+  const user=await requireWalletUser(request,env);
+  if(!user)return Response.json({error:'not_authenticated'},{status:401});
+  const {id}=await params;
+  if(!/^[a-f0-9-]{36}$/i.test(id||''))return Response.json({error:'not_found'},{status:404});
+  if(Number(request.headers.get('content-length')||0)>18000)
+    return Response.json({error:'payload_too_large'},{status:413});
+  const body=await request.json();
+  const selection=Number(body.index);
+  if(!Number.isInteger(selection)||selection<0||selection>2)
+    return Response.json({error:'invalid_concept'},{status:400});
+  const db=env.WALLETS_DB;
+  let project=await db.prepare('SELECT * FROM realizo_ai_projects WHERE id=? AND user_id=?')
+    .bind(id,user.id).first();
+  if(!project)return Response.json({error:'not_found'},{status:404});
+  if(!['ready','needs_review','approved'].includes(project.status)||!project.concepts_json)
+    return Response.json({error:'research_not_ready'},{status:409});
+  const concepts=JSON.parse(project.concepts_json);
+  const concept=concepts[selection];
+  if(!concept || typeof concept.video_prompt!=='string')
+    return Response.json({error:'invalid_concept'},{status:400});
+  const findings=project.findings_json?JSON.parse(project.findings_json):{};
+  const conflicts=Array.isArray(findings.description_conflicts)?findings.description_conflicts:[];
+  const claimsToVerify=Array.isArray(findings.claims_to_verify)?findings.claims_to_verify:[];
+  const correction=String(body.correction||'').trim().slice(0,700);
+  // Backward compatibility: an old cached Studio client can omit the new
+  // checkbox field while the updated server is already deployed. The user
+  // has explicitly clicked "Approve concept" in their authenticated session.
+  // Don't strand previously paid research for a UI/server version mismatch.
+  // Current clients still display and require the explicit checkbox; reject
+  // a caller who *explicitly* supplies false. Acknowledgement is not proof
+  // that a product claim is true and does not waive applicable obligations.
+  if(!acceptsSellerConfirmation(body))
+    return Response.json({error:'seller_claims_confirmation_required'},{status:422});
+  // Keep reported evidence separate from seller-authored marketing copy.
+  const userPrompt=String(body.prompt||concept.video_prompt).trim();
+  if(userPrompt.length<10||userPrompt.length>5500)
+    return Response.json({error:'invalid_prompt'},{status:400});
+  const style=['auto','ugc','cinematic','premium','demo'].includes(project.creative_style)
+    ?project.creative_style:'auto';
+  // Legacy projects with 'auto' may retain the old review-time style selection.
+  const selectedTemplate=getAdTemplate(project.template_id);
+  const finalStyle=selectedTemplate?.style||(style==='auto'&&['auto','ugc','cinematic','premium','demo'].includes(body.style)?body.style:style);
+  const userSpeech=String(body.speech??concept.spoken_script??concept.script??'').trim();
+  if(userSpeech.length>650)
+    return Response.json({error:'invalid_spoken_script'},{status:400});
+  const shotPreference=['auto','single','multi'].includes(body.shot_preference)?body.shot_preference:'auto';
+  const castMode=isFilmStyle(finalStyle)?normalizeCastMode(body.cast_mode??project.cast_mode):'with_people';
+  const audioMode=isFilmStyle(finalStyle)?normalizeAudioMode(body.audio_mode??project.audio_mode):'no_voice';
+  if(isFilmStyle(finalStyle)&&!filmAudioValid(audioMode,castMode))return Response.json({error:'premium_audio_cast_conflict'},{status:422});
+  if(isFilmStyle(finalStyle)&&audioMode!=='no_voice'&&!userSpeech)return Response.json({error:'premium_audio_script_required'},{status:422});
+  const directorConcept={...concept,video_prompt:userPrompt,spoken_script:isFilmStyle(finalStyle)&&audioMode==='no_voice'?'':userSpeech};
+  // The research is already paid for. An owner may explicitly switch to a
+  // photo-compatible motor at review time without paying OpenAI again.
+  const modelId=selectedTemplate
+    ? project.video_model_id
+    : String(body.video_model_id||project.video_model_id||'');
+  let videoChoice;
+  try{
+    videoChoice=resolvePremiumVideoChoice(modelId,body.video_duration_seconds??project.video_duration_seconds);
+  }catch{
+    return Response.json({error:'invalid_video_configuration'},{status:422});
+  }
+  // Final duration is chosen AFTER research at no new AI charge.
+  // The same exact model must explicitly support it.
+  const duration=videoChoice.duration;
+  if(selectedTemplate?.id==='ugc-vendedor'&&duration!==30)
+    return Response.json({error:'template_requires_30_seconds'},{status:422});
+  const workflowId=videoChoice.workflowId;
+  const director=buildCommercialDirectorPackage({
+    concept:directorConcept,productName:normalizeProductCopy(project.product_name),
+    description:normalizeProductCopy(project.description),cta:concept.cta||project.cta,
+    market:project.market_code,videoLanguage:project.video_language||'es',style:finalStyle,shotPreference,castMode,audioMode,duration,
+    imageProvided:true,modelId,workflowId,
+    productGeometry:findings.product_visual_geometry||null,
+    templateId:selectedTemplate?.id||null,templateActor:project.template_actor||'auto',
+    templateSetting:project.template_setting||'auto',
+    templateChangeRequest:project.template_change_request||'',
+  });
+  // Preserve the seller's commercial intent while keeping unverified product
+  // statements visibly distinguishable from claims substantiated by sources.
+  const finalPrompt=director.prompt.slice(0,5500);
+  await db.prepare(
+    "UPDATE realizo_ai_projects SET status='approved',video_model_id=?,video_workflow_id=?,video_duration_seconds=?,selected_concept=?,approved_prompt=?,creative_style=?,cast_mode=?,audio_mode=?,updated_at=datetime('now') WHERE id=? AND user_id=?"
+  ).bind(modelId,workflowId,duration,selection,finalPrompt,finalStyle,castMode,audioMode,id,user.id).run();
+  project=await db.prepare('SELECT * FROM realizo_ai_projects WHERE id=? AND user_id=?')
+    .bind(id,user.id).first();
+  const asset=await db.prepare(
+    'SELECT expires_at FROM realizo_media_assets WHERE id=? AND user_id=? AND deleted_at IS NULL'
+  ).bind(project.primary_asset_id,user.id).first();
+  if(!asset || Number(asset.expires_at)<=Math.floor(Date.now()/1000)+60)
+    return Response.json({error:'image_expired_reupload'},{status:409});
+  const image=await signedMediaUrl(env,project.primary_asset_id,Math.min(
+    Number(asset.expires_at),Math.floor(Date.now()/1000)+3600));
+  return Response.json({
+    ...safeResearchResponse(project),ready_for_editor:{
+      prompt:finalPrompt,images:director.model_capabilities.imageRole==='none'?[]:[image],
+      productName:normalizeProductCopy(project.product_name),
+      productDescription:normalizeProductCopy(project.description),
+      market:project.market_code,video_language:project.video_language||'es',
+      video_model_id:modelId,video_duration_seconds:duration,video_workflow_id:workflowId,
+      revision:crypto.randomUUID(),project_id:id,approved_concept:selection,
+      media_role:director.model_capabilities.imageRole==='product_reference'?'reference_only':
+        director.model_capabilities.imageRole==='start_frame'?'start_frame':'none',creative_style:finalStyle,
+      shot_preference:shotPreference,cast_mode:castMode,audio_mode:audioMode,creative_concept:directorConcept,
+      template_id:selectedTemplate?.id||null,template_name:selectedTemplate?.name||null,
+      overlay_cta:director.cta,spoken_script:director.spoken_script,
+      product_claims_to_verify:claimsToVerify,
+      product_visual_geometry:director.product_geometry,
+      creative_director_version:director.quality_version,
+    },
+  },{headers:{'Cache-Control':'private,no-store'}});
+ }catch(e){return jsonError(e)}
+}

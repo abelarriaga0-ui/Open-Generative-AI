@@ -1,0 +1,48 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "realizo",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-10-16",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "global_fetch_strictly_public"
+  ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "keep_vars": true,
+  "vars": {
+    "REALIZO_ENV": "production",
+    "REALIZO_WALLET_ONLY": "true",
+    "REALIZO_AUTH_PROVIDER": "native",
+    "REALIZO_AUTH_ORIGIN": "https://realizo.abelarriaga0.workers.dev",
+    "PAYPAL_MODE": "live",
+    "REALIZO_LIVE_PAYMENTS_ENABLED": "false",
+    "MUAPI_GENERATION_ENABLED": "false",
+    "REALIZO_MUAPI_PILOT": "false",
+    "REALIZO_MULTI_MODEL_SANDBOX": "false",
+    "REALIZO_AI_PREMIUM_ENABLED": "false",
+    "REALIZO_AI_PREMIUM_PUBLIC_ENABLED": "false",
+    "REALIZO_TEMPLATE_EXPLOSION_URL": "https://realizo.abelarriaga0.workers.dev/templates/explosion-premium-azul.webp",
+    "REALIZO_TEMPLATE_IMAGE_MODEL_ID": "realizo_nano_banana_2_1_edit_4k",
+    "REALIZO_TEMPLATE_ANALYZER_MODEL_ID": "realizo_gemini_2_5_flash"
+  },
+  "d1_databases": [
+    {
+      "binding": "WALLETS_DB",
+      "database_name": "realizo-wallets",
+      "database_id": "49a32292-62f7-4165-bc2f-3a1a2bd97c28",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "REALIZO_MEDIA",
+      "bucket_name": "realizo-media"
+    }
+  ]
+}

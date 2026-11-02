@@ -1,0 +1,53 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const read=p=>readFileSync(p,'utf8');
+test('premium homepage uses functional navigation and the actual licensed Realizo example preview',()=>{
+ const home=read('components/RealizoMotionHome.jsx');
+ const studio=read('components/RealizoStudio.jsx');
+ assert.match(home,/TEMPLATE_HOVER_SRC/);
+ assert.match(home,/TEMPLATE_POSTER_SRC/);
+ assert.match(home,/onClick=\{onCreate\}/);
+ assert.match(home,/onClick=\{onTemplates\}/);
+ assert.match(home,/onClick=\{\(\)=>onUseTemplate\('ugc-vendedor'\)\}/);
+ assert.match(home,/onClick=\{onViewVideos\}/);
+ assert.match(home,/onClick=\{action\[a\.type\]\}/);
+ assert.match(studio,/<RealizoMotionHome/);
+ assert.match(studio,/onUseTemplate=\{chooseAdTemplate\}/);
+ assert.doesNotMatch(studio,/realizo-v11-hero-scene-a/);
+});
+test('minimal creation remains independent and retains proper quote and payment confirmation',()=>{
+ const studio=read('components/RealizoStudio.jsx');
+ const creator=read('components/RealizoTemplateCreator.jsx');
+ assert.match(studio,/RealizoPremium/);
+ assert.match(studio,/RealizoCreator/);
+ assert.match(studio,/VideoStudio/);
+ assert.match(studio,/RealizoTemplateCreator/);
+ assert.match(creator,/\/api\/wallet\/quote/);
+ assert.match(creator,/\/api\/wallet\/generate/);
+ assert.match(creator,/Confirmar y generar/);
+ assert.match(creator,/¿Qué quieres cambiar\?/);
+ assert.doesNotMatch(creator,/Sube tu producto y adapta el anuncio original/);
+});
+test('motion effects have a nonanimated accessibility fallback',()=>{
+ const css=read('app/realizo-motion-home.css');
+ const home=read('components/RealizoMotionHome.jsx');
+ assert.match(css,/prefers-reduced-motion:reduce/);
+ assert.match(css,/realizo-motion-stage-halo/);
+ assert.match(css,/realizo-motion-hero/);
+ assert.match(css,/realizo-motion-way-grid/);
+ assert.match(css,/realizo-motion-film/);
+ assert.match(home,/IntersectionObserver/);
+ assert.match(home,/prefers-reduced-motion/);
+ assert.match(home,/controlsList="nodownload noremoteplayback noplaybackrate"/);
+});
+test('no fictitious template catalog, engine changes or new paid provider calls',()=>{
+ const home=read('components/RealizoMotionHome.jsx');
+ const library=read('components/RealizoTemplateLibrary.jsx');
+ const studio=read('components/RealizoStudio.jsx');
+ assert.match(home,/UGC Vendedor/);
+ assert.match(library,/AD_TEMPLATES\[0\]/);
+ assert.doesNotMatch(home,/fetch\(|api\.muapi\.ai|https:\/\/cdn\.muapi/);
+ assert.match(studio,/generateWithRealizoWallet/);
+ assert.doesNotMatch(home,/testimonios|miles de ventas|clientes satisfechos/i);
+});

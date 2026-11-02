@@ -1,0 +1,751 @@
+'use client';
+import {useEffect,useRef,useState} from 'react';
+import {optimizeImage} from '@/lib/realizo-creative/optimize-image';
+import {improveSalesScript,voiceBudget} from '@/lib/realizo-creative/sales-storyboard';
+import {getAdTemplate,templatePlan} from '@/lib/realizo-creative/ad-templates';
+
+const angles=[
+ ['auto','Que la IA investigue y elija'],['problem','Problema → solución'],
+ ['premium','Premium / lujo'],['benefits','Beneficio directo'],
+ ['sensory','Sensorial / emocional'],
+ ['lifestyle','Estilo de vida'],['offer','Oferta confirmada']
+];
+const markets=[['EC','Ecuador'],['CO','Colombia'],['MX','México'],['PE','Perú'],
+ ['CL','Chile'],['GT','Guatemala'],['US','Estados Unidos'],['ES','España'],
+ ['AR','Argentina'],['PA','Panamá'],['CR','Costa Rica'],['UY','Uruguay'],
+ ['PY','Paraguay'],['BO','Bolivia'],['VE','Venezuela'],['NI','Nicaragua'],
+ ['HN','Honduras'],['SV','El Salvador'],['DO','República Dominicana'],
+ ['PR','Puerto Rico'],['CU','Cuba'],['BR','Brasil'],['CA','Canadá'],
+ ['GB','Reino Unido'],['FR','Francia'],['DE','Alemania'],['IT','Italia'],
+ ['PT','Portugal'],['AU','Australia'],['JP','Japón'],['IN','India'],
+ ['AE','Emiratos Árabes Unidos']];
+const languages=[['es','Español'],['en','English'],['pt','Português'],['fr','Français'],['de','Deutsch'],['it','Italiano']];
+const previews={ugc:{icon:'🎙️',label:'UGC'},problem:{icon:'⚡',label:'Problema-solución'},premium:{icon:'🎬',label:'Cinematográfico'},benefits:{icon:'✨',label:'Beneficios'},sensory:{icon:'🌙',label:'Sensorial'},demo:{icon:'🧴',label:'Demostración'}};
+const visualFor=c=>{
+ const format=String(c.creative_style||'');
+ if(format==='ugc')return previews.ugc;
+ if(format==='cinematic')return previews.premium;
+ if(format==='premium')return {icon:'💎',label:'Premium'};
+ if(format==='demo')return previews.demo;
+ return previews[String(c.angle||'').toLowerCase().split(/[ :/]/)[0]]||previews.benefits;
+};
+// A familiar provider → version → creation-mode selector, backed by the exact
+// same server-validated endpoint catalog. No extra paid AI calls on selection.
+const preferredVideoModel=options=>{
+ const candidates=options.filter(m=>m.family_id==='seedance-2.5');
+ const pool=candidates.length?candidates:options;
+ return pool.find(m=>m.image_role==='product_reference')
+   ||pool.find(m=>m.image_role==='start_frame')||pool[0]||null;
+};
+const preferredDuration=(model,previous)=>{
+ if(model?.durations?.includes(Number(previous)))return Number(previous);
+ return model?.durations?.includes(8)?8:model?.durations?.[0]??'';
+};
+const videoModes={
+ product_reference:['🖼️','Imagen de referencia','Crea escenas nuevas conservando el aspecto del producto'],
+ start_frame:['▶️','Animar fotografía','El video comienza desde la foto cargada'],
+ none:['✍️','Sin referencia','Este motor no garantiza conservar la fotografía']
+};
+
+const creativeStyles=[['auto','✨','IA decide'],['ugc','🤳','UGC'],['cinematic','🎥','Cine'],['premium','💎','Premium'],['demo','🧴','Demo']];
+const field='w-full rounded-2xl border border-[#E6DCE9] bg-white px-4 py-3 text-[#2C2341] outline-none focus:border-[#8B65D1]';
+const card='rounded-[24px] border border-[#E9DFE6] bg-white p-5 sm:p-7 shadow-sm';
+const fmt=status=>({
+ created:'Preparando',researching:'Investigando producto y mercado',
+ ready:'Conceptos preparados',needs_review:'Revisar información del producto',
+ approved:'Concepto aprobado',failed:'Investigación no completada',
+})[status]||status;
+
+export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,onCreateNew,onWalletRefresh,initialStyle='ugc',initialProjectId=null,initialTemplateId=null}){
+ const [config,setConfig]=useState(null),[image,setImage]=useState(null);
+ const template=getAdTemplate(initialTemplateId);
+ const [templateActor,setTemplateActor]=useState('hombre');
+ const [templateChangeRequest,setTemplateChangeRequest]=useState('');
+ const [templateSetting,setTemplateSetting]=useState('auto');
+ const [product,setProduct]=useState({product_name:'',description:'',audience:'',
+  angle:template?.angle||'auto',market:'EC',video_language:'es',cta:'',creative_style:template?.style||initialStyle,cast_mode:'with_people',audio_mode:'no_voice',video_model_id:'',video_duration_seconds:''});
+ const [project,setProject]=useState(null),[selection,setSelection]=useState(0);
+ const [editedPrompt,setEditedPrompt]=useState('');
+ const [editedSpeech,setEditedSpeech]=useState('');
+ const [reviewDuration,setReviewDuration]=useState(null);
+ const [reviewModelId,setReviewModelId]=useState(null);
+ const [reviewCastMode,setReviewCastMode]=useState('with_people');
+ const [reviewAudioMode,setReviewAudioMode]=useState('no_voice');
+ const [sellerConfirmed,setSellerConfirmed]=useState(false);
+ const [style,setStyle]=useState(initialStyle),[shotPreference,setShotPreference]=useState('auto');
+ const [busy,setBusy]=useState(false),[error,setError]=useState('');
+ const [researchConfirm,setResearchConfirm]=useState(false);
+ const fileRef=useRef(null),keyRef=useRef(null);
+ const manualSpeechRef=useRef(false),manualPromptRef=useRef(false);
+ useEffect(()=>{
+  let active=true;
+  fetch('/api/realizo/ai-premium',{cache:'no-store',credentials:'same-origin'})
+   .then(r=>r.ok?r.json():Promise.reject()).then(async v=>{
+     if(!active)return;
+     setConfig(v);
+     // Choose Seedance 2.5 as the starting engine; users can change freely
+     // before committing the single paid investigation.
+     const recommended=template?(v.video_options||[]).find(m=>m.id==='seedance-2.5-intl-omni-reference'):preferredVideoModel(v.video_options||[]);
+     if(recommended)setProduct(prev=>prev.video_model_id?prev:{
+      ...prev,video_model_id:recommended.id,
+      video_duration_seconds:template?30:preferredDuration(recommended,prev.video_duration_seconds),
+     });
+     // Fresh creation is the default. Only restore a previous investigation
+     // after the owner explicitly selects it from "Mis videos".
+     if(initialProjectId){
+       try{
+         const response=await fetch('/api/realizo/ai-premium/'+encodeURIComponent(initialProjectId),{
+           cache:'no-store',credentials:'same-origin'
+         });
+         if(!response.ok)throw new Error('No se pudo recuperar la investigación');
+         const saved=await response.json();
+         if(active)setProject(saved);
+       }catch{
+         if(active)setError('No se pudo abrir el proyecto guardado. Puedes comenzar uno nuevo.');
+       }
+     }
+   })
+   .catch(()=>{if(active)setConfig({enabled:false,message:'No disponible en este momento.'})});
+  return()=>{active=false};
+ },[initialProjectId]);
+ useEffect(()=>{
+  if(!project?.id || !['created','researching'].includes(project.status))return;
+  let active=true;
+  const poll=async()=>{
+   try{
+    const r=await fetch('/api/realizo/ai-premium/'+encodeURIComponent(project.id),{cache:'no-store'});
+    if(!r.ok)return;
+    const result=await r.json();
+    if(active){
+      setProject(result);
+      if(!['created','researching'].includes(result.status))onWalletRefresh?.();
+    }
+   }catch{}
+  };
+  const timer=setInterval(poll,5500);
+  return()=>{active=false;clearInterval(timer)};
+ },[project?.id,project?.status,onWalletRefresh]);
+ // Recover an already-completed OpenAI response automatically once, on
+ // current failed projects too. This performs only a read, not a paid POST.
+ useEffect(()=>{
+  if(project?.status!=='failed'||project?.error!=='unusable_research'||!project.id)return;
+  let active=true;
+  fetch('/api/realizo/ai-premium/'+encodeURIComponent(project.id),{cache:'no-store'})
+   .then(r=>r.ok?r.json():Promise.reject())
+   .then(saved=>{if(active)setProject(saved)})
+   .catch(()=>{});
+  return()=>{active=false};
+ },[project?.id,project?.status,project?.error]);
+ useEffect(()=>{
+  if(project?.concepts?.length===3){
+   const i=Number.isInteger(project.findings?.recommended_index)?
+    Math.max(0,Math.min(2,project.findings.recommended_index)):0;
+   setSelection(i);
+  }
+ },[project?.id,project?.concepts]);
+ useEffect(()=>{
+  if(project?.id){
+   setReviewDuration(Number(project.video_duration_seconds)||8);
+   setReviewModelId(project.video_model_id||null);
+   setReviewCastMode(project.cast_mode==='product_only'?'product_only':'with_people');
+   setReviewAudioMode(['no_voice','voiceover','dialogue'].includes(project.audio_mode)?project.audio_mode:'no_voice');
+  }
+ },[project?.id,project?.video_duration_seconds,project?.video_model_id,project?.cast_mode,project?.audio_mode]);
+ useEffect(()=>{
+  manualSpeechRef.current=false;
+  manualPromptRef.current=false;
+  setSellerConfirmed(false);
+ },[project?.id,selection]);
+ useEffect(()=>{
+  const chosen=project?.concepts?.[selection];
+  if(!manualPromptRef.current)setEditedPrompt(chosen?.video_prompt||'');
+  // Once the seller edits a line, do NOT overwrite the seller's exact words
+  // when they change runtime, format, or the project refreshes.
+  if(!manualSpeechRef.current)setEditedSpeech(chosen?improveSalesScript(chosen.spoken_script||chosen.script||'',{
+   seconds:reviewDuration||Number(project?.video_duration_seconds)||8,
+   style:project?.creative_style==='auto'?(chosen.creative_style||style):project?.creative_style,
+   productName:project?.product_name||'',
+   description:project?.description||'',
+   concept:chosen,report:project?.findings||{},language:project?.video_language||'es',
+  }):'');
+ },[project?.concepts,selection,reviewDuration]);
+ useEffect(()=>{
+  if(project?.id)setStyle(project.creative_style||'auto');
+ },[project?.id,project?.creative_style]);
+ const change=(k,v)=>{setProduct(p=>({...p,[k]:v}));keyRef.current=null};
+ const upload=async(file)=>{
+  if(!file)return;
+  setBusy(true);setError('');
+  try{
+   if(!['image/jpeg','image/png','image/webp'].includes(file.type) || file.size>8*1024*1024)
+    throw Error('La foto debe ser JPG, PNG o WEBP, máximo 8 MB.');
+   const optimized=await optimizeImage(file);
+   const data=new FormData();data.append('image',optimized);
+   const r=await fetch('/api/realizo/media',{method:'POST',body:data});
+   const json=await r.json().catch(()=>({}));
+   if(!r.ok||!json.id||!json.url)throw Error('No se pudo guardar la fotografía.');
+   setImage({id:json.id,url:json.url});keyRef.current=null;
+  }catch(e){setError(e.message)}finally{setBusy(false)}
+ };
+ const start=async()=>{
+  if(!config?.enabled)return setError('Realizo AI Premium necesita una conexión autorizada y saldo real cuando corresponde.');
+  if(!image?.id || product.description.trim().length<15)
+    return setError('Sube una foto y describe el producto en al menos 15 caracteres.');
+  const chosen=(config.video_options||[]).find(m=>m.id===product.video_model_id);
+  if(!chosen || !chosen.durations.includes(Number(product.video_duration_seconds)))
+    return setError('Selecciona un motor de video y una duración compatible antes de investigar.');
+  const price=config.customer_charge_cents;
+  if(!Number.isInteger(price)||price<0)return setError('No se pudo cotizar la investigación.');
+  if(config.billing_mode!=='paid'||price<=0||config.general_available_cents<price)
+    return setError('Saldo real insuficiente para pagar la investigación. Necesitas fondos verificados.');
+  if(!researchConfirm){setResearchConfirm(true);return;}
+  setResearchConfirm(false);
+  setBusy(true);setError('');
+  if(!keyRef.current)keyRef.current=crypto.randomUUID();
+  try{
+   const r=await fetch('/api/realizo/ai-premium',{
+    method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({...product,template_id:template?.id||null,
+      template_actor:templateActor,template_setting:templateSetting,template_change_request:templateChangeRequest,
+      primary_asset_id:image.id,request_key:keyRef.current,
+      max_price_cents:price,pricing_version:config.pricing_version}),
+   });
+   const json=await r.json().catch(()=>({}));
+   if(!r.ok)throw Error(json.error==='ai_premium_daily_limit'?
+     'Has alcanzado el límite de investigaciones del día.':
+     json.error==='insufficient_general_funds'||json.error==='verified_real_topup_required'?
+     'Necesitas saldo de una recarga real verificada.':
+     json.error==='price_changed_confirm_again'?'El precio cambió. Actualiza y confírmalo nuevamente.':
+     json.error==='invalid_video_configuration'?'El modelo o duración elegidos ya no están disponibles. Selecciona otra combinación.':
+     'No se pudo iniciar la investigación: '+(json.error||r.status));
+   setProject(json);
+   onWalletRefresh?.();
+  }catch(e){setError(e.message)}
+  finally{setBusy(false)}
+ };
+ const approve=async()=>{
+  setBusy(true);setError('');
+  try{
+   const r=await fetch('/api/realizo/ai-premium/'+encodeURIComponent(project.id)+'/approve',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({index:selection,prompt:editedPrompt,speech:editedSpeech,style,
+     video_model_id:reviewModelId||project.video_model_id,
+     video_duration_seconds:reviewDuration||project.video_duration_seconds,
+     seller_claims_confirmed:sellerConfirmed,
+     shot_preference:shotPreference,cast_mode:reviewCastMode,audio_mode:reviewAudioMode}),
+   });
+   const json=await r.json().catch(()=>({}));
+   if(!r.ok)throw Error(json.error==='seller_claims_confirmation_required'?
+    'Confirma que revisaste las afirmaciones de tu anuncio.':
+    json.error==='premium_audio_script_required'?'Para voz en off o diálogo, escribe primero el texto que se escuchará. Para solo música, selecciona «Sin voces».':
+    json.error==='premium_audio_cast_conflict'?'El diálogo entre actores requiere «Con personas». Selecciona voz en off o sin voces.':
+    json.error==='ugc_speech_timing_invalid'?
+    'Ajusta el diálogo UGC para que encaje en los segundos elegidos. No se cobrará otra investigación.':
+    json.error==='review_product_responsibility'?
+    'Acepta la declaración de responsabilidad comercial antes de aprobar.':
+    'No se pudo aprobar: '+(json.error||r.status));
+   if(!json.ready_for_editor)throw Error('El editor no recibió el proyecto.');
+   setProject(json);onPrepare(json.ready_for_editor);onOpenAdvanced();
+  }catch(e){setError(e.message)}
+  finally{setBusy(false)}
+ };
+ const findings=project?.findings||{};
+ const concepts=project?.concepts||[];
+ const videoOptions=config?.video_options||[];
+ const reviewOptions=videoOptions.filter(m=>m.image_role==='product_reference'||m.image_role==='start_frame');
+ const reviewOption=reviewOptions.find(m=>m.id===reviewModelId);
+ const selectedModel=videoOptions.find(m=>m.id===product.video_model_id);
+ const availableDurations=selectedModel?.durations||[];
+ const spokenWords=editedSpeech.trim()?editedSpeech.trim().split(/\s+/).length:0;
+ const durationSpeech=Number(reviewDuration||project?.video_duration_seconds)||8;
+ const {minimum:speechMin,maximum:speechMax,target:speechTarget}=voiceBudget(durationSpeech,style==='auto'?'ugc':style);
+ const selectedProvider=selectedModel?.provider||'';
+ const selectedFamily=selectedModel?.family_id||'';
+ const providerOptions=Array.from(new Map(videoOptions.map(m=>[
+   m.provider,{id:m.provider,name:m.provider_name||m.provider}
+ ])).values()).sort((a,b)=>a.name.localeCompare(b.name,'es'));
+ const providerModels=videoOptions.filter(m=>m.provider===selectedProvider);
+ const familyOptions=Array.from(new Map(providerModels.map(m=>[
+   m.family_id,{id:m.family_id,name:m.family}
+ ])).values()).sort((a,b)=>b.name.localeCompare(a.name,'es',{numeric:true}));
+ const familyModels=providerModels.filter(m=>m.family_id===selectedFamily);
+ const availableModes=Object.keys(videoModes).filter(role=>familyModels.some(m=>m.image_role===role));
+ const variantsForMode=familyModels.filter(m=>m.image_role===selectedModel?.image_role);
+ const chooseVideoModel=next=>{
+  if(template)return; // master model cannot be changed
+   if(!next)return;
+   setProduct(prev=>({
+    ...prev,video_model_id:next.id,
+    video_duration_seconds:preferredDuration(next,prev.video_duration_seconds),
+   }));
+   keyRef.current=null;
+ };
+ const ready=concepts.length===3 && ['ready','needs_review','approved'].includes(project?.status);
+ return <div className="realizo-premium-skin max-w-[1160px] mx-auto space-y-5">
+  <div className="rounded-[25px] bg-gradient-to-r from-[#38244E] to-[#6D47AE] p-6 sm:p-8 text-white">
+   <p className="text-xs font-bold tracking-[.19em] uppercase text-[#F8C3C5]">Realizo AI Premium</p>
+   <h2 className="text-[27px] sm:text-[36px] font-extrabold mt-2">Tu agencia creativa con IA.</h2>
+   <p className="text-sm text-[#EEE2F6] max-w-2xl mt-2 leading-6">
+    Sube la foto, describe el producto y elige el mercado. La IA investiga y prepara tres anuncios para que tú decidas.
+   </p>
+   <p className="mt-4 inline-block rounded-full bg-white/15 px-4 py-2 text-xs font-bold">
+    {config?.enabled && config.customer_charge_cents>0?
+      'Investigación IA: USD '+(config.customer_charge_cents/100).toFixed(2)+' · Video aparte':
+      'Precio de investigación no disponible'}
+   </p>
+  </div>
+  <div className="realizo-premium-progress" aria-label="Proceso de creación">
+    <span className={!project?'current':'done'}><i>01</i> Producto y motor</span>
+    <i className="realizo-progress-line"/>
+    <span className={project&&['ready','needs_review','approved'].includes(project.status)?'current':project?'in-progress':''}><i>02</i> Investigación y conceptos</span>
+    <i className="realizo-progress-line"/>
+    <span className={project?.status==='approved'?'done':''}><i>03</i> Revisión y generación</span>
+   </div>
+  {error&&<div role="alert" className="rounded-2xl border border-[#EEB9AB] bg-[#FFF0E9] px-5 py-3 text-sm text-[#914F40]">{error}</div>}
+  {template&&!project&&<div className="realizo-v11-template-brief">
+   <div><span>CREACIÓN DESDE PLANTILLA</span><h3>{template.name}</h3>
+    <p>{template.description} Solo se reemplaza el producto, su uso y el diálogo. Imagen de referencia: no se sube el video maestro.</p></div>
+   <div className="realizo-v11-template-beats">{templatePlan(template,Number(product.video_duration_seconds)||template.duration).map(b=>
+    <span key={b.key}><b>{b.start}–{b.end}s</b> {b.label}</span>)}</div>
+   <div className="realizo-v11-template-options">
+    <label>Personaje
+     <select value={templateActor} onChange={e=>setTemplateActor(e.target.value)}>
+      <option value="hombre">Hombre (original)</option><option value="mujer">Mujer</option>
+     </select>
+    </label>
+    <label>Escenario
+     <input value={templateSetting==='auto'?'':templateSetting} onChange={e=>setTemplateSetting(e.target.value||'auto')}
+      maxLength={120} placeholder="Baño de casa (original)"/>
+    </label>
+   </div>
+   <label className="block mt-3 text-sm font-bold text-[#F5E8E1]">¿Qué quieres cambiar? (opcional)
+    <textarea className="mt-2 w-full rounded-xl border border-[#51464F] bg-[#17161D] p-3 text-white" rows={2}
+     maxLength={400} value={templateChangeRequest} onChange={e=>setTemplateChangeRequest(e.target.value)}
+     placeholder="Ej. Cambia al hombre por una mujer, conserva todo lo demás."/>
+   </label>
+  </div>}
+  {!project&&<div className="grid lg:grid-cols-[.9fr_1.1fr] gap-5">
+   <section className={card+' space-y-4'}>
+    <h3 className="text-xl font-extrabold">1. Tu producto</h3>
+    <button type="button" disabled={busy} onClick={()=>fileRef.current?.click()}
+      className="w-full h-[240px] border-2 border-dashed border-[#CBB1E7] rounded-[20px] bg-[#F8F3FD] flex flex-col items-center justify-center gap-3 overflow-hidden">
+      {image?<><img src={image.url} alt="Producto cargado" className="max-w-full h-[170px] object-contain"/>
+        <span className="text-xs font-bold text-[#6545A1]">Cambiar fotografía</span></>:
+       <><span className="text-4xl">✦</span><strong>Subir fotografía principal</strong><span className="text-xs text-[#8B789A]">JPG, PNG o WEBP · máximo 8 MB</span></>}
+    </button>
+    <input type="file" ref={fileRef} accept="image/jpeg,image/png,image/webp" className="hidden"
+      onChange={e=>{upload(e.target.files?.[0]);e.target.value=''}}/>
+    <p className="text-xs text-[#86758B]">La fotografía define el aspecto del producto. Puedes seguir personalizando escenas y estilo.</p>
+   </section>
+   <section className={card+' space-y-4'}>
+    <h3 className="text-xl font-extrabold">2. Información y estrategia</h3>
+    <label className="block text-sm font-bold">Nombre del producto (opcional)
+      <input className={field+' mt-2'} maxLength={100} value={product.product_name}
+       onChange={e=>change('product_name',e.target.value)} placeholder="Ej. NOIL Body Wash"/>
+    </label>
+    <label className="block text-sm font-bold">Descripción breve *
+     <textarea className={field+' mt-2 min-h-[110px]'} maxLength={1600} value={product.description}
+      onChange={e=>change('description',e.target.value)}
+      placeholder="¿Qué vendes, para quién y qué beneficio puedes confirmar?"/>
+    </label>
+    <div className="grid sm:grid-cols-2 gap-4">
+     <label className="block text-sm font-bold">País objetivo
+       <select className={field+' mt-2'} value={product.market} onChange={e=>change('market',e.target.value)}>
+        {markets.map(([v,n])=><option key={v} value={v}>{n}</option>)}
+       </select>
+     </label>
+     <label className="block text-sm font-bold">Ángulo de venta
+       <select className={field+' mt-2'} disabled={Boolean(template)} value={product.angle} onChange={e=>change('angle',e.target.value)}>
+        {angles.map(([v,n])=><option key={v} value={v}>{n}</option>)}
+       </select>
+     </label>
+    </div>
+    <label className="block text-sm font-bold">Idioma de voz y video
+     <select className={field+' mt-2'} disabled={Boolean(template)} value={product.video_language} onChange={e=>change('video_language',e.target.value)}>
+      {languages.map(([code,name])=><option key={code} value={code}>{name}</option>)}
+     </select>
+    </label>
+    <div className="rounded-2xl border border-[#D8C5EF] bg-[#F9F5FF] p-4 space-y-3">
+     <p className="text-sm font-extrabold">3. Configura el video antes de investigar</p>
+     <p className="text-xs text-[#765E90]">Elige un estilo y motor. El costo se confirma antes de investigar.</p>
+     <div className="space-y-2">
+      <p className="text-sm font-bold">Formato publicitario</p>
+      <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+       {creativeStyles.map(([id,icon,label])=><button type="button" key={id}
+        aria-pressed={product.creative_style===id} disabled={Boolean(template)} onClick={()=>change('creative_style',id)}
+        className={'rounded-xl border-2 px-2 py-3 text-center transition '+(
+         product.creative_style===id?'border-[#7650C6] bg-white shadow-sm':
+          'border-[#E7DEEC] bg-white/60 hover:bg-white')}>
+        <span className="block text-xl" aria-hidden="true">{icon}</span>
+        <span className="block mt-1 text-xs font-bold">{label}</span>
+       </button>)}
+      </div>
+      {product.creative_style==='ugc'&&
+       <p className="text-xs text-[#6D518D]">UGC: una persona habla mirando a cámara, explica el producto, engancha desde el inicio y termina invitando a comprar.</p>}
+     </div>
+
+     {(product.creative_style==='premium'||product.creative_style==='cinematic')&&!template&&<div className="space-y-2">
+      <p className="text-sm font-bold">¿Quién aparece en el anuncio?</p>
+      <div className="grid grid-cols-2 gap-2">
+       {[
+        ['product_only','📦 Solo producto','Solo envase, textura, luz y cortes de cine. Sin personas.'],
+        ['with_people','🎬 Con personas','Modelos en escenas de cine, sin estilo UGC.']
+       ].map(([id,label,description])=><button key={id} type="button" aria-pressed={product.cast_mode===id}
+        onClick={()=>{setProduct(p=>({...p,cast_mode:id,audio_mode:id==='product_only'&&p.audio_mode==='dialogue'?'no_voice':p.audio_mode}));keyRef.current=null;}} className={'rounded-xl border-2 p-3 text-left '+(product.cast_mode===id?'border-[#7650C6] bg-white':'border-[#E7DEEC] bg-white/60')}>
+        <strong className="block text-sm">{label}</strong><span className="block text-xs mt-1">{description}</span>
+       </button>)}
+      </div>
+     </div>}
+     {(product.creative_style==='premium'||product.creative_style==='cinematic')&&!template&&<div className="space-y-2">
+      <p className="text-sm font-bold">¿Cómo quieres el audio?</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+       {[
+        ['no_voice','🎼 Sin voces','Solo música instrumental y sonidos cinematográficos.'],
+        ['voiceover','🎙️ Voz en off','Narración profesional, sin locutor visible.'],
+        ['dialogue','🗣️ Con diálogo','Actores conversan entre sí, sin hablar al público.']
+       ].map(([id,label,description])=><button key={id} type="button"
+        disabled={id==='dialogue'&&product.cast_mode==='product_only'}
+        aria-pressed={product.audio_mode===id}
+        onClick={()=>change('audio_mode',id)}
+        className={'rounded-xl border-2 p-3 text-left disabled:opacity-40 '+(product.audio_mode===id?'border-[#7650C6] bg-white':'border-[#E7DEEC] bg-white/60')}>
+        <strong className="block text-sm">{label}</strong>
+        <span className="block text-xs mt-1">{description}</span>
+       </button>)}
+      </div>
+      {product.cast_mode==='product_only'&&<p className="text-xs text-[#866E94]">El diálogo entre actores requiere «Con personas». La voz en off sí se permite en «Solo producto».</p>}
+      <p className="text-xs text-[#866E94]">La generación de voces depende de las capacidades del modelo.</p>
+     </div>}
+     <div className="grid sm:grid-cols-2 gap-3">
+      <label className="block text-sm font-bold">Proveedor
+       <select className={field+' mt-2'} disabled={Boolean(template)} value={selectedProvider}
+        onChange={e=>chooseVideoModel(preferredVideoModel(
+         videoOptions.filter(m=>m.provider===e.target.value)))}>
+        {providerOptions.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}
+       </select>
+      </label>
+      <label className="block text-sm font-bold">Modelo y versión
+       <select className={field+' mt-2'} disabled={Boolean(template)} value={selectedFamily}
+        onChange={e=>chooseVideoModel(preferredVideoModel(
+         providerModels.filter(m=>m.family_id===e.target.value)))}>
+        {familyOptions.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}
+       </select>
+      </label>
+     </div>
+     {!!availableModes.length&&<div className="space-y-2">
+      <p className="text-sm font-bold">¿Cómo quieres crear el video?</p>
+      <div className="grid sm:grid-cols-3 gap-2">
+       {availableModes.map(mode=>{
+        const [emoji,label,description]=videoModes[mode];
+        return <button key={mode} type="button" disabled={Boolean(template)} onClick={()=>chooseVideoModel(preferredVideoModel(
+          familyModels.filter(m=>m.image_role===mode)))}
+          aria-pressed={selectedModel?.image_role===mode}
+          className={'rounded-xl border-2 p-3 text-left transition '+(
+           selectedModel?.image_role===mode
+            ?'border-[#7B4FC9] bg-white shadow-sm':'border-[#E2D5EC] bg-white/50 hover:bg-white')}>
+          <span className="text-lg" aria-hidden="true">{emoji}</span>
+          <p className="text-xs font-bold mt-1">{label}</p>
+          <p className="text-[11px] leading-4 text-[#806F91] mt-1">{description}</p>
+         </button>;
+       })}
+      </div>
+     </div>}
+     {variantsForMode.length>1&&<details className="rounded-xl border border-[#E4D8ED] bg-white p-3">
+      <summary className="text-xs font-bold text-[#6B4C94] cursor-pointer">
+       Opciones avanzadas del motor · {variantsForMode.length} variantes
+      </summary>
+      <label className="block text-xs font-bold mt-3">Variante específica
+       <select className={field+' mt-2 text-sm'} disabled={Boolean(template)} value={product.video_model_id}
+        onChange={e=>chooseVideoModel(variantsForMode.find(m=>m.id===e.target.value))}>
+        {variantsForMode.map(model=><option key={model.id} value={model.id}>
+         {model.variant_label||model.name}
+        </option>)}
+       </select>
+      </label>
+     </details>}
+     {selectedModel&&<>
+      <label className="block text-sm font-bold">Duración disponible
+       <select className={field+' mt-2'} disabled={Boolean(template)} value={product.video_duration_seconds}
+        onChange={e=>change('video_duration_seconds',Number(e.target.value))}>
+        {availableDurations.map(n=><option key={n} value={n}>{n} segundos</option>)}
+       </select>
+      </label>
+      <p className="text-xs text-[#71588B]">
+       Seleccionado: <strong>{selectedModel.family}</strong> · {videoModes[selectedModel.image_role]?.[1]||selectedModel.name} · {product.video_duration_seconds} s.
+       {' '}{selectedModel.note}
+      </p>
+     </>}
+    </div>
+    <label className="block text-sm font-bold">Público objetivo (opcional)
+     <input className={field+' mt-2'} maxLength={180} value={product.audience}
+      onChange={e=>change('audience',e.target.value)} placeholder="Ej. Hombres de 18 a 40 años"/>
+    </label>
+    <label className="block text-sm font-bold">Llamada a la acción (opcional)
+     <input className={field+' mt-2'} maxLength={120} value={product.cta}
+      onChange={e=>change('cta',e.target.value)} placeholder="Ej. Paga al recibir"/>
+    </label>
+    {template&&<p className="text-xs text-[#C7A28A]">Estilo de la plantilla bloqueado. Puedes cambiar motor y duración según compatibilidad.</p>}
+    <p className="text-xs text-[#755F88] rounded-xl bg-[#F8F3FC] p-3">
+     Precio fijo: <strong>USD {((config?.customer_charge_cents||0)/100).toFixed(2)}</strong> por investigar y crear 3 conceptos. El video se cobra aparte.
+    </p>
+    {researchConfirm&&<div role="region" aria-label="Confirmar investigación" className="rounded-2xl border border-[#B9A7D5] bg-white p-4 space-y-3">
+      <p className="font-bold text-[#4C3370]">Confirma tu investigación en Realizo</p>
+      <p className="text-sm">Se reservarán <strong>USD {((config?.customer_charge_cents||0)/100).toFixed(2)}</strong> de tu billetera. Al entregar los 3 conceptos se aplicará el cargo. La generación del video se cotiza por separado.</p>
+      <div className="flex gap-3 flex-wrap">
+       <button type="button" disabled={busy} onClick={start} className="rounded-xl bg-[#704CD4] text-white px-5 py-3 font-bold">Confirmar y continuar</button>
+       <button type="button" onClick={()=>setResearchConfirm(false)} className="rounded-xl border px-5 py-3">Cancelar</button>
+      </div>
+     </div>}
+    <div className="flex flex-wrap gap-3">
+     <button type="button" disabled={busy||researchConfirm||!config?.enabled||!image||!selectedModel||!product.video_duration_seconds}
+      onClick={start} className="rounded-2xl bg-[#704CD4] disabled:opacity-45 text-white px-6 py-3 font-bold">
+      {busy?'Investigando…':'✦ Investigar y pagar $'+((config?.customer_charge_cents||0)/100).toFixed(2)}
+     </button>
+     <button type="button" onClick={onUseAutomatic}
+      className="rounded-2xl border border-[#DCCEE9] px-5 py-3 text-[#684C98] font-bold">Usar modo gratis</button>
+    </div>
+    {!config?.enabled&&<p role="status" className="text-xs text-[#9A6A58]">
+     {config?.message||'Comprobando disponibilidad de Realizo AI…'} No se ha descontado ningún crédito.
+    </p>}
+   </section>
+  </div>}
+  {project&&<section className={card+' space-y-5'}>
+    <div className="flex flex-wrap justify-between items-center gap-3">
+      <div><p className="text-xs font-bold tracking-widest text-[#7F5FB1]">PROYECTO PREMIUM</p>
+        <h3 className="text-2xl font-extrabold mt-2">{project.product_name||'Tu producto'}</h3></div>
+      <div className="flex flex-wrap items-center gap-2">
+       <span className="rounded-full bg-[#EEE4FA] text-[#673E9A] font-bold text-xs px-4 py-2">{fmt(project.status)}</span>
+       <button type="button" disabled={busy} onClick={onCreateNew}
+         className="rounded-2xl bg-[#6D48CB] text-white px-4 py-2 text-xs font-bold hover:bg-[#5B37BA] disabled:opacity-50">
+         + Crear otro video
+       </button>
+      </div>
+    </div>
+    {['created','researching'].includes(project.status)&&<div className="p-6 rounded-2xl bg-[#F8F4FC]">
+      <p className="font-semibold">Estamos analizando la imagen y fuentes de mercado.</p>
+      <p className="text-sm text-[#7D718A] mt-2">REALIZO está identificando cada producto, contrastando fuentes web, revisando sus características y eligiendo los motivos de compra antes de crear los conceptos. Reabrir el proyecto no inicia nuevas consultas ni cobros.</p>
+    </div>}
+    {project.status==='failed'&&<div className="text-sm text-[#9A6257] space-y-1">
+      <p><strong>No se completó la investigación.</strong> {({
+       research_web_not_performed:'OpenAI no llegó a consultar internet.',
+       research_output_incomplete:'OpenAI no entregó el informe completo.',
+       research_provider_failed:'El proveedor interrumpió la investigación.',
+       unusable_research:'OpenAI devolvió datos que no permiten validar los anuncios.',
+       openai_rejected:'El proveedor rechazó la configuración de investigación.',
+       openai_rejected_schema:'OpenAI no admitió el formato estructurado configurado.',
+       openai_rejected_search:'OpenAI no admitió la herramienta de búsqueda solicitada.',
+       openai_rejected_model:'El modelo OpenAI configurado no está disponible o no admite esta operación.',
+       openai_rejected_quota:'OpenAI alcanzó un límite de solicitudes. No se capturó el pago.',
+       openai_rejected_request:'OpenAI rechazó uno de los parámetros de la investigación.',
+       research_launch_unconfirmed:'No se pudo confirmar el inicio; no se volverá a enviar automáticamente.',
+      })[project.error]||'No fue posible obtener los tres conceptos válidos.'}</p>
+      <p>{project.research_payment_status==='released'?
+       'La reserva de investigación fue liberada: no se cobró USD 0,49.':
+       project.research_payment_status==='reserved'?
+       'El cobro está en revisión; no se volverá a intentar automáticamente.':
+       'No se capturó ningún cobro de esta investigación.'}</p>
+      <p>Si la respuesta anterior todavía existe, REALIZO la recuperará automáticamente al abrir el proyecto, sin otra consulta ni pago.</p>
+     </div>}
+    {project.status==='needs_review'&&!ready&&<p className="text-sm text-[#9A6257]">La investigación necesita revisión técnica antes de volver a intentarse. No se volverá a cobrar automáticamente.</p>}
+    {ready&&<>
+      <div className="text-sm font-semibold text-[#6B4B8C] rounded-xl bg-[#F3EBFA] p-3 space-y-3">
+       <div className="flex flex-wrap gap-3 items-center">
+        <label className="flex flex-wrap items-center gap-2">
+         Motor:
+         <select aria-label="Motor del video" className="rounded-lg border border-[#C6A8E5] bg-white px-3 py-2 text-[#4F2E83]"
+          disabled={Boolean(template||project?.template_id)}
+          value={reviewModelId||project.video_model_id||''}
+          onChange={e=>{
+           const next=reviewOptions.find(m=>m.id===e.target.value);
+           if(!next)return;
+           setReviewModelId(next.id);
+           setReviewDuration(preferredDuration(next,reviewDuration||project.video_duration_seconds));
+          }}>
+          {!reviewOptions.some(m=>m.id===project.video_model_id)&&
+           <option value={project.video_model_id} disabled>{project.video_model_id} · requiere video</option>}
+          {reviewOptions.map(m=><option key={m.id} value={m.id}>{m.name||m.id}</option>)}
+         </select>
+        </label>
+        <label className="flex flex-wrap items-center gap-2">
+         Duración:
+         <select aria-label="Duración final del video" disabled={Boolean(template||project?.template_id)}
+          className="rounded-lg border border-[#C6A8E5] bg-white px-3 py-2 text-[#4F2E83]"
+          value={reviewDuration||project.video_duration_seconds||8}
+          onChange={e=>setReviewDuration(Number(e.target.value))}>
+          {(reviewOption?.durations||[Number(project.video_duration_seconds)||8]).map(n=>
+           <option value={n} key={n}>{n} segundos</option>)}
+         </select>
+        </label>
+       </div>
+       <p className="font-normal text-xs">{template||project?.template_id
+        ?'Configuración fija de la plantilla.'
+        :'Cambiar motor o duración reutiliza la investigación y el concepto. El costo del video se confirma antes de generar.'}</p>
+      </div>
+
+      <div className="rounded-2xl bg-[#F8F5F0] p-4 space-y-2">
+       <p className="font-bold">Análisis comercial</p>
+       <p className="text-sm text-[#6B5878]">
+        {String(findings.market_summary||'').slice(0,200)}{String(findings.market_summary||'').length>200?'…':''}
+       </p>
+       <details className="text-xs text-[#796A83]">
+        <summary className="font-semibold cursor-pointer">Ver informe completo, verificaciones y fuentes</summary>
+        <div className="mt-3 space-y-2">
+         <p>{findings.product_observation}</p>
+         {findings.product_dossier&&<div className="space-y-1">
+          <p className="font-bold">Identificación del producto</p>
+          <p>{findings.product_dossier.identified_product} · {findings.product_dossier.actual_category}</p>
+          <p>Coincidencia con la imagen: {findings.product_dossier.identity_status==='matched'?'Identidad contrastada':findings.product_dossier.identity_status==='partial'?'Coincidencia parcial':'Sin confirmar'}</p>
+          {!!findings.product_dossier.components_or_ingredients?.length&&<p><strong>Componentes/ingredientes investigados:</strong> {findings.product_dossier.components_or_ingredients.join(' · ')}</p>}
+          {!!findings.product_dossier.features?.length&&<p><strong>Características:</strong> {findings.product_dossier.features.join(' · ')}</p>}
+          {!!findings.product_dossier.realistic_uses?.length&&<p><strong>Usos:</strong> {findings.product_dossier.realistic_uses.join(' · ')}</p>}
+          {!!findings.product_dossier.evidence_gaps?.length&&<p><strong>Datos aún sin comprobar:</strong> {findings.product_dossier.evidence_gaps.join(' · ')}</p>}
+         </div>}
+         <p>{findings.market_summary}</p>
+         {!!findings.angle_analysis?.length&&<div className="space-y-1">
+          <p className="font-bold">Motivos de compra analizados</p>
+          {findings.angle_analysis.map((a,i)=><p key={i}>
+           <strong>{a.angle}:</strong> {a.buyer_motive} — {a.evidence_reason}
+          </p>)}
+         </div>}
+         {!!findings.research_evidence?.length&&<div className="space-y-1">
+          <p className="font-bold">Evidencias y su procedencia</p>
+          {findings.research_evidence.map((e,i)=><p key={i}>
+           {e.basis==='web'?'Fuente web':e.basis==='photo'?'Fotografía':e.basis==='seller'?'Declaración del vendedor':'Sin verificar'}: {e.claim}
+           {e.source_url&&e.basis==='web'?<a href={e.source_url} target="_blank" rel="noreferrer" className="underline text-[#6D48CB] ml-1">Ver fuente</a>:null}
+          </p>)}
+         </div>}
+         {(findings.description_conflicts||[]).length>0&&<p><strong>Observaciones:</strong> {findings.description_conflicts.join(' · ')}</p>}
+         {(findings.claims_to_verify||[]).length>0&&<p><strong>Por verificar:</strong> {findings.claims_to_verify.join(' · ')}</p>}
+         {(findings.research_limitations||[]).length>0&&<p><strong>Alcance:</strong> {findings.research_limitations.join(' · ')}</p>}
+         <p>{project.sources?.length?project.sources.map((x,i)=><span key={i}>
+          <a href={x.url} target="_blank" rel="noreferrer" className="underline text-[#6D48CB]">{x.title||x.url}</a>{' · '}
+         </span>):'No se obtuvieron enlaces verificables.'}</p>
+        </div>
+       </details>
+      </div>
+
+      {findings.selected_sales_angle&&<div className="mb-3 rounded-xl bg-[#F5EDF9] px-4 py-3">
+       <p className="text-xs text-[#806A91]">Ángulo recomendado por la investigación</p>
+       <p className="text-sm font-bold">{String(findings.selected_sales_angle).split(/[.;]/)[0].trim()}</p>
+      </div>}
+      <div className="grid sm:grid-cols-3 gap-3">
+       {concepts.map((c,i)=>{
+        const visual=visualFor(c);
+        return <button type="button" key={i} aria-pressed={selection===i}
+          onClick={()=>setSelection(i)}
+          className={'rounded-2xl text-left border-2 overflow-hidden transition '+(selection===i?'border-[#8054C9] shadow-md':'border-[#E9DFEC] hover:border-[#B89DE4]')}>
+         <div className="h-[110px] bg-gradient-to-br from-[#E6DBF6] via-[#F8E8EA] to-[#F9EDD7] flex items-center justify-center gap-4 relative">
+          {image?.url?<img src={image.url} alt="" className="h-20 w-20 rounded-xl object-contain bg-white/65 p-1 shadow-sm"/>:
+           <span className="text-5xl" aria-hidden="true">{visual.icon}</span>}
+          <div className="rounded-full bg-white/85 w-12 h-12 flex items-center justify-center text-2xl" aria-hidden="true">{visual.icon}</div>
+          <span className="absolute top-2 right-2 bg-white/90 rounded-full px-2 py-1 text-[10px] font-bold text-[#70509E]">{visual.label}</span>
+         </div>
+         <div className="p-4 space-y-2">
+          <p className="font-bold text-sm">{c.name}</p>
+          <p className="text-xs text-[#7D698A] line-clamp-2">“{c.hook}”</p>
+          {!!c.buyer_motive&&<p className="text-xs text-[#756581] line-clamp-2">Motivo: {c.buyer_motive}</p>}
+          <p className="text-xs font-bold text-[#7551BD]">{selection===i?'✓ Elegido':'Elegir concepto'}</p>
+         </div>
+        </button>;
+       })}
+      </div>
+      {concepts[selection]&&<div className="space-y-3">
+
+        {(!(style==='premium'||style==='cinematic')||reviewAudioMode!=='no_voice')&&<div className="rounded-xl bg-[#F8F3FC] p-4">
+         <p className="text-xs font-bold text-[#7555A5]">{style==='premium'||style==='cinematic'?(reviewAudioMode==='voiceover'?'Voz en off':'Diálogo entre actores'):'Guion hablado'} · {languages.find(([code])=>code===(project.video_language||'es'))?.[1]||'Español'}</p>
+         <textarea value={editedSpeech} onChange={e=>{manualSpeechRef.current=true;setEditedSpeech(e.target.value)}}
+          aria-label="Editar guion hablado sin costo adicional"
+          className={field+' mt-2 min-h-[95px] text-sm'} maxLength={650}/>
+         <p className="text-xs text-[#816D8F] mt-1">Edita el gancho, la explicación y el cierre sin pagar otra investigación. {style==='ugc'?
+           spokenWords+' palabras · objetivo '+speechMin+'–'+speechMax+' (ideal '+speechTarget+') para '+durationSpeech+' s.':
+           'El guion debe caber en '+durationSpeech+' segundos.'}</p>
+         <details className="mt-3 text-xs text-[#7A6988]">
+          <summary className="cursor-pointer">Mostrar los planos</summary>
+          <ul className="list-disc pl-4 mt-2 space-y-1">
+           {(concepts[selection].shots||[]).map((shot,i)=><li key={i}>{shot}</li>)}
+          </ul>
+         </details>
+        </div>}
+        {(style==='premium'||style==='cinematic')&&reviewAudioMode==='no_voice'&&
+         <p className="text-sm rounded-xl bg-[#F8F3FC] p-3">🎼 Sin voces: música instrumental y foley profesional. El guion hablado no se enviará.</p>}
+        <div className="space-y-2">
+         <p className="text-sm font-bold">¿Cómo quieres que se vea el anuncio?</p>
+         {project.creative_style==='auto'
+          ?<div className="space-y-2">
+            <p className="text-xs text-[#7E658B]">Proyecto anterior o estilo automático: puedes ajustar la presentación sin nueva consulta IA. Revisa y edita el guion hablado.</p>
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+             {creativeStyles.map(([id,icon,label])=><button type="button" key={id}
+              aria-pressed={style===id} onClick={()=>setStyle(id)}
+              className={'rounded-xl border-2 px-2 py-3 text-center '+(style===id
+               ?'border-[#7650C6] bg-[#F2EAFE]':'border-[#E7DEEC] bg-white')}>
+              <span className="block text-xl" aria-hidden="true">{icon}</span>
+              <span className="block mt-1 text-xs font-bold">{label}</span>
+             </button>)}
+            </div>
+           </div>
+          :<p className="text-sm font-semibold rounded-xl bg-[#F4EBFB] px-4 py-3">
+            {creativeStyles.find(([id])=>id===style)?.[2]||'Automático'} · elegido antes de investigar.
+            {style==='ugc'?' La voz es lo principal; los planos son apoyo.':''}
+           </p>}
+         {(style==='premium'||style==='cinematic')&&!template&&<div className="space-y-2">
+          <p className="text-sm font-bold">¿Quién aparece en el video final?</p>
+          <div className="grid sm:grid-cols-2 gap-2">
+           {[
+            ['product_only','📦 Solo producto','Escenas de producto con cámara y luz premium.'],
+            ['with_people','🎬 Con personas','Modelos en escenas de cine, sin estilo UGC.']
+           ].map(([id,label,description])=><button key={id} type="button" aria-pressed={reviewCastMode===id}
+            onClick={()=>{setReviewCastMode(id);if(id==='product_only'&&reviewAudioMode==='dialogue')setReviewAudioMode('no_voice');}} className={'rounded-xl border-2 p-3 text-left '+(reviewCastMode===id?'border-[#7650C6] bg-[#F2EAFE]':'border-[#E7DEEC] bg-white')}>
+            <strong className="block text-sm">{label}</strong><span className="block text-xs mt-1">{description}</span>
+           </button>)}
+          </div>
+          <p className="text-xs text-[#71588B]">Puedes cambiarlo sin pagar otra investigación.</p>
+         </div>}
+         {(style==='premium'||style==='cinematic')&&!template&&<div className="space-y-2">
+          <p className="text-sm font-bold">¿Qué sonido tendrá el video?</p>
+          <div className="grid sm:grid-cols-3 gap-2">
+           {[
+            ['no_voice','🎼 Sin voces','Música y efectos; ninguna voz.'],
+            ['voiceover','🎙️ Voz en off','Locución profesional.'],
+            ['dialogue','🗣️ Diálogo','Actores conversan entre sí.']
+           ].map(([id,label,description])=><button key={id} type="button"
+            disabled={id==='dialogue'&&reviewCastMode==='product_only'}
+            aria-pressed={reviewAudioMode===id}
+            onClick={()=>setReviewAudioMode(id)}
+            className={'rounded-xl border-2 p-3 text-left disabled:opacity-40 '+(reviewAudioMode===id?'border-[#7650C6] bg-[#F2EAFE]':'border-[#E7DEEC] bg-white')}>
+            <strong className="block text-sm">{label}</strong><span className="block text-xs mt-1">{description}</span>
+           </button>)}
+          </div>
+          <p className="text-xs text-[#71588B]">Puedes cambiar el audio sin pagar otra investigación; la voz generada depende del modelo.</p>
+         </div>}
+         <label className="block text-xs font-bold">Tomas
+          <select className={field+' mt-2'} value={shotPreference} onChange={e=>setShotPreference(e.target.value)}>
+           <option value="auto">La IA decide</option>
+           <option value="single">Una toma</option>
+           <option value="multi">Varias tomas</option>
+          </select>
+         </label>
+        </div>
+        <p className="text-xs text-[#6B5387]">El director audiovisual adapta voz, planos y referencias al modelo que elijas.</p>
+
+        <details className="rounded-xl border border-[#E7DCEF] p-4">
+         <summary className="cursor-pointer text-sm font-bold">Editar prompt técnico (avanzado)</summary>
+         <p className="text-xs text-[#7C6C88] mt-2">El motor puede recibir instrucciones técnicas en inglés; el guion hablado se solicita en el idioma elegido. La voz nativa depende del modelo de video seleccionado.</p>
+         <textarea value={editedPrompt} onChange={e=>{manualPromptRef.current=true;setEditedPrompt(e.target.value)}}
+           className={field+' mt-3 min-h-[155px]'} maxLength={5500}/>
+        </details>
+      </div>}
+      <label className="flex items-start gap-2 text-sm text-[#675678]">
+       <input type="checkbox" checked={sellerConfirmed}
+        onChange={e=>setSellerConfirmed(e.target.checked)}
+        className="mt-1"/>
+       <span>Confirmo que revisé el guion y las afirmaciones comerciales que autorizo.</span>
+      </label>
+      <button type="button" onClick={approve}
+       disabled={busy||!sellerConfirmed}
+        className="rounded-2xl bg-[#6D48CB] text-white font-bold py-3.5 px-6 disabled:opacity-50">
+        {busy?'Guardando…':'Aprobar concepto y elegir modelo de video'}
+      </button>
+      <p className="text-xs text-[#86788F]">La aprobación no genera ni cobra un video. El editor mostrará su precio antes del envío.</p>
+    </>}
+  </section>}
+ </div>;
+}

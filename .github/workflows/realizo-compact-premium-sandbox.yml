@@ -1,0 +1,67 @@
+name: Realizo - compact premium layout Sandbox
+on:
+  push:
+    branches: [feature/realizo-compact-premium-layout]
+    paths: ['.github/workflows/realizo-compact-premium-sandbox.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+concurrency:
+  group: realizo-compact-premium-sandbox
+  cancel-in-progress: false
+jobs:
+  test-and-deploy-sandbox:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/feature/realizo-compact-premium-layout'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      NEXT_TELEMETRY_DISABLED: '1'
+      REALIZO_ENV: sandbox
+      REALIZO_AUTH_PROVIDER: native
+      PAYPAL_MODE: sandbox
+    steps:
+      - uses: actions/checkout@v4
+        with: {submodules: recursive}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Confirm sandbox target and preview media
+        run: |
+          node scripts/check-realizo-auth-sandbox.mjs
+          npm run wallet:preflight:sandbox
+          test -s public/assets/realizo/templates/ugc-hover-5s.mp4
+          test -s public/assets/realizo/templates/ugc-preview-stream-30s.mp4
+      - name: Validate compact design and video/download safety
+        run: |
+          node --test tests/realizo-compact-premium-layout.test.mjs \
+            tests/realizo-premium-motion-interface.test.mjs \
+            tests/realizo-template-independent-flow.test.mjs \
+            tests/realizo-video-download-boundary.test.mjs
+      - name: Wallet and generation regression checks
+        run: |
+          npm run test:wallet
+          node --test tests/realizo-ad-templates-v11.test.mjs \
+            tests/realizo-premium-studio.test.mjs
+      - name: Compile Realizo Sandbox
+        run: |
+          npm run cloudflare:build:realizo-auth-sandbox
+          test -s .open-next/worker.js
+      - name: Publish only Sandbox
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          node scripts/check-realizo-auth-sandbox.mjs
+          npx --no-install opennextjs-cloudflare deploy --config wrangler.auth-sandbox.jsonc
+      - name: Verify studio online and wallet private without paid generation
+        run: |
+          node --input-type=module <<'JS'
+          const base='https://realizo-auth-sandbox.abelarriaga0.workers.dev';
+          const studio=await fetch(base+'/studio',{signal:AbortSignal.timeout(20000)});
+          if(studio.status!==200)throw Error('Studio unavailable: '+studio.status);
+          const wallet=await fetch(base+'/api/wallet',{signal:AbortSignal.timeout(20000)});
+          if(wallet.status!==401)throw Error('Wallet access control failed');
+          console.log('PASS: compact premium Sandbox served; wallet private; no generation fees.');
+          JS

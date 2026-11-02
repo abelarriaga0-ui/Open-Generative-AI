@@ -1,0 +1,106 @@
+name: Realizo quote diagnostics - read only no generation
+on:
+  push:
+    branches: [fix/realizo-muapi-pricing-v2]
+    paths: ['.github/workflows/realizo-quote-diagnostics-v2.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Read only Muapi model and estimator diagnostics, no API key or paid requests
+        run: |
+          node --input-type=module <<'JS'
+          const id='kling-o1-reference-to-video';
+          async function inspect(name,url,options={}){
+            try {
+              const response=await fetch(url,{...options,signal:AbortSignal.timeout(12000)});
+              const json=await response.json().catch(()=>({}));
+              let fields={};
+              if(name.startsWith('model')){
+                fields={name:json.name,category:json.category,dynamic_pricing:json.dynamic_pricing,
+                 estimate_endpoint:json.estimate_endpoint,
+                 cost_strategy:json.cost_strategy,
+                 endpoint:json.endpoint, endpoint_url:json.endpoint_url,
+                 required_fields:json.required_fields,
+                 duration_options:json.input_schema?.properties?.duration?.enum};
+              }else{
+                fields={currency:json.currency,usd_cost:json.cost,
+                  error_fields:json.detail?.map?.(x=>({type:x.type,loc:x.loc,msg:String(x.msg).slice(0,150)}))};
+              }
+              console.log(name,JSON.stringify({status:response.status,fields}));
+              return {status:response.status,json};
+            }catch(e){console.log(name,'NETWORK',e.name);return null}
+          }
+          const base='https://api.muapi.ai/api/v1/models/'+id;
+          const model=await inspect('model public',base);
+          await inspect('model with invalid key',base,{headers:{'x-api-key':'not-a-real-key'}});
+          const body={prompt:'Simple product demonstration',duration:7,aspect_ratio:'9:16'};
+          await inspect('estimate 7s',base+'/estimate-cost',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+          await inspect('estimate 5s',base+'/estimate-cost',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({...body,duration:5})});
+          JS
+      - name: Detect current browser bundle text on Sandbox without a login
+        run: |
+          node --input-type=module <<'JS'
+          const origin='https://realizo-auth-sandbox.abelarriaga0.workers.dev';
+          const r=await fetch(origin+'/studio',{signal:AbortSignal.timeout(20000)});
+          console.log('studio status',r.status);
+          const html=await r.text();
+          console.log('html length',html.length,'version strings',html.includes('No pudimos consultar el costo'));
+          const chunks=[...html.matchAll(/src="([^"]+\.js(?:\?[^"]*)?)"/g)].map(m=>m[1]);
+          console.log('scripts',chunks.length);
+          let old=0,newer=0;
+          for(const src of chunks.slice(0,30)){
+            const url=new URL(src,origin);
+            if(url.origin!==origin)continue;
+            const response=await fetch(url,{signal:AbortSignal.timeout(10000)}).catch(()=>null);
+            if(!response?.ok)continue;
+            const code=await response.text();
+            if(code.includes('No se pudo consultar el precio del video:'))old++;
+            if(code.includes('No pudimos consultar el costo en Muapi.'))newer++;
+          }
+          console.log('bundle legacy error chunks',old,'updated error chunks',newer);
+          JS
+
+      - name: Decode Muapi estimator error contract, all requests read-only
+        run: |
+          node --input-type=module <<'JS'
+          const id='kling-o1-reference-to-video',url='https://api.muapi.ai/api/v1/models/'+id+'/estimate-cost';
+          const base={prompt:'Simple product demonstration',duration:7,aspect_ratio:'9:16'};
+          const inputs=[
+            ['raw',base],
+            ['raw plus image', {...base,images_list:['https://example.com/product.jpg']}],
+            ['wrapped input',{input:base}],
+            ['wrapped inputs',{inputs:base}],
+            ['wrapped model inputs',{model:id,inputs:base}]
+          ];
+          for(const [name,input] of inputs){
+            const response=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(input),signal:AbortSignal.timeout(14000)}).catch(e=>({status:0,error:e.name}));
+            const content=typeof response.json==='function'?await response.json().catch(()=>({})):response;
+            console.log(name,JSON.stringify({status:response.status,
+              detail:JSON.stringify(content?.detail||content?.message||content?.error||'').slice(0,550),
+              currency:content?.currency,valid_price:Number.isFinite(Number(content?.cost))&&Number(content?.cost)>0}));
+          }
+          JS
+
+      - name: Probe video-required and image-reference providers for existing 7 second project
+        run: |
+          node --input-type=module <<'JS'
+          async function request(model,body) {
+            const url='https://api.muapi.ai/api/v1/models/'+model+'/estimate-cost';
+            const r=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},
+              body:JSON.stringify(body),signal:AbortSignal.timeout(12000)});
+            const d=await r.json().catch(()=>({}));
+            console.log(model,JSON.stringify({status:r.status,cost:d.cost,currency:d.currency,
+             error:JSON.stringify(d.error||d.detail||'').slice(0,320)}));
+          }
+          await request('kling-o1-reference-to-video',{prompt:'Demo',video_url:'https://example.com/clip.mp4',duration:7});
+          await request('kling-o1-reference-to-video',{prompt:'Demo',video_url:'https://example.com/clip.mp4',duration:5});
+          await request('seedance-2.5-intl-omni-reference',{prompt:'Demo',images_list:['https://example.com/photo.jpg'],duration:7,aspect_ratio:'9:16',omni_reference_task_type:'reference'});
+          await request('seedance-2.5-intl-omni-reference',{prompt:'Demo',images_list:['https://example.com/photo.jpg'],duration:12,aspect_ratio:'9:16',omni_reference_task_type:'reference'});
+          JS

@@ -99,6 +99,10 @@ import usePromptMenu from "./prompt/usePromptMenu.js";
 import en from "../messages/en/videoStudio.json";
 import zh from "../messages/zh/videoStudio.json";
 import { resolveCopy } from "../i18nUtils";
+import {buildCommercialDirectorPackage} from "../../../../lib/realizo-creative/sales-director.js";
+import RealizoSubtitleEditor from "./RealizoSubtitleEditor.jsx";
+import {scriptFromPrompt} from "../../../../lib/realizo-creative/subtitle-timeline.js";
+import {downloadRealizoVideo} from "../../../../lib/realizo-creative/download-video.js";
 
 async function downloadFile(url, filename) {
   try {
@@ -781,13 +785,33 @@ export default function VideoStudio({
   droppedFiles,
   onFilesHandled,
   locale = "en",
+  // Native Realizo uses per-account browser scope, never a shared anonymous history.
+  persistenceScope,
+  // Sandbox displays the original model picker without opening legacy BYOK spending.
+  previewOnly = false,
+  realizoBrand = false,
+  preparedBrief = null,
+  // Realizo "Crear video" always starts empty; prior videos live in Mis videos.
+  freshCreation = false,
+  uploadAsset = null,
+  onWalletGenerate = null,
+  generationReady = false,
+  billableModelIds = [],
 }) {
-  const copy = useMemo(() => resolveCopy(en, zh, locale), [locale]);
+  const copy = useMemo(() => {
+    const original = resolveCopy(en, zh, locale);
+    if (!realizoBrand) return original;
+    return { ...original, empty: {
+      heading: 'REALIZO',
+      subtitle: 'Tu siguiente video comienza con una idea.',
+    }};
+  }, [locale, realizoBrand]);
   const LEGACY_PERSIST_KEY = "hg_video_studio_persistent";
-  const PERSIST_KEY = scopedPersistKey(LEGACY_PERSIST_KEY, apiKey);
+  const PERSIST_KEY = scopedPersistKey(LEGACY_PERSIST_KEY, persistenceScope ?? apiKey);
   useEffect(() => {
-    migrateLegacyPersistKey(LEGACY_PERSIST_KEY, PERSIST_KEY);
-  }, [PERSIST_KEY]);
+    // Never import unscoped historical items into another authenticated account.
+    if (!persistenceScope) migrateLegacyPersistKey(LEGACY_PERSIST_KEY, PERSIST_KEY);
+  }, [PERSIST_KEY, persistenceScope]);
 
   // ── generation state ──
   const [imageMode, setImageMode] = useState(false); // i2v
@@ -849,6 +873,7 @@ export default function VideoStudio({
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState(null);
   const [fullscreenUrl, setFullscreenUrl] = useState(null);
+  const [subtitleTarget, setSubtitleTarget] = useState(null);
   const [canvasUrl, setCanvasUrl] = useState(null);
   const [canvasModel, setCanvasModel] = useState(null);
   const [showCanvas, setShowCanvas] = useState(false);
@@ -865,6 +890,7 @@ export default function VideoStudio({
 
   // ── prompt ──
   const [prompt, setPrompt] = useState("");
+  const [allowAnimationInsteadOfReference, setAllowAnimationInsteadOfReference] = useState(false);
 
   // ── refs ──
   const containerRef = useRef(null);
@@ -1298,6 +1324,10 @@ export default function VideoStudio({
 
   // ── Persistence: Load ────────────────────────────────────────────────────
   useEffect(() => {
+    // Never automatically inject the previous product's prompt, image or
+    // reference slots into a newly started Realizo video. Historical videos
+    // and research remain on the server in the account's own library.
+    if(freshCreation){hasRestored.current=true;return;}
     try {
       const stored = localStorage.getItem(PERSIST_KEY);
       if (stored) {
@@ -1406,10 +1436,101 @@ export default function VideoStudio({
     } finally {
       hasRestored.current = true;
     }
-  }, [applyControlsForModel, defaultModel.id]);
+  }, [applyControlsForModel, defaultModel.id, freshCreation]);
+
+  // Product photos are identity references, not first frames, in Premium.
+  const appliedBriefRevision = useRef(null);
+  useEffect(() => {
+    if(!preparedBrief?.revision || appliedBriefRevision.current===preparedBrief.revision)return;
+    appliedBriefRevision.current=preparedBrief.revision;
+    setAllowAnimationInsteadOfReference(false);
+    const images=Array.isArray(preparedBrief.images)?
+      preparedBrief.images.filter(url=>typeof url==="string" && /^https:\/\//.test(url)).slice(0,4):[];
+    setPrompt(String(preparedBrief.prompt||"").slice(0,6000));
+    // A Premium investigation is already tailored to this exact provider variant
+    // and duration. Apply it instead of silently reverting to another motor.
+    const researchedModel=preparedBrief.video_model_id;
+    const researchedVariant=researchedModel&&videoModelCatalog.variantById.get(researchedModel);
+    const researchedFamily=researchedVariant&&videoModelCatalog.familyByVariantId.get(researchedModel);
+    if(researchedVariant&&researchedFamily){
+      const workflowId=preparedBrief.video_workflow_id||null;
+      applyUserSelectedVariant(researchedVariant,researchedVariant.mode,researchedFamily,workflowId);
+      if(Number(preparedBrief.video_duration_seconds)>0)
+        setSelectedDuration(Number(preparedBrief.video_duration_seconds));
+      // Prompt text alone cannot enforce orientation. Configure the actual
+      // model parameter for social vertical where the endpoint supports it.
+      const commonRatios=getVideoCommonOptions(researchedVariant.model,{
+        duration:Number(preparedBrief.video_duration_seconds)||8,
+      }).aspectRatios||[];
+      const availableRatios=researchedVariant.mode==='i2v'
+        ?getAspectRatiosForI2VModel(researchedModel)
+        :getAspectRatiosForVideoModel(researchedModel);
+      if(commonRatios.includes('9:16') || availableRatios.includes('9:16')){
+        setSelectedAr('9:16');
+      }
+      if(preparedBrief.media_role==='reference_only'&&workflowId==='references'){
+        const key=getVideoWorkflowDraftKey(researchedFamily.id,'references');
+        setWorkflowMediaDrafts(prev=>({...prev,[key]:{...prev[key],referenceImages:images}}));
+        setUploadedImageUrls([]);
+      }else if(researchedVariant.mode==='i2v'){
+        setUploadedImageUrls(images.slice(0,Math.max(1,getModelMediaCapabilities(researchedVariant.model).image.maxItems||1)));
+      }else{
+        setUploadedImageUrls([]);
+      }
+      return;
+    }
+    if(!images.length)return;
+    if(preparedBrief.media_role==='reference_only'){
+      const selectedFamily=videoModelCatalog.familyById.get(selectionRef.current.selectedFamilyId);
+      const choices=[selectedFamily,videoModelCatalog.familyById.get("seedance-2.5"),
+        videoModelCatalog.familyById.get("seedance-2"),
+        videoModelCatalog.familyById.get("kling-o1")].filter(Boolean);
+      let variant=null,family=null;
+      for(const item of choices){
+        const workflow=getVideoWorkflowFamily(item.id)?.workflowById.get("references");
+        const available=workflow?.variants?.find(v=>v?.model&&!v.model.requiresRequestId &&
+          getModelMediaCapabilities(v.model).image.maxItems>0);
+        if(available){variant=available;family=item;break;}
+      }
+      if(variant&&family){
+        applyUserSelectedVariant(variant,"i2v",family,"references");
+        const availableRatios=getVideoCommonOptions(variant.model,{duration:selectedDuration}).aspectRatios||[];
+        if(availableRatios.includes("9:16") ||
+           getAspectRatiosForI2VModel(variant.model.id).includes("9:16")){
+          setSelectedAr("9:16");
+        }
+        const key=getVideoWorkflowDraftKey(family.id,"references");
+        setWorkflowMediaDrafts(prev=>({...prev,[key]:{
+          ...prev[key],referenceImages:images}}));
+        setUploadedImageUrls([]);
+        return;
+      }
+      // No supported reference variant: never force image animation.
+      setUploadedImageUrls(images.slice(0,1));
+      return;
+    }
+    const existingFamily=videoModelCatalog.familyById.get(selectionRef.current.selectedFamilyId);
+    let candidate=getFamilyVariant(videoModelCatalog,existingFamily,"i2v",selectionRef.current.selectedModel);
+    let family=existingFamily;
+    if(!candidate){
+      const entry=videoModelPickerEntries.find(item=>item.variantsByMode.i2v);
+      candidate=entry?.variantsByMode.i2v;family=entry?.family;
+    }
+    if(candidate&&family){
+      applyUserSelectedVariant(candidate,"i2v",family);
+      setUploadedImageUrls(images.slice(0,Math.max(1,getModelMediaCapabilities(candidate.model).image.maxItems||1)));
+    }
+  },[preparedBrief?.revision,applyUserSelectedVariant,billableModelIds,realizoBrand]);
+
+  // Realizo keeps the complete model selector and the user's selected
+  // duration, quality and resolution. A quote is shown before paid generation.
+  // Do not force a Wan 2.2 pilot choice when another model was selected.
 
   // ── Persistence: Save ────────────────────────────────────────────────────
   useEffect(() => {
+    // The new-video editor must not overwrite account-scoped historical
+    // drafts. The server continues storing all generated jobs.
+    if(freshCreation)return;
     const timer = setTimeout(() => {
       try {
         const state = {
@@ -1459,6 +1580,7 @@ export default function VideoStudio({
     workflowMediaDrafts,
     prompt,
     localHistory,
+    freshCreation,
   ]);
 
   // ── Derived UI values ────────────────────────────────────────────────────
@@ -1595,12 +1717,14 @@ export default function VideoStudio({
         const progress = new Array(selectedFiles.length).fill(0);
         const results = await Promise.allSettled(
           selectedFiles.map((file, index) =>
-            uploadFile(apiKey, file, (value) => {
-              progress[index] = value;
-              setProgress(
-                Math.round(progress.reduce((sum, item) => sum + item, 0) / progress.length),
-              );
-            }),
+            (uploadAsset && file.type.startsWith('image/')
+              ? uploadAsset(file)
+              : uploadFile(apiKey, file, (value) => {
+                  progress[index] = value;
+                  setProgress(
+                    Math.round(progress.reduce((sum, item) => sum + item, 0) / progress.length),
+                  );
+                })),
           ),
         );
         const failures = results.flatMap((result, index) =>
@@ -1625,7 +1749,7 @@ export default function VideoStudio({
         setProgress(0);
       }
     },
-    [apiKey, copy.errors.labelExceedsLimit, copy.errors.labelUploadFailed],
+    [apiKey, uploadAsset, copy.errors.labelExceedsLimit, copy.errors.labelUploadFailed],
   );
 
   const uploadWorkflowSlotFiles = useCallback(
@@ -1870,9 +1994,9 @@ export default function VideoStudio({
     setEndImageProgress(0);
     const selectionAtStart = { ...selectionRef.current };
     try {
-      const url = await uploadFile(apiKey, file, (pct) => {
-        setEndImageProgress(pct);
-      });
+      const url = uploadAsset
+        ? await uploadAsset(file)
+        : await uploadFile(apiKey, file, (pct) => { setEndImageProgress(pct); });
       const latestModel = videoModelCatalog.variantById.get(
         selectionRef.current.selectedModel,
       )?.model;
@@ -2084,11 +2208,23 @@ export default function VideoStudio({
       toast.error(copy.errors.waitForCurrentUpload);
       return;
     }
+    if(preparedBrief?.project_id && preparedBrief.video_model_id &&
+      (selectedModel!==preparedBrief.video_model_id ||
+       Number(selectedDuration)!==Number(preparedBrief.video_duration_seconds))){
+      alert('El guion fue preparado para '+preparedBrief.video_model_id+
+        ' y '+preparedBrief.video_duration_seconds+' segundos. Vuelve al proyecto para revisar la configuración; no se consulta ni cobra otra IA automáticamente.');
+      return;
+    }
+    if(preparedBrief?.media_role==='reference_only' &&
+       selectedWorkflowId!=='references' && !allowAnimationInsteadOfReference){
+      alert("Para crear escenas nuevas usa el modo Referencias de este motor. Animar imagen solo se permite si lo autorizas expresamente.");
+      return;
+    }
     const currentModel = getCurrentModel();
     const grouped = getGroupedVideoConfiguration(selectedModel);
     const activeParameterValues = createModelParameterValues(currentModel, modelParameterValues);
     const generationParameterValues = grouped && currentModel.inputs?.omni_reference_task_type
-      ? { ...activeParameterValues, omni_reference_task_type: "auto" }
+      ? { ...activeParameterValues, omni_reference_task_type: selectedWorkflowId==="references" ? "reference" : "auto" }
       : activeParameterValues;
     const commonParams = grouped
       ? buildVideoCommonPayload(currentModel, {
@@ -2106,7 +2242,27 @@ export default function VideoStudio({
     const isExtendMode = currentModel?.requiresRequestId;
     const capabilities = getModelMediaCapabilities(currentModel);
     const requestSource = selectedVeoTool ? selectedVeoSource : generationSources[selectedFamily.id];
-    const trimmedPrompt = promptDisabled ? "" : prompt.trim();
+    const dynamicDirection=preparedBrief?.media_role==='reference_only' &&
+      preparedBrief.creative_concept &&
+      prompt.trim()===String(preparedBrief.prompt||'').trim()
+      ?buildCommercialDirectorPackage({
+        concept:preparedBrief.creative_concept,
+        productName:preparedBrief.productName,
+        description:preparedBrief.productDescription,
+        cta:preparedBrief.overlay_cta,
+        market:preparedBrief.market||'EC',
+        videoLanguage:preparedBrief.video_language||'es',
+        modelId:selectedModel,
+        workflowId:selectedWorkflowId,
+        duration:selectedDuration,
+        style:preparedBrief.creative_style,
+        shotPreference:preparedBrief.shot_preference,
+        castMode:preparedBrief.cast_mode||'with_people',
+        audioMode:preparedBrief.audio_mode||'no_voice',
+        productGeometry:preparedBrief.product_visual_geometry||null,
+        imageProvided:true,
+      }):null;
+    const trimmedPrompt=promptDisabled?"":(dynamicDirection?.prompt||prompt.trim());
     const workflowMedia = selectedWorkflowId
       ? activeWorkflowMediaDraft || {}
       : {
@@ -2197,7 +2353,12 @@ export default function VideoStudio({
         if (currentModel?.hasPrompt && trimmedPrompt) {
           v2vParams.prompt = trimmedPrompt;
         }
-        res = await processV2V(apiKey, v2vParams);
+        res = onWalletGenerate && generationReady ? await onWalletGenerate(v2vParams,{creativeContext:preparedBrief?.project_id?{
+           project_id:preparedBrief.project_id,
+           cast_mode:preparedBrief.cast_mode,
+           audio_mode:preparedBrief.audio_mode||'no_voice',
+           creative_style:preparedBrief.creative_style,
+          }:null}) : await processV2V(apiKey, v2vParams);
         if (!res?.url) throw new Error(copy.errors.noVideoUrlReturned);
 
         const genId = res.request_id || res.id || Date.now().toString();
@@ -2235,7 +2396,16 @@ export default function VideoStudio({
         if (!grouped && selectedQuality) i2vParams.quality = selectedQuality;
         if (showEffect && selectedEffect) i2vParams.name = selectedEffect;
 
-        res = await generateI2V(apiKey, i2vParams);
+        res = onWalletGenerate && generationReady
+          ? await onWalletGenerate(i2vParams,{
+             creativeContext:preparedBrief?.project_id?{
+              project_id:preparedBrief.project_id,
+              cast_mode:preparedBrief.cast_mode,
+              audio_mode:preparedBrief.audio_mode||'no_voice',
+              creative_style:preparedBrief.creative_style,
+             }:null
+            })
+          : await generateI2V(apiKey, i2vParams);
         if (!res?.url) throw new Error(copy.errors.noVideoUrlReturned);
 
         const genId = res.request_id || res.id || Date.now().toString();
@@ -2246,6 +2416,7 @@ export default function VideoStudio({
           id: genId,
           url: res.url,
           prompt: trimmedPrompt,
+          spoken_script:preparedBrief?.audio_mode==='no_voice'&&['premium','cinematic'].includes(preparedBrief?.creative_style)?'':(preparedBrief?.spoken_script||scriptFromPrompt(trimmedPrompt)),
           model: selectedModel,
           ...(!grouped ? {
             ...(aspectRatios.length > 0 ? { aspect_ratio: selectedAr } : {}),
@@ -2285,7 +2456,12 @@ export default function VideoStudio({
         if (!grouped && resolutions.length > 0) params.resolution = selectedResolution;
         if (!grouped && !selectedVeoTool && selectedQuality) params.quality = selectedQuality;
 
-        res = await generateVideo(apiKey, params);
+        res = onWalletGenerate && generationReady ? await onWalletGenerate(params,{creativeContext:preparedBrief?.project_id?{
+           project_id:preparedBrief.project_id,
+           cast_mode:preparedBrief.cast_mode,
+           audio_mode:preparedBrief.audio_mode||'no_voice',
+           creative_style:preparedBrief.creative_style,
+          }:null}) : await generateVideo(apiKey, params);
         if (!res?.url) throw new Error(copy.errors.noVideoUrlReturned);
 
         const genId = res.request_id || res.id || Date.now().toString();
@@ -2324,7 +2500,10 @@ export default function VideoStudio({
       onGenerationEnd?.();
     }
   }, [
+    preparedBrief,allowAnimationInsteadOfReference,
     apiKey,
+    onWalletGenerate,
+    generationReady,
     copy,
     prompt,
     promptDisabled,
@@ -2486,10 +2665,14 @@ export default function VideoStudio({
   return (
     <div
       ref={containerRef}
-      className="w-full h-full flex flex-col items-center justify-center bg-app-bg relative overflow-hidden"
+      className={realizoBrand
+        ? "realizo-video-core w-full h-full flex flex-col items-center bg-[#FAF7F4] relative overflow-hidden"
+        : "w-full h-full flex flex-col items-center justify-center bg-app-bg relative overflow-hidden"}
     >
       {/* ── CENTRAL GALLERY AREA ── */}
-      <div className="flex-1 w-full max-w-7xl mx-auto overflow-y-auto custom-scrollbar pb-40 lg:pb-32 px-2">
+      <div className={realizoBrand
+          ? "realizo-video-gallery flex-1 min-h-0 w-full max-w-7xl mx-auto overflow-y-auto custom-scrollbar px-3 sm:px-6"
+          : "flex-1 w-full max-w-7xl mx-auto overflow-y-auto custom-scrollbar pb-40 lg:pb-32 px-2"}>
         {history.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full pt-4 animate-fade-in-up">
             {history.map((entry, idx) => {
@@ -2525,7 +2708,9 @@ export default function VideoStudio({
                       title={copy.gallery.download}
                       onClick={(e) => {
                         e.stopPropagation();
-                        downloadFile(entry.url, `video-${entry.id || idx}.mp4`);
+                        (realizoBrand
+                          ? downloadRealizoVideo(String(entry.id)).catch(error=>toast.error(error.message))
+                          : downloadFile(entry.url, `video-${entry.id || idx}.mp4`));
                       }}
                       className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10"
                     >
@@ -2577,7 +2762,9 @@ export default function VideoStudio({
                         kind: "download",
                         label: copy.gallery.download,
                         onSelect: () =>
-                          downloadFile(entry.url, `video-${entry.id || idx}.mp4`),
+                          (realizoBrand
+                            ? downloadRealizoVideo(String(entry.id)).catch(error=>toast.error(error.message))
+                            : downloadFile(entry.url, `video-${entry.id || idx}.mp4`)),
                       },
                       isSeedance2 && {
                         kind: "extend",
@@ -2599,6 +2786,15 @@ export default function VideoStudio({
                     ]}
                   />
 
+                  {realizoBrand&&<button
+                    type="button"
+                    onClick={e=>{
+                      e.stopPropagation();
+                      setSubtitleTarget({url:entry.url,script:entry.spoken_script||scriptFromPrompt(entry.prompt),
+                        prompt:entry.prompt||'',filename:'realizo-'+(entry.id||idx)});
+                    }}
+                    className="mx-3 mt-2 rounded-xl border border-[#C5A6EB]/50 bg-[#714CC7] px-3 py-2 text-sm text-white font-bold hover:bg-[#855DE1]"
+                  >Agregar subtítulos · Gratis</button>}
                   {/* Prompt & Details */}
                   <div className="p-3 bg-black/80 backdrop-blur-sm border-t border-white/5 flex-1 flex flex-col justify-between gap-2">
                     <p className="text-white/70 text-xs line-clamp-3 leading-relaxed" title={entry.prompt}>
@@ -2623,6 +2819,23 @@ export default function VideoStudio({
                 </div>
               );
             })}
+          </div>
+        ) : realizoBrand ? (
+          <div className="realizo-visual-empty w-full min-h-[245px] h-full flex flex-col items-center justify-center px-5 py-6 text-center">
+            <div className="relative mb-5 flex items-center justify-center">
+              <div className="absolute -rotate-[13deg] translate-x-[-28px] translate-y-1 w-[93px] h-[112px] rounded-[22px] border-2 border-[#DEC6F2] bg-[#E4D1F5]" />
+              <div className="absolute rotate-[10deg] translate-x-[26px] translate-y-[-3px] w-[93px] h-[112px] rounded-[22px] border-2 border-[#FFCCC5] bg-[#FFBEB6]" />
+              <div className="relative z-10 w-[96px] h-[115px] rounded-[23px] bg-[#332447] shadow-[0_15px_35px_rgba(48,33,79,.18)] flex items-center justify-center">
+                <svg width="43" height="43" viewBox="0 0 48 48" fill="none" aria-hidden="true"><path d="M16 9v30L39 24 16 9Z" fill="#FFBCA6"/><circle cx="34" cy="11" r="4" fill="#BDF9CD"/></svg>
+              </div>
+            </div>
+            <p className="text-[11px] font-extrabold tracking-[.24em] uppercase text-[#9576B6]">REALIZO STUDIO</p>
+            <h2 className="mt-2 text-[27px] sm:text-[36px] font-extrabold tracking-[-.05em] text-[#2D2042] leading-tight">Tu idea cobra vida<span className="text-[#ED8F8B]">.</span></h2>
+            <p className="mt-3 text-[13px] text-[#83768C] max-w-[440px] leading-relaxed">
+              {uploadedImageUrls.length || preparedBrief?.images?.length
+                ? "Tu producto y su concepto están listos. Ajusta el modelo y los detalles de tu video."
+                : "Escribe una idea o incorpora una imagen para crear tu próximo video."}
+            </p>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full animate-fade-in-up transition-all duration-700 min-h-[50vh]">
@@ -2675,8 +2888,21 @@ export default function VideoStudio({
         )}
       </div>
 
-      {/* ── BOTTOM PROMPT BAR ── */}
-      <PromptComposer>
+      {preparedBrief?.media_role==='reference_only'&&
+        <div className="w-[95%] mx-auto px-3 py-2 rounded-lg bg-[#EEE5F7] text-[#563979] text-xs">
+          {selectedWorkflowId==='references'?
+            <span>✓ Imagen usada como referencia de producto · Escenas nuevas con dirección comercial.</span>:
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={allowAnimationInsteadOfReference}
+                onChange={e=>setAllowAnimationInsteadOfReference(e.target.checked)}/>
+              Este modo podría animar la fotografía. Acepto utilizarlo en vez de generar con referencias.
+            </label>}
+        </div>}
+       {/* ── BOTTOM PROMPT BAR ── */}
+      <PromptComposer
+        positionClassName={realizoBrand ? "realizo-docked-composer relative w-full z-30 px-4 sm:px-6 pb-5 pt-2" : undefined}
+        panelClassName={realizoBrand ? "realizo-premium-composer" : ""}
+      >
           <div className="flex flex-col gap-3">
             {/* Inline list of uploaded media files */}
             <div className="flex items-start gap-2.5 flex-wrap">
@@ -2884,8 +3110,10 @@ export default function VideoStudio({
                 ref={textareaRef}
                 value={prompt}
                 onChange={handlePromptInput}
-                placeholder={promptPlaceholder}
+                placeholder={realizoBrand ? "Describe la escena y el movimiento que quieres crear…" : promptPlaceholder}
                 disabled={promptDisabled}
+                maxHeightMobile={realizoBrand ? 100 : 150}
+                maxHeightDesktop={realizoBrand ? 125 : 250}
               />
               )}
             </div>
@@ -3396,8 +3624,9 @@ export default function VideoStudio({
 
             {/* Generate button */}
             <PromptAction
+              className={realizoBrand ? "realizo-generation-action" : ""}
               onClick={handleGenerate}
-              disabled={generating || mediaUploading || (selectedTool?.group === "continueGenerated" && !hasContinuationSource) || (selectedVeoTool && !selectedVeoSource)}
+              disabled={(previewOnly && !generationReady) || generating || mediaUploading || (selectedTool?.group === "continueGenerated" && !hasContinuationSource) || (selectedVeoTool && !selectedVeoSource)}
             >
               {generating ? (
                 <>
@@ -3415,6 +3644,13 @@ export default function VideoStudio({
           </PromptFooter>
       </PromptComposer>
 
+      {realizoBrand&&subtitleTarget&&<RealizoSubtitleEditor
+        videoUrl={subtitleTarget.url}
+        spokenScript={subtitleTarget.script}
+        prompt={subtitleTarget.prompt}
+        filename={subtitleTarget.filename}
+        onClose={()=>setSubtitleTarget(null)}
+      />}
       {/* ── FULLSCREEN VIDEO MODAL ── */}
       {fullscreenUrl && (
         <div 
@@ -3434,6 +3670,20 @@ export default function VideoStudio({
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
+          {realizoBrand&&<button type="button"
+            onClick={e=>{
+              e.stopPropagation();
+              const entry=history.find(x=>x.url===fullscreenUrl);
+              setFullscreenUrl(null);
+              setSubtitleTarget({
+                url:fullscreenUrl,
+                script:entry?.spoken_script||scriptFromPrompt(entry?.prompt||''),
+                prompt:entry?.prompt||'',filename:'realizo-'+(entry?.id||'video'),
+              });
+            }}
+            className="absolute top-6 left-6 rounded-xl bg-[#7955CB] px-4 py-3 text-white text-sm font-bold">
+            Agregar subtítulos · Gratis
+          </button>}
           <video 
             src={fullscreenUrl} 
             controls 

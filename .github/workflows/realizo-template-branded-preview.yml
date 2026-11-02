@@ -1,0 +1,39 @@
+name: Realizo template - produce protected branded preview asset
+on:
+  push:
+    branches: [feature/realizo-controlled-video-downloads]
+    paths: ['.github/workflows/realizo-template-branded-preview.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  render-branded-preview:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/feature/realizo-controlled-video-downloads'
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: true}
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-dejavu-core >/dev/null
+      - name: Watermark and downscale original preview (do not distribute the original)
+        shell: bash
+        run: |
+          set -euo pipefail
+          IN=public/assets/realizo/templates/ugc-master-30s.mp4
+          OUT=public/assets/realizo/templates/ugc-preview-30s.mp4
+          test -s "$IN"
+          ffmpeg -y -hide_banner -loglevel error -i "$IN" \
+            -vf "scale=360:640,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='REALIZO - VISTA PREVIA':fontsize=20:fontcolor=white@0.60:x=(w-text_w)/2:y=(h-text_h)/2:box=1:boxcolor=black@0.18:boxborderw=8" \
+            -c:v libx264 -preset veryfast -crf 30 -movflags +faststart \
+            -c:a aac -b:a 64k "$OUT"
+          test -s "$OUT"
+          test "$(stat -c%s "$OUT")" -lt 6000000
+          ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1 "$OUT"
+      - name: Store only preview as new feature-branch asset
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/assets/realizo/templates/ugc-preview-30s.mp4
+          git commit -m 'assets(realizo): watermarked 640p-only template preview'
+          git push origin HEAD:feature/realizo-controlled-video-downloads

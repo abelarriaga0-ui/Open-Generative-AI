@@ -1,0 +1,28 @@
+name: Realizo - verify PayPal Sandbox credentials
+
+on:
+  push:
+    branches:
+      - feature/wallet-compartida-muapi
+    paths:
+      - .github/workflows/realizo-paypal-sandbox-check.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-paypal-sandbox:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/feature/wallet-compartida-muapi'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test OAuth with Sandbox-only endpoint (do not disclose secrets)
+        env:
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+        run: node scripts/check-paypal-sandbox-credentials.mjs

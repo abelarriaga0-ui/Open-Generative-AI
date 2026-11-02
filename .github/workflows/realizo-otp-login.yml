@@ -1,0 +1,25 @@
+name: Realizo Sandbox - configure OTP login only
+on:
+  push:
+    branches:
+      - feature/wallet-compartida-muapi
+    paths:
+      - .github/workflows/realizo-otp-login.yml
+      - scripts/configure-realizo-otp.mjs
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  set-otp-login:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/feature/wallet-compartida-muapi'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Configure OTP on Realizo app only and verify preserved security settings
+        env:
+          CLOUDFLARE_ACCESS_API_TOKEN: ${{ secrets.CLOUDFLARE_ACCESS_API_TOKEN }}
+        run: node scripts/configure-realizo-otp.mjs

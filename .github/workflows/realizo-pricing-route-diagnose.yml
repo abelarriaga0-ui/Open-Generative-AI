@@ -1,0 +1,18 @@
+name: Realizo route guard diagnosis
+on:
+  push:
+    branches: [fix/realizo-unified-muapi-pricing-v3]
+    paths:
+      - '.github/workflows/realizo-pricing-route-diagnose.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  find-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Find pilot route restriction and matching allowlist
+        run: |
+          git grep -n -C 8 'route_unavailable_in_wallet_pilot' -- ':!package-lock.json' || true
+          git grep -nE 'api/wallet/quote|api/realizo/pricing' -- 'worker*' 'scripts/*' 'src/*' 'lib/*' 'app/*' || true

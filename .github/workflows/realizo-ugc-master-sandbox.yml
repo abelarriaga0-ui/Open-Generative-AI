@@ -1,0 +1,79 @@
+name: Realizo UGC master 30s — test and publish isolated Sandbox
+on:
+  push:
+    branches: [feature/realizo-ugc-muapi-30s-locked]
+    paths:
+      - '.github/workflows/realizo-ugc-master-sandbox.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: realizo-ugc-master-auth-sandbox-deploy
+  cancel-in-progress: false
+jobs:
+  publish-ugc-sandbox:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/feature/realizo-ugc-muapi-30s-locked'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      NEXT_TELEMETRY_DISABLED: '1'
+      REALIZO_ENV: sandbox
+      REALIZO_AUTH_PROVIDER: native
+      PAYPAL_MODE: sandbox
+    steps:
+      - name: Checkout feature branch with studio submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify target is ONLY realizo-auth-sandbox and NOT production
+        run: |
+          node scripts/check-realizo-auth-sandbox.mjs
+          npm run wallet:preflight:sandbox
+          node --input-type=module <<'JS'
+          import {readFileSync} from 'node:fs';
+          const x=JSON.parse(readFileSync('wrangler.auth-sandbox.jsonc','utf8'));
+          if(x.name!=='realizo-auth-sandbox'||x.vars.PAYPAL_MODE!=='sandbox'||x.vars.REALIZO_ENV!=='sandbox')throw Error('Unsafe target');
+          JS
+      - name: Build full isolated Realizo app
+        run: npm run cloudflare:build:realizo-auth-sandbox
+      - name: Run wallet and locked-template contract tests (no provider charges)
+        run: |
+          npm run test:wallet
+          node --test tests/realizo-muapi-master-ugc30.test.mjs tests/realizo-ad-templates-v11.test.mjs tests/realizo-premium-studio.test.mjs
+          test -s .open-next/worker.js
+      - name: Apply only pending additive Sandbox D1 migrations
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          node scripts/check-realizo-auth-sandbox.mjs
+          npx --no-install wrangler d1 migrations apply WALLETS_DB --config wrangler.auth-sandbox.jsonc --remote
+      - name: Publish only isolated Realizo authentication Sandbox
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+        run: |
+          node scripts/check-realizo-auth-sandbox.mjs
+          npx --no-install opennextjs-cloudflare deploy --config wrangler.auth-sandbox.jsonc
+      - name: Smoke-check Sandbox access after deploy without invoking paid AI
+        run: |
+          node --input-type=module <<'JS'
+          const base='https://realizo-auth-sandbox.abelarriaga0.workers.dev';
+          const studio=await fetch(base+'/studio',{redirect:'manual',signal:AbortSignal.timeout(25000)});
+          if(studio.status!==200)throw Error('Studio not available: '+studio.status);
+          const wallet=await fetch(base+'/api/wallet',{redirect:'manual',signal:AbortSignal.timeout(25000)});
+          if(wallet.status!==401)throw Error('Wallet must remain private: '+wallet.status);
+          console.log('PASS: Sandbox website served; wallet protected; no video or AI requests sent.');
+          JS
+
+# Re-run after final locked-master research instruction refinement.

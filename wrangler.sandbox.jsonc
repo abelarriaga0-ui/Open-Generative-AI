@@ -1,0 +1,32 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "realizo-sandbox",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-10-16",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "global_fetch_strictly_public"
+  ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "keep_vars": true,
+  "vars": {
+    "REALIZO_ENV": "sandbox",
+    "REALIZO_WALLET_ONLY": "true",
+    "PAYPAL_MODE": "sandbox",
+    "MUAPI_GENERATION_ENABLED": "false"
+  },
+  "d1_databases": [
+    {
+      "binding": "WALLETS_DB",
+      "database_name": "realizo-wallets-sandbox",
+      "database_id": "2561f6c8-bfb2-4ea4-8527-7fec29188edf",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
