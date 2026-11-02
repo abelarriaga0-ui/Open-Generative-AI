@@ -21,7 +21,7 @@ export function extractOwnedDownloadUrl(job){
 }
 // Full file delivery is permitted only through Realizo's explicit download action.
 // A direct third-party download URL is not displayed by the player.
-export async function GET(request,{params}){
+export async function POST(request,{params}){
   if(!enforceSameOrigin(request))return Response.json({error:'invalid_origin'},{status:403});
   try{
     const env=await getWalletEnvironment();
