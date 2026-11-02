@@ -88,7 +88,8 @@ test('template choice reaches project POST, persistence, approval and a prefille
  assert.match(studio,/function chooseAdTemplate\(id\)/);
  assert.match(studio,/setTemplateId\(item.id\)/);
  assert.match(studio,/initialTemplateId=\{templateId\}/);
- assert.match(studio,/RealizoTemplateLibrary featured onChoose=\{chooseAdTemplate\}/);
+ assert.match(studio,/onUseTemplate=\{chooseAdTemplate\}/);
+ assert.match(read('components/RealizoMotionHome.jsx'),/RealizoTemplateLibrary featured onChoose=\{onUseTemplate\}/);
  assert.match(premium,/template_id:template\?\.id\|\|null/);
  assert.match(premium,/template_actor:templateActor,template_setting:templateSetting/);
  assert.match(premium,/template_change_request:templateChangeRequest/);
