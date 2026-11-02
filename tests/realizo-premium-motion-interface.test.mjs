@@ -9,7 +9,7 @@ test('premium homepage uses functional navigation and the actual licensed Realiz
  assert.match(home,/TEMPLATE_POSTER_SRC/);
  assert.match(home,/onClick=\{onCreate\}/);
  assert.match(home,/onClick=\{onTemplates\}/);
- assert.match(home,/onClick=\{onUseTemplate\('ugc-vendedor'\)\}/);
+ assert.match(home,/onClick=\{\(\)=>onUseTemplate\('ugc-vendedor'\)\}/);
  assert.match(home,/onClick=\{onViewVideos\}/);
  assert.match(home,/onClick=\{action\[a\.type\]\}/);
  assert.match(studio,/<RealizoMotionHome/);
