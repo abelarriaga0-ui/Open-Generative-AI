@@ -63,12 +63,13 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
  const [templateChangeRequest,setTemplateChangeRequest]=useState('');
  const [templateSetting,setTemplateSetting]=useState('auto');
  const [product,setProduct]=useState({product_name:'',description:'',audience:'',
-  angle:template?.angle||'auto',market:'EC',video_language:'es',cta:'',creative_style:template?.style||initialStyle,video_model_id:'',video_duration_seconds:''});
+  angle:template?.angle||'auto',market:'EC',video_language:'es',cta:'',creative_style:template?.style||initialStyle,cast_mode:'with_people',video_model_id:'',video_duration_seconds:''});
  const [project,setProject]=useState(null),[selection,setSelection]=useState(0);
  const [editedPrompt,setEditedPrompt]=useState('');
  const [editedSpeech,setEditedSpeech]=useState('');
  const [reviewDuration,setReviewDuration]=useState(null);
  const [reviewModelId,setReviewModelId]=useState(null);
+ const [reviewCastMode,setReviewCastMode]=useState('with_people');
  const [sellerConfirmed,setSellerConfirmed]=useState(false);
  const [style,setStyle]=useState(initialStyle),[shotPreference,setShotPreference]=useState('auto');
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
@@ -145,6 +146,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
   if(project?.id){
    setReviewDuration(Number(project.video_duration_seconds)||8);
    setReviewModelId(project.video_model_id||null);
+   setReviewCastMode(project.cast_mode==='product_only'?'product_only':'with_people');
   }
  },[project?.id,project?.video_duration_seconds,project?.video_model_id]);
  useEffect(()=>{
@@ -228,7 +230,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
      video_model_id:reviewModelId||project.video_model_id,
      video_duration_seconds:reviewDuration||project.video_duration_seconds,
      seller_claims_confirmed:sellerConfirmed,
-     shot_preference:shotPreference}),
+     shot_preference:shotPreference,cast_mode:reviewCastMode}),
    });
    const json=await r.json().catch(()=>({}));
    if(!r.ok)throw Error(json.error==='seller_claims_confirmation_required'?
@@ -378,6 +380,18 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
        <p className="text-xs text-[#6D518D]">UGC: una persona habla mirando a cámara, explica el producto, engancha desde el inicio y termina invitando a comprar.</p>}
      </div>
 
+     {(product.creative_style==='premium'||product.creative_style==='cinematic')&&!template&&<div className="space-y-2">
+      <p className="text-sm font-bold">¿Quién aparece en el anuncio?</p>
+      <div className="grid grid-cols-2 gap-2">
+       {[
+        ['product_only','📦 Solo producto','Solo envase, textura, luz y cortes de cine. Sin personas.'],
+        ['with_people','🎬 Con personas','Modelos mostrando o usando el producto. Sin hablar a cámara.']
+       ].map(([id,label,description])=><button key={id} type="button" aria-pressed={product.cast_mode===id}
+        onClick={()=>change('cast_mode',id)} className={'rounded-xl border-2 p-3 text-left '+(product.cast_mode===id?'border-[#7650C6] bg-white':'border-[#E7DEEC] bg-white/60')}>
+        <strong className="block text-sm">{label}</strong><span className="block text-xs mt-1">{description}</span>
+       </button>)}
+      </div>
+     </div>}
      <div className="grid sm:grid-cols-2 gap-3">
       <label className="block text-sm font-bold">Proveedor
        <select className={field+' mt-2'} disabled={Boolean(template)} value={selectedProvider}
@@ -647,6 +661,19 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
             {creativeStyles.find(([id])=>id===style)?.[2]||'Automático'} · elegido antes de investigar.
             {style==='ugc'?' La voz es lo principal; los planos son apoyo.':''}
            </p>}
+         {(style==='premium'||style==='cinematic')&&!template&&<div className="space-y-2">
+          <p className="text-sm font-bold">¿Quién aparece en el video final?</p>
+          <div className="grid sm:grid-cols-2 gap-2">
+           {[
+            ['product_only','📦 Solo producto','Escenas de producto con cámara y luz premium.'],
+            ['with_people','🎬 Con personas','Modelos y producto en historia cinematográfica.']
+           ].map(([id,label,description])=><button key={id} type="button" aria-pressed={reviewCastMode===id}
+            onClick={()=>setReviewCastMode(id)} className={'rounded-xl border-2 p-3 text-left '+(reviewCastMode===id?'border-[#7650C6] bg-[#F2EAFE]':'border-[#E7DEEC] bg-white')}>
+            <strong className="block text-sm">{label}</strong><span className="block text-xs mt-1">{description}</span>
+           </button>)}
+          </div>
+          <p className="text-xs text-[#71588B]">Puedes cambiarlo sin pagar otra investigación.</p>
+         </div>}
          <label className="block text-xs font-bold">Tomas
           <select className={field+' mt-2'} value={shotPreference} onChange={e=>setShotPreference(e.target.value)}>
            <option value="auto">La IA decide</option>
