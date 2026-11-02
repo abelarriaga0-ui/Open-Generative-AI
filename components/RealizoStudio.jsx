@@ -8,6 +8,7 @@ import RealizoCreator from '@/components/RealizoCreator';
 import RealizoPremium from '@/components/RealizoPremium';
 import RealizoVisualGallery from '@/components/RealizoVisualGallery';
 import RealizoTemplateLibrary from '@/components/RealizoTemplateLibrary';
+import RealizoTemplateCreator from '@/components/RealizoTemplateCreator';
 import {getAdTemplate} from '@/lib/realizo-creative/ad-templates';
 
 function Mark() {
@@ -136,7 +137,7 @@ export default function RealizoStudio({accountId,guest=false}){
   if(!item)return;
   setBrief(null);setEditorOpen(false);setResumeProjectId(null);
   setTemplateId(item.id);setFormatPreset(item.style);
-  setCreatorMode('premium');setPage('create');setSidebar(false);
+  setCreatorMode('premium');setPage('templates');setSidebar(false);
   setCreateKey(x=>x+1);
  }
  const nav=(id,label,icon,action)=>(
@@ -191,7 +192,7 @@ export default function RealizoStudio({accountId,guest=false}){
     <div className="realizo-content flex-1 min-w-0 px-4 sm:px-7 lg:px-10 py-8">
      <div className="realizo-contextbar max-w-[1420px] mx-auto" aria-label="Espacio actual">
       <span>WORKSPACE</span><span aria-hidden="true">/</span>
-      <strong>{page==='home'?'Inicio':page==='create'?'Crear anuncio':page==='templates'?'Plantillas':'Mis videos'}</strong>
+      <strong>{page==='home'?'Inicio':page==='create'?'Crear anuncio':page==='templates'?(templateId?'Usar plantilla':'Plantillas'):'Mis videos'}</strong>
       <span className="realizo-contextbar-right">REALIZO AI STUDIO</span>
      </div>
      {page==='home'&&<div className="realizo-home max-w-[1420px] mx-auto space-y-10">
@@ -237,12 +238,19 @@ export default function RealizoStudio({accountId,guest=false}){
       </section>
      </div>}
      {page==='templates'&&<div className="realizo-templates-page max-w-[1420px] mx-auto">
-       <div className="realizo-page-intro">
-        <p className="realizo-kicker">EXPLORA IDEAS</p>
-        <h1>Tu anuncio, tu <em>estilo.</em></h1>
-        <p>Descubre una dirección visual y crea tu propia versión con el producto, personaje y motor que prefieras.</p>
-       </div>
-       <RealizoTemplateLibrary onChoose={chooseAdTemplate}/>
+       {templateId?
+        <RealizoTemplateCreator key={templateId+'-'+createKey}
+         onBack={()=>setTemplateId(null)}
+         onWalletRefresh={refreshWallet}
+         onViewVideos={()=>{setTemplateId(null);setPage('videos')}}/>:
+        <>
+         <div className="realizo-page-intro">
+          <p className="realizo-kicker">PLANTILLAS REALES</p>
+          <h1>Elige el video que <em>quieres replicar.</em></h1>
+          <p>Reproduce el anuncio antes de elegirlo. Solo cambia el producto y lo que indiques.</p>
+         </div>
+         <RealizoTemplateLibrary onChoose={chooseAdTemplate}/>
+        </>}
       </div>}
      {page==='create'&&<>
       <section className="realizo-page-heading max-w-[1230px] mx-auto mb-8">
