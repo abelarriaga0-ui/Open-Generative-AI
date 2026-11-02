@@ -92,7 +92,7 @@ export default function PaypalTopup({ minCents, firstTopup, onPaid, theme = 'dar
             {order_id:details.orderID});
           if(result.status==='paid'){
             setError(null);
-            setStatus('Pago confirmado. Saldo acreditado en tu billetera.');
+            setStatus(config.mode==='sandbox'?'Pago de PRUEBA validado: saldo simulado acreditado en Realizo. No se realizó ningún cobro real ni se envió dinero a tu cuenta PayPal.':'Pago confirmado. Saldo acreditado en tu billetera.');
             onPaid?.();
           }else setStatus('Pago en verificación. No repitas el pago mientras se verifica.');
         }catch(failure){
@@ -156,7 +156,7 @@ export default function PaypalTopup({ minCents, firstTopup, onPaid, theme = 'dar
         className={theme === 'light' ? 'w-full rounded-2xl bg-[#F7F3EE] border border-[#DED4D8] px-4 py-3.5 text-[#251D37] outline-none focus:border-[#8F67C6]' : 'w-full rounded-lg bg-white/10 border border-white/20 px-4 py-3 text-white'}
         placeholder="20.00" />
       {config?.mode === 'sandbox' && (
-        <p className={theme === 'light' ? 'text-[#9B6B42] text-xs font-semibold' : 'text-amber-300 text-sm font-medium'}>PayPal Sandbox · Pago de prueba</p>
+        <p className={theme === 'light' ? 'text-[#9B6B42] text-xs font-semibold' : 'text-amber-300 text-sm font-medium'}>PayPal Sandbox · Pago de prueba (sin dinero real)</p>
       )}
       {!config && !error && <p className={theme === 'light' ? 'text-[#887B93] text-sm' : 'text-white/60 text-sm'}>Preparando PayPal...</p>}
       {loading&&<p role="status" className="text-sm text-white/70">Preparando pago seguro…</p>}
