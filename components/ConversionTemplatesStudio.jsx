@@ -23,7 +23,7 @@ function getOutputUrl(result) {
     payload.url || null;
 }
 
-export default function ConversionTemplatesStudio({ onGenerationStart, onGenerationEnd, onGenerationComplete, onGenerationError }) {
+export default function ConversionTemplatesStudio({ guest = false, onGenerationStart, onGenerationEnd, onGenerationComplete, onGenerationError }) {
   const [templates, setTemplates] = useState([]);
   const [category, setCategory] = useState('premium');
   const [selected, setSelected] = useState(null);
@@ -39,6 +39,8 @@ export default function ConversionTemplatesStudio({ onGenerationStart, onGenerat
   const [referenceMissing, setReferenceMissing] = useState(false);
   const fileRef = useRef(null);
   const isBusy = phase === 'uploading' || phase === 'analyzing' || phase === 'generating' || phase === 'pending';
+  const loadingLabel = phase === 'uploading' ? 'Subiendo producto…' : phase === 'analyzing' ? 'Analizando ajustes…' : phase === 'pending' ? 'Pendiente de conciliación' : 'Creando imagen…';
+  const totalPrice = selected && typeof selected.price_cents === 'number' && (!changeDescription.trim() || typeof selected.analysis_price_cents === 'number') ? selected.price_cents + (changeDescription.trim() ? selected.analysis_price_cents : 0) : null;
   const listed = templates.filter((item) => item.category === category);
 
   useEffect(() => {
@@ -177,147 +179,149 @@ export default function ConversionTemplatesStudio({ onGenerationStart, onGenerat
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-[#07090d] px-4 py-7 text-white md:px-8">
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.27em] text-teal-300">REALIZO · Creativos</p>
-            <h1 className="text-2xl font-extrabold tracking-tight md:text-4xl">Imágenes que venden</h1>
-            <p className="mt-2 text-sm text-white/55">Elige un diseño, sube tu producto y genera.</p>
-          </div>
-          <a href="/wallet" className="rounded-xl border border-white/15 px-4 py-3 text-sm text-white/80 hover:bg-white/5">Mi billetera</a>
+    <section className="realizo-images" aria-label="Imágenes publicitarias de Realizo">
+      <div className="realizo-images-heading">
+        <div>
+          <p className="realizo-images-eyebrow">REALIZO / ESTUDIO DE IMÁGENES</p>
+          <h1>Imágenes que <em>venden.</em></h1>
+          <p className="realizo-images-subtitle">Elige un diseño, sube tu producto y hazlo tuyo. Sin escribir prompts.</p>
         </div>
+        <div className="realizo-images-heading-mark" aria-hidden="true">✳</div>
+      </div>
 
-        <div className="mb-7 flex flex-wrap gap-2" aria-label="Categorías de imágenes">
-          {GROUPS.map((group) => (
-            <button key={group.id} type="button" onClick={() => { setCategory(group.id); setSelected(null); }}
-              className={'rounded-full border px-4 py-2 text-sm transition ' +
-                (category === group.id ? 'border-teal-400 bg-teal-400/15 text-teal-200' : 'border-white/10 bg-white/5 text-white/60 hover:border-white/30')}>
-              {group.name}
-            </button>
-          ))}
-        </div>
-
-        {!selected ? (
-          <div>
-            <h2 className="mb-4 text-lg font-semibold">{GROUPS.find((group) => group.id === category)?.detail}</h2>
-            {listed.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-white/15 p-10 text-center text-sm text-white/50">
-                Más plantillas próximamente.
-              </div>
-            ) : (
-              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {listed.map((template) => (
-                  <article key={template.id} className="overflow-hidden rounded-2xl border border-white/10 bg-[#12151c]">
-                    <div className="relative aspect-[2/3] max-h-[410px] overflow-hidden bg-gradient-to-br from-blue-950 via-blue-700 to-blue-950">
-                      <img src={template.preview_url} alt={template.name} onError={() => setReferenceMissing(true)}
-                        className="h-full w-full object-cover" />
-                      {referenceMissing && <div className="absolute inset-0 flex items-center justify-center p-8 text-center font-semibold">Plantilla: Explosión Premium Azul</div>}
-                    </div>
-                    <div className="space-y-3 p-4">
-                      <div className="flex items-center justify-between gap-2">
-                        <div><h3 className="font-semibold">{template.name}</h3><p className="text-xs text-white/50">Vertical · Fidelidad estricta</p></div>
-                        <span className="text-sm font-semibold text-teal-300">{money(template.price_cents)}</span>
-                      </div>
-                      <button type="button" onClick={() => { setSelected(template); setError(''); }}
-                        className="w-full rounded-xl bg-teal-300 px-4 py-3 text-sm font-bold text-slate-950 hover:bg-teal-200">
-                        Usar plantilla
-                      </button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
+      {!selected ? (
+        <>
+          <div className="realizo-images-categories" role="group" aria-label="Categorías publicitarias">
+            {GROUPS.map((group) => (
+              <button type="button" key={group.id} aria-pressed={category===group.id}
+                onClick={()=>setCategory(group.id)}
+                className={category===group.id ? 'is-active' : ''}>{group.name}</button>
+            ))}
           </div>
-        ) : (
-          <div className="grid gap-6 lg:grid-cols-[1fr_1.05fr]">
-            <div className="space-y-3">
-              <button onClick={() => setSelected(null)} className="text-sm text-white/60 hover:text-white">← Volver a plantillas</button>
-              <div className="mx-auto max-w-md overflow-hidden rounded-2xl border border-white/10 bg-blue-900">
-                <img src={selected.preview_url} alt="Diseño de referencia" className="w-full" />
-              </div>
-              <p className="text-center text-xs text-white/50">Plantilla visual de referencia, no una composición nueva.</p>
+
+          <div className="realizo-images-section-header">
+            <div><span>COLECCIÓN / {String(GROUPS.findIndex(g=>g.id===category)+1).padStart(2,'0')}</span>
+              <h2>{GROUPS.find(g=>g.id===category)?.name}</h2></div>
+            <span className="realizo-images-count">{listed.length ? listed.length + (listed.length===1?' diseño':' diseños') : 'Próximamente'}</span>
+          </div>
+
+          {listed.length===0 ? (
+            <div className="realizo-images-upcoming">
+              <span aria-hidden="true">✳</span>
+              <h3>Más diseños en camino.</h3>
+              <p>Mientras tanto, explora la colección Premium.</p>
+              <button type="button" onClick={()=>setCategory('premium')}>Ver diseños premium ↗</button>
             </div>
-            <section className="self-start rounded-2xl border border-white/10 bg-[#12151c] p-5 md:p-7">
-              <h2 className="text-xl font-bold">{selected.name}</h2>
-              <p className="mb-6 mt-1 text-sm text-white/55">Solo reemplazaremos el producto central, conservando el resto del diseño lo más fielmente posible.</p>
-              <div className="mb-4 rounded-xl border border-dashed border-white/20 p-5">
-                <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
-                  onChange={(event) => chooseFile(event.target.files?.[0])} />
-                <button type="button" onClick={() => fileRef.current?.click()}
-                  className="flex w-full flex-col items-center justify-center gap-2 text-center">
-                  {localPreview ? <img src={localPreview} alt="Producto cargado" className="max-h-48 max-w-full rounded-lg object-contain" />
-                    : <span className="text-3xl">＋</span>}
-                  <span className="text-sm font-semibold">{file ? 'Cambiar producto' : 'Subir foto de mi producto'}</span>
-                  <span className="text-xs text-white/45">JPG, PNG o WebP · Máximo 10 MB</span>
+          ) : (
+            <div className="realizo-images-showcase">
+              {listed.map((template) => (
+                <article className="realizo-images-feature" key={template.id}>
+                  <button className="realizo-images-photo" type="button"
+                    onClick={()=>{setSelected(template);setError('');setPhase('idle');}}
+                    aria-label={'Seleccionar '+template.name}>
+                    <img alt={'Diseño '+template.name} src={template.preview_url} loading="eager"
+                      onError={()=>setReferenceMissing(true)}/>
+                    {referenceMissing&&<span className="realizo-images-missing">Vista previa no disponible</span>}
+                    <span className="realizo-images-photo-label">PLANTILLA / 01</span>
+                  </button>
+                  <div className="realizo-images-feature-copy">
+                    <p className="realizo-images-eyebrow">DESTACADA / PREMIUM</p>
+                    <h3>{template.name}</h3>
+                    <p>Un anuncio de alto impacto con la composición original como referencia. La IA adapta tu envase al diseño seleccionado.</p>
+                    <div className="realizo-images-chips"><span>4K</span><span>Diseño de referencia</span><span>Formato vertical</span></div>
+                    <button type="button" className="realizo-images-primary"
+                      onClick={()=>{setSelected(template);setError('');setPhase('idle');}}>
+                      Usar este diseño <span aria-hidden="true">↗</span>
+                    </button>
+                    <p className="realizo-images-feature-note">Puedes revisar el costo antes de confirmar.</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+          {error&&<p className="realizo-images-error" role="alert">{error}</p>}
+        </>
+      ) : (
+        <div className="realizo-images-edit">
+          <button className="realizo-images-back" type="button" onClick={()=>{setSelected(null);setError('');setResultUrl('');setPhase('idle');}}>← Explorar diseños</button>
+          <div className="realizo-images-workspace">
+            <div className="realizo-images-reference">
+              <div className="realizo-images-preview">
+                <img src={selected.preview_url} alt={'Plantilla original '+selected.name}/>
+                <span className="realizo-images-preview-top">REFERENCIA ORIGINAL</span>
+              </div>
+              <div className="realizo-images-reference-meta">
+                <div><strong>{selected.name}</strong><span>Composición protegida</span></div>
+                <span>2:3 · 4K</span>
+              </div>
+            </div>
+            <div className="realizo-images-panel">
+              <div className="realizo-images-stepper"><span className="is-current">01 Producto</span><i/><span>02 Ajustes</span><i/><span>03 Generar</span></div>
+              <h2>Haz que este diseño <em>sea tuyo.</em></h2>
+              <p className="realizo-images-panel-intro">Usaremos tu producto como referencia y mantendremos el estilo de la plantilla.</p>
+
+              <div className="realizo-images-form-group">
+                <div className="realizo-images-form-head"><span className="realizo-images-number">01</span><label>Fotografía del producto</label><small>Obligatorio</small></div>
+                <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="realizo-images-visually-hidden"
+                  onChange={event=>chooseFile(event.target.files?.[0])}/>
+                <button type="button" className={'realizo-images-upload'+(localPreview?' has-image':'')}
+                  onClick={()=>fileRef.current?.click()}>
+                  {localPreview ? <img src={localPreview} alt="Producto que seleccionaste"/> : <span className="realizo-images-upload-icon" aria-hidden="true">＋</span>}
+                  <span><strong>{file ? 'Cambiar fotografía' : 'Seleccionar fotografía'}</strong><small>{file?.name || 'PNG, JPG o WebP · Hasta 10 MB'}</small></span>
+                  <span className="realizo-images-upload-arrow" aria-hidden="true">↗</span>
                 </button>
               </div>
-              <label htmlFor="realizo-optional-changes" className="mb-2 block text-sm font-semibold">¿Quieres cambiar algún texto? <span className="font-normal text-white/50">(Opcional)</span></label>
-              <textarea id="realizo-optional-changes" rows={3} maxLength={1200} value={changeDescription}
-                onChange={(event) => { setChangeDescription(event.target.value); setAnalysisSummary(null); }}
-                placeholder="Ej.: Cambia Sabor Vainilla por Sabor Chocolate. Mantén todo lo demás igual."
-                className="mb-2 w-full resize-none rounded-xl border border-white/15 bg-black/30 p-3 text-sm text-white outline-none focus:border-teal-300" />
-              <p className="mb-5 text-xs text-white/50">Gemini interpretará tu petición sin modificar el diseño. Solo se admiten textos secundarios del anuncio.</p>
-              <label className="mb-6 flex items-start gap-3 text-xs text-white/65">
-                <input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)}
-                  className="mt-0.5 accent-teal-300" />
-                <span>Confirmo que mi producto cumple los beneficios nutricionales escritos en esta plantilla. Solo cambiará el envase.</span>
-              </label>
-              <div className="mb-4 space-y-2 border-t border-white/10 pt-4 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-white/60">Imagen 4K · Nano Banana 2.1</span>
-                  <span>{money(selected.price_cents)}</span>
-                </div>
-                {changeDescription.trim() && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-white/60">Análisis de cambios · Gemini</span>
-                    <span>{money(selected.analysis_price_cents)}</span>
-                  </div>
-                )}
-                <div className="flex items-center justify-between border-t border-white/10 pt-3 font-bold">
-                  <span>Total por solicitud</span>
-                  <strong className="text-lg text-teal-300">
-                    {money(typeof selected.price_cents === 'number' &&
-                      (!changeDescription.trim() || typeof selected.analysis_price_cents === 'number')
-                      ? selected.price_cents + (changeDescription.trim() ? selected.analysis_price_cents : 0)
-                      : null)}
-                  </strong>
-                </div>
+
+              <div className="realizo-images-form-group">
+                <div className="realizo-images-form-head"><span className="realizo-images-number">02</span><label htmlFor="realizo-optional-changes">¿Algún cambio adicional?</label><small>Opcional</small></div>
+                <textarea id="realizo-optional-changes" rows={3} maxLength={1200} value={changeDescription}
+                  onChange={event=>{setChangeDescription(event.target.value);setAnalysisSummary(null);}}
+                  placeholder="Ej. Cambiar «Sabor vainilla» por «Sabor chocolate». Dejar todo lo demás igual."/>
+                <p className="realizo-images-assist">La IA interpretará tus ajustes. El fondo, la persona y la composición permanecen protegidos.</p>
               </div>
-              {!selected.available && (
-                <p className="mb-4 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-200">
-                  Plantilla visible en modo de configuración. Aún no se ha habilitado el modelo, el precio y la referencia pública.
-                </p>
-              )}
-              <button type="button" onClick={generate}
-                disabled={!selected.available || !confirmed || !file || isBusy || (Boolean(changeDescription.trim()) && typeof selected.analysis_price_cents !== 'number')}
-                className="w-full rounded-xl bg-teal-300 px-5 py-3 font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-40">
-                {isBusy ? (phase === 'uploading' ? 'Subiendo producto…' : phase === 'analyzing' ? 'Gemini está analizando…' : phase === 'pending' ? 'Pendiente de conciliación' : 'Generando imagen…') : 'Generar imagen'}
-              </button>
+
+              <label className="realizo-images-confirmation">
+                <input type="checkbox" checked={confirmed} onChange={event=>setConfirmed(event.target.checked)}/>
+                <span>Confirmo que los beneficios escritos en esta plantilla corresponden a mi producto, salvo los textos que pedí modificar.</span>
+              </label>
+
+              <div className="realizo-images-checkout">
+                <div>
+                  <span className="realizo-images-total-label">Total antes de generar</span>
+                  <strong>{money(totalPrice)}</strong>
+                  <small>{changeDescription.trim() ? 'Incluye análisis de cambios y creación 4K' : 'Creación de imagen en 4K'} · Descuento de tu saldo</small>
+                </div>
+                {guest ? (
+                  <a className="realizo-images-primary" href="/login">Iniciar sesión <span aria-hidden="true">↗</span></a>
+                ) : (
+                  <button type="button" className="realizo-images-primary" onClick={generate}
+                    disabled={!selected.available||!file||!confirmed||isBusy||(Boolean(changeDescription.trim())&&typeof selected.analysis_price_cents!=='number')}>
+                    {isBusy ? loadingLabel : 'Generar imagen'} <span aria-hidden="true">↗</span>
+                  </button>
+                )}
+              </div>
+
+              {!selected.available && <p className="realizo-images-notice">Este diseño no está disponible para generar en este momento.</p>}
               {analysisSummary && (
-                <div className="mt-3 rounded-lg border border-white/10 bg-white/5 p-3 text-xs text-white/70">
-                  <p className="font-semibold">Cambios aprobados: {analysisSummary.changes?.length || 0}</p>
-                  {(analysisSummary.changes || []).map((change) => (
-                    <p key={change.field}>{change.original} → {change.text}</p>
-                  ))}
-                  {(analysisSummary.rejected || []).map((message, index) => (
-                    <p key={index} className="text-amber-300">No aplicado: {message}</p>
-                  ))}
+                <div className="realizo-images-analysis">
+                  <strong>Ajustes analizados</strong>
+                  {(analysisSummary.changes||[]).map(c=><p key={c.field}>{c.original} → {c.text}</p>)}
+                  {(analysisSummary.rejected||[]).map((message,i)=><p className="is-rejected" key={i}>No aplicado: {message}</p>)}
                 </div>
               )}
-              {error && <p role="alert" className="mt-3 text-sm text-rose-300">{error}</p>}
-              {jobId && <p className="mt-2 break-all text-xs text-white/35">Solicitud: {jobId}</p>}
-              {resultUrl && <div className="mt-5 space-y-3">
-                <img src={resultUrl} alt="Imagen generada" className="w-full rounded-xl" />
-                <a href={resultUrl} target="_blank" rel="noopener noreferrer"
-                  className="block rounded-xl border border-teal-300/60 px-4 py-3 text-center text-sm font-semibold text-teal-200">
-                  Abrir imagen para descargar
-                </a>
-              </div>}
-            </section>
+              {error && <p className="realizo-images-error" role="alert">{error}</p>}
+              {jobId&&<p className="realizo-images-job">Solicitud: {jobId}</p>}
+              {resultUrl && (
+                <div className="realizo-images-result">
+                  <h3>Tu imagen está lista.</h3>
+                  <img src={resultUrl} alt="Imagen adaptada con tu producto"/>
+                  <a href={resultUrl} target="_blank" rel="noopener noreferrer">Ver y descargar imagen ↗</a>
+                </div>
+              )}
+            </div>
           </div>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+    </section>
   );
 }
