@@ -1,0 +1,95 @@
+/* REALIZO · IMÁGENES QUE VENDEN — visual integrated into the studio (no black inset panel). */
+.realizo-images{--ri-copper:#f5ab71;--ri-edge:#65505a;--ri-muted:#ada4ad;max-width:1400px;margin:0 auto;color:#f6f0ef;padding:18px 6px 70px}
+.realizo-images button{cursor:pointer}
+.realizo-images button:disabled{cursor:not-allowed;opacity:.43}
+.realizo-images-heading{display:flex;justify-content:space-between;align-items:center;gap:24px;padding:10px 0 26px;border-bottom:1px solid #433641}
+.realizo-images-eyebrow{font-size:10px;letter-spacing:.19em;color:#e3aa81;font-weight:820}
+.realizo-images-heading h1{font-size:clamp(36px,4vw,63px);line-height:1.09;letter-spacing:-.06em;font-weight:875;margin-top:14px}
+.realizo-images-heading h1 em,.realizo-images-panel h2 em{font-style:normal;color:#ffac69}
+.realizo-images-subtitle{font-size:14px;line-height:1.7;color:#b7adb5;margin-top:12px}
+.realizo-images-heading-mark{width:82px;height:82px;flex-shrink:0;display:grid;place-items:center;border:1px solid #785443;border-radius:25px;font-size:45px;color:#f7ab75;background:radial-gradient(circle at 60% 40%,#9e582d50,#19151c 75%);box-shadow:inset 0 1px #ffffff1a,0 13px 30px #0004}
+.realizo-images-categories{display:flex;flex-wrap:wrap;gap:9px;padding:25px 0 34px}
+.realizo-images-categories button{border:1px solid #51434b;border-radius:100px;padding:11px 16px;font-size:12px;font-weight:750;color:#c7bfc5;line-height:1.2;background:#1c1a21;transition:.18s border-color,.18s background,.18s color}
+.realizo-images-categories button:hover{border-color:#ce9064;color:#fff}
+.realizo-images-categories button.is-active{background:#e7a774;border-color:#e7a774;color:#211514;box-shadow:0 5px 18px #e7a77430}
+.realizo-images-section-header{display:flex;gap:16px;align-items:flex-end;justify-content:space-between;margin-bottom:22px}
+.realizo-images-section-header span:first-child{color:#e6a471;letter-spacing:.15em;font-size:10px;font-weight:750}
+.realizo-images-section-header h2{font-size:clamp(24px,2.4vw,36px);letter-spacing:-.05em;font-weight:850;line-height:1.16;margin-top:7px}
+.realizo-images-count{font-size:11px;color:#a79ca4;padding-bottom:6px}
+.realizo-images-showcase{display:grid;gap:16px}
+.realizo-images-feature{display:grid;grid-template-columns:minmax(0,370px) minmax(0,1fr);border-radius:25px;background:radial-gradient(ellipse at 83% 21%,#4a2b2940,transparent 45%),#17141c;border:1px solid #55424a;overflow:hidden;box-shadow:0 20px 50px #0005;min-height:365px}
+.realizo-images-photo{position:relative;overflow:hidden;background:#11275a;width:100%;min-height:375px;display:flex;align-items:center;justify-content:center;border-right:1px solid #ffffff14}
+.realizo-images-photo:after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(0deg,#0009,transparent 38%,transparent 72%,#0003)}
+.realizo-images-photo img{width:100%;height:100%;object-fit:cover;object-position:center;transition:transform .4s ease}
+.realizo-images-photo:hover img{transform:scale(1.035)}
+.realizo-images-photo-label{position:absolute;left:15px;top:15px;z-index:2;border:1px solid #ffffff55;background:#15111c9e;color:#fff5e9;border-radius:100px;padding:8px 12px;font-size:10px;font-weight:850;letter-spacing:.14em}
+.realizo-images-missing{position:absolute;z-index:4;inset:0;display:grid;place-items:center;background:#1b2c5e;color:#fff}
+.realizo-images-feature-copy{padding:clamp(24px,4vw,58px);display:flex;flex-direction:column;align-items:flex-start;justify-content:center}
+.realizo-images-feature-copy h3{font-size:clamp(29px,3.7vw,52px);line-height:1.08;letter-spacing:-.06em;font-weight:850;max-width:520px;margin:13px 0 16px}
+.realizo-images-feature-copy>p:not(.realizo-images-eyebrow):not(.realizo-images-feature-note){font-size:14px;line-height:1.7;color:#b6acb7;max-width:510px}
+.realizo-images-chips{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0 26px}
+.realizo-images-chips span{border:1px solid #5c4442;color:#efc1a0;background:#2a1e20a0;border-radius:100px;padding:7px 11px;font-size:11px;font-weight:700}
+.realizo-images-primary{display:inline-flex;align-items:center;justify-content:space-between;gap:28px;background:linear-gradient(110deg,#ffd096,#fc9b4c);color:#231614!important;border-radius:13px;padding:14px 19px;min-height:48px;box-shadow:0 9px 24px #e8893e32;font-size:13px;font-weight:850;text-decoration:none;line-height:1.25;transition:transform .2s ease,filter .2s ease}
+.realizo-images-primary:not(:disabled):hover{transform:translateY(-2px);filter:brightness(1.06)}
+.realizo-images-primary span{font-size:19px;font-weight:600}
+.realizo-images-feature-note{font-size:11px!important;line-height:1.3!important;margin-top:14px!important;color:#a89ca5!important}
+.realizo-images-upcoming{border:1px dashed #63515c;border-radius:24px;min-height:310px;background:linear-gradient(135deg,#1d1821,#121116);display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:36px}
+.realizo-images-upcoming>span{font-size:37px;color:#f1a66e}
+.realizo-images-upcoming h3{font-size:24px;letter-spacing:-.04em;margin:12px 0 7px}
+.realizo-images-upcoming p{font-size:13px;color:#b1a6b2;line-height:1.6}
+.realizo-images-upcoming button{margin-top:20px;padding:11px 17px;background:#2b2026;color:#ffc59c;border:1px solid #a36b4d;border-radius:12px;font-size:12px;font-weight:750}
+.realizo-images-edit{padding-top:20px}
+.realizo-images-back{color:#f0c5aa;font-size:12px;font-weight:750;padding:9px 0;margin-bottom:18px}
+.realizo-images-back:hover{color:#fff}
+.realizo-images-workspace{display:grid;grid-template-columns:minmax(260px,.88fr) minmax(310px,1fr);align-items:start;gap:clamp(20px,3.5vw,55px)}
+.realizo-images-reference{max-width:510px}
+.realizo-images-preview{position:relative;border-radius:22px;overflow:hidden;background:#101d47;border:1px solid #71585b;box-shadow:0 24px 60px #0008;display:flex;justify-content:center}
+.realizo-images-preview img{width:100%;max-height:650px;object-fit:contain;display:block}
+.realizo-images-preview-top{position:absolute;top:15px;left:15px;background:#17141ac7;color:#fff4e9;border:1px solid #e4c4aa66;border-radius:100px;padding:8px 13px;font-size:10px;font-weight:800;letter-spacing:.1em}
+.realizo-images-reference-meta{display:flex;justify-content:space-between;gap:15px;margin-top:14px;align-items:center}
+.realizo-images-reference-meta div{display:flex;flex-direction:column;gap:4px}
+.realizo-images-reference-meta strong{font-size:14px;font-weight:800}
+.realizo-images-reference-meta span{color:#ab9fa9;font-size:11px}
+.realizo-images-panel{border:1px solid #57434b;background:linear-gradient(152deg,#201b23,#15141b 77%);border-radius:25px;padding:clamp(22px,3.2vw,38px);box-shadow:0 18px 44px #0004}
+.realizo-images-stepper{display:flex;gap:12px;align-items:center;flex-wrap:wrap;color:#8f8290;font-size:10px;font-weight:800;letter-spacing:.04em;margin-bottom:22px}
+.realizo-images-stepper .is-current{color:#ffc18e}
+.realizo-images-stepper i{height:1px;width:14px;background:#584a53}
+.realizo-images-panel h2{font-size:clamp(26px,3vw,40px);line-height:1.07;letter-spacing:-.056em;font-weight:850;max-width:420px}
+.realizo-images-panel-intro{font-size:12.5px;color:#b0a4af;line-height:1.75;max-width:440px;margin:10px 0 30px}
+.realizo-images-form-group{margin-bottom:24px}
+.realizo-images-form-head{display:flex;align-items:center;gap:9px;margin-bottom:12px}
+.realizo-images-number{width:23px;height:23px;display:inline-grid;place-items:center;background:#332326;border:1px solid #79533d;color:#fac294;border-radius:7px;font-size:10px;font-weight:900}
+.realizo-images-form-head label{font-size:12px;font-weight:800;color:#f4e9e7}
+.realizo-images-form-head small{margin-left:auto;font-size:10px;color:#948993}
+.realizo-images-upload{min-height:104px;width:100%;display:flex;gap:14px;align-items:center;text-align:left;border:1px dashed #8c6571;border-radius:14px;padding:13px 17px;background:radial-gradient(circle at 8% 10%,#6038282a,transparent 55%),#19161e;transition:border-color .2s,background .2s}
+.realizo-images-upload:hover{border-color:#ffba80;background:#292029}
+.realizo-images-upload-icon{display:grid;place-items:center;width:53px;height:53px;border-radius:12px;background:#30222b;color:#ffb47a;font-size:29px;font-weight:350}
+.realizo-images-upload img{width:64px;height:70px;object-fit:contain;background:#2e2a33;border-radius:10px}
+.realizo-images-upload>span:not(.realizo-images-upload-arrow):not(.realizo-images-upload-icon){display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-width:0}
+.realizo-images-upload strong{font-size:13px;color:#f6e8e4}
+.realizo-images-upload small{font-size:11px;color:#a69aa5;overflow-wrap:anywhere}
+.realizo-images-upload-arrow{font-size:20px;margin-left:auto;color:#e0a276}
+.realizo-images-visually-hidden{position:absolute;width:1px;height:1px;clip:rect(0 0 0 0);overflow:hidden}
+.realizo-images-form-group textarea{width:100%;min-height:95px;resize:vertical;color:#f6eef0;border-radius:14px;padding:15px;font-size:12.5px;line-height:1.65;background:#14131a;border:1px solid #544450;outline:none;transition:border-color .2s}
+.realizo-images-form-group textarea:focus{border-color:#ffa96c;box-shadow:0 0 0 2px #ffa96c14}
+.realizo-images-form-group textarea::placeholder{color:#847989}
+.realizo-images-assist{font-size:11px;color:#aa9da7;margin-top:9px;line-height:1.55}
+.realizo-images-confirmation{display:flex;gap:10px;align-items:flex-start;font-size:11px;color:#c5b7c0;line-height:1.6;margin-bottom:22px;cursor:pointer}
+.realizo-images-confirmation input{width:16px;height:16px;margin-top:2px;flex-shrink:0;accent-color:#ec9f6f}
+.realizo-images-checkout{display:flex;flex-wrap:wrap;gap:15px;justify-content:space-between;align-items:center;padding:20px 0 0;border-top:1px solid #604b56}
+.realizo-images-checkout>div{display:flex;flex-direction:column;gap:4px;min-width:0}
+.realizo-images-total-label{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#bda6aa}
+.realizo-images-checkout strong{font-size:25px;letter-spacing:-.06em;font-weight:860;color:#fff0e2}
+.realizo-images-checkout small{color:#a898a5;font-size:10px;line-height:1.5}
+.realizo-images-notice,.realizo-images-error,.realizo-images-analysis{border:1px solid #875951;background:#342027;color:#ffd4c2;padding:12px 14px;border-radius:12px;margin-top:15px;font-size:12px;line-height:1.5}
+.realizo-images-analysis{border-color:#745e52;background:#251d20;color:#e6d3c4}
+.realizo-images-analysis strong{display:block;margin-bottom:7px}
+.realizo-images-analysis p{margin:4px 0}.realizo-images-analysis p.is-rejected{color:#efa283}
+.realizo-images-job{font-size:10px;color:#8c808e;overflow-wrap:anywhere;margin-top:10px}
+.realizo-images-result{margin-top:22px;border-top:1px solid #634e52;padding-top:20px}
+.realizo-images-result h3{font-size:22px;font-weight:800;margin-bottom:12px}
+.realizo-images-result img{width:100%;max-width:410px;max-height:700px;object-fit:contain;border-radius:12px;background:#171726}
+.realizo-images-result a{display:inline-block;color:#ffbf8f;font-size:12px;font-weight:800;border-bottom:1px solid #ffbf8f;padding:10px 0}
+@media(max-width:1120px){.realizo-images-feature{grid-template-columns:minmax(220px,38%) minmax(0,1fr)}.realizo-images-workspace{grid-template-columns:minmax(210px,.88fr) minmax(295px,1fr);gap:24px}}
+@media(max-width:760px){.realizo-images{padding:7px 0 55px}.realizo-images-heading-mark{width:57px;height:57px;border-radius:17px;font-size:28px}.realizo-images-feature{grid-template-columns:1fr}.realizo-images-photo{height:auto;min-height:290px;max-height:425px}.realizo-images-photo img{height:auto;max-height:425px;object-fit:contain}.realizo-images-feature-copy{padding:25px}.realizo-images-workspace{grid-template-columns:1fr}.realizo-images-reference{max-width:390px;margin:auto}.realizo-images-preview img{max-height:450px}.realizo-images-panel{padding:23px}.realizo-images-checkout .realizo-images-primary{width:100%}.realizo-images-section-header{align-items:center}.realizo-images-categories{gap:7px;padding:18px 0 26px}.realizo-images-categories button{font-size:11px;padding:10px 12px}}
+@media(max-width:450px){.realizo-images-heading h1{font-size:38px}.realizo-images-heading-mark{display:none}.realizo-images-feature-copy h3{font-size:32px}.realizo-images-reference-meta{align-items:flex-start}.realizo-images-photo{min-height:245px}.realizo-images-panel h2{font-size:30px}}
