@@ -32,7 +32,8 @@ jobs:
           npm run wallet:preflight:sandbox
       - name: Run multi-model cost tests and wallet safety
         run: |
-          node --test tests/realizo-real-cost-dynamic-quote.test.mjs \
+          node --test tests/realizo-pricing-route-health.test.mjs \
+            tests/realizo-real-cost-dynamic-quote.test.mjs \
             tests/realizo-live-models.test.mjs \
             tests/realizo-template-independent-flow.test.mjs \
             tests/realizo-video-download-boundary.test.mjs
