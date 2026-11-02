@@ -66,4 +66,6 @@ jobs:
           git add public/assets/realizo/templates/ugc-preview-stream-30s.mp4 public/assets/realizo/templates/ugc-hover-5s.mp4
           git diff --cached --quiet && exit 0
           git commit -m 'assets(realizo): fast-start native 720p full and lightweight 5s hover previews'
+          git fetch origin feature/realizo-instant-template-preview
+          git rebase FETCH_HEAD
           git push origin HEAD:feature/realizo-instant-template-preview
