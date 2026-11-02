@@ -31,6 +31,8 @@ export default function PaypalTopup({ minCents, firstTopup, onPaid, theme = 'dar
   const [loading, setLoading] = useState(false);
   const [cardAvailable,setCardAvailable]=useState(null);
   const [retryCount,setRetryCount]=useState(0);
+  // This is a visible setup preference, NOT PayPal consent or a billing mandate.
+  const [autoTopupPreferred,setAutoTopupPreferred]=useState(true);
   const amountRef=useRef(amount);
   amountRef.current=amount;
   const cardsRef=useRef(null);
@@ -184,10 +186,18 @@ export default function PaypalTopup({ minCents, firstTopup, onPaid, theme = 'dar
       </section>
       <div ref={node} aria-label="Pagar con cuenta PayPal" />
       <section className="space-y-2 rounded-xl border border-white/20 p-3">
-        <label className="flex gap-2 items-start text-sm"><input type="checkbox" disabled checked={false}/>
-          <span>Recarga automática de $20 al llegar a $5 <strong>(todavía no disponible)</strong>.</span>
+        <label className="flex gap-2 items-start text-sm">
+          <input type="checkbox" checked={autoTopupPreferred}
+            onChange={event=>setAutoTopupPreferred(event.target.checked)}
+            aria-describedby="realizo-auto-topup-explanation"/>
+          <span>Quiero configurar una recarga automática de <strong>$20</strong> cuando mi saldo llegue a <strong>$5</strong>.</span>
         </label>
-        <p className="text-xs text-white/60">Se habilitará cuando PayPal permita guardar un método de pago con autorización expresa del cliente y el servidor tenga controles contra cargos repetidos. Actualmente no se ejecutan cargos automáticos.</p>
+        <p id="realizo-auto-topup-explanation" className="text-xs text-white/60">
+          {autoTopupPreferred
+            ? 'Preferencia seleccionada. Para activar los cargos automáticos tendrás que autorizar por separado un método de pago apto para pagos futuros.'
+            : 'Preferencia desmarcada. No se solicitará configurar recargas automáticas.'}
+          {' '}Actualmente no se ejecutan cargos automáticos.
+        </p>
       </section>
     </div>
   );
