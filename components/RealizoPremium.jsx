@@ -68,6 +68,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
  const [editedPrompt,setEditedPrompt]=useState('');
  const [editedSpeech,setEditedSpeech]=useState('');
  const [reviewDuration,setReviewDuration]=useState(null);
+ const [reviewModelId,setReviewModelId]=useState(null);
  const [sellerConfirmed,setSellerConfirmed]=useState(false);
  const [style,setStyle]=useState(initialStyle),[shotPreference,setShotPreference]=useState('auto');
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
@@ -140,8 +141,11 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
   }
  },[project?.id,project?.concepts]);
  useEffect(()=>{
-  if(project?.id)setReviewDuration(Number(project.video_duration_seconds)||8);
- },[project?.id,project?.video_duration_seconds]);
+  if(project?.id){
+   setReviewDuration(Number(project.video_duration_seconds)||8);
+   setReviewModelId(project.video_model_id||null);
+  }
+ },[project?.id,project?.video_duration_seconds,project?.video_model_id]);
  useEffect(()=>{
   manualSpeechRef.current=false;
   manualPromptRef.current=false;
@@ -221,6 +225,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
    const r=await fetch('/api/realizo/ai-premium/'+encodeURIComponent(project.id)+'/approve',{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({index:selection,prompt:editedPrompt,speech:editedSpeech,style,
+     video_model_id:reviewModelId||project.video_model_id,
      video_duration_seconds:reviewDuration||project.video_duration_seconds,
      seller_claims_confirmed:sellerConfirmed,
      shot_preference:shotPreference}),
@@ -241,6 +246,8 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
  const findings=project?.findings||{};
  const concepts=project?.concepts||[];
  const videoOptions=config?.video_options||[];
+ const reviewOptions=videoOptions.filter(m=>m.image_role==='product_reference'||m.image_role==='start_frame');
+ const reviewOption=reviewOptions.find(m=>m.id===reviewModelId);
  const selectedModel=videoOptions.find(m=>m.id===product.video_model_id);
  const availableDurations=selectedModel?.durations||[];
  const spokenWords=editedSpeech.trim()?editedSpeech.trim().split(/\s+/).length:0;
@@ -495,19 +502,42 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
      </div>}
     {project.status==='needs_review'&&!ready&&<p className="text-sm text-[#9A6257]">La investigación necesita revisión técnica antes de volver a intentarse. No se volverá a cobrar automáticamente.</p>}
     {ready&&<>
-      <div className="text-sm font-semibold text-[#6B4B8C] rounded-xl bg-[#F3EBFA] p-3 space-y-2">
-       <p>Motor: {project.video_model_id} · {creativeStyles.find(([id])=>id===(project.creative_style||'auto'))?.[2]||'Automático'}. Sin nueva investigación al elegir concepto.</p>
-       <label className="flex flex-wrap items-center gap-2">
-        Duración del video:
-        <select aria-label="Duración final del video" disabled={Boolean(template||project?.template_id)} className="rounded-lg border border-[#C6A8E5] bg-white px-3 py-2 text-[#4F2E83]"
-         value={reviewDuration||project.video_duration_seconds||8}
-         onChange={e=>setReviewDuration(Number(e.target.value))}>
-         {(config?.video_options||[]).find(m=>m.id===project.video_model_id)?.durations?.map(n=>
-          <option value={n} key={n}>{n} segundos</option>)||
-          <option value={project.video_duration_seconds}>{project.video_duration_seconds} segundos</option>}
-        </select>
-        <span className="font-normal text-xs">{template||project?.template_id?"Duración fija de la plantilla maestra: 30 s.":"Puedes cambiarla sin pagar otra investigación. El guion se ajustará."}</span>
-       </label>
+      <div className="text-sm font-semibold text-[#6B4B8C] rounded-xl bg-[#F3EBFA] p-3 space-y-3">
+       {project.video_model_id==='kling-o1-reference-to-video'&&
+        <p role="status" className="rounded-lg bg-[#FFF0DC] px-3 py-2 text-[#7C461D]">
+         Este motor necesita un video de referencia. Para generar desde tu fotografía, elige otro motor; no pagarás otra investigación.
+        </p>}
+       <div className="flex flex-wrap gap-3 items-center">
+        <label className="flex flex-wrap items-center gap-2">
+         Motor:
+         <select aria-label="Motor del video" className="rounded-lg border border-[#C6A8E5] bg-white px-3 py-2 text-[#4F2E83]"
+          disabled={Boolean(template||project?.template_id)}
+          value={reviewModelId||project.video_model_id||''}
+          onChange={e=>{
+           const next=reviewOptions.find(m=>m.id===e.target.value);
+           if(!next)return;
+           setReviewModelId(next.id);
+           setReviewDuration(preferredDuration(next,reviewDuration||project.video_duration_seconds));
+          }}>
+          {!reviewOptions.some(m=>m.id===project.video_model_id)&&
+           <option value={project.video_model_id} disabled>{project.video_model_id} · requiere video</option>}
+          {reviewOptions.map(m=><option key={m.id} value={m.id}>{m.name||m.id}</option>)}
+         </select>
+        </label>
+        <label className="flex flex-wrap items-center gap-2">
+         Duración:
+         <select aria-label="Duración final del video" disabled={Boolean(template||project?.template_id)}
+          className="rounded-lg border border-[#C6A8E5] bg-white px-3 py-2 text-[#4F2E83]"
+          value={reviewDuration||project.video_duration_seconds||8}
+          onChange={e=>setReviewDuration(Number(e.target.value))}>
+          {(reviewOption?.durations||[Number(project.video_duration_seconds)||8]).map(n=>
+           <option value={n} key={n}>{n} segundos</option>)}
+         </select>
+        </label>
+       </div>
+       <p className="font-normal text-xs">{template||project?.template_id
+        ?'Configuración fija de la plantilla.'
+        :'Cambiar motor o duración reutiliza la investigación y el concepto. El costo del video se confirma antes de generar.'}</p>
       </div>
 
       <div className="rounded-2xl bg-[#F8F5F0] p-4 space-y-2">
