@@ -2,7 +2,13 @@ name: Realizo - reliable Muapi pricing for every model (Sandbox)
 on:
   push:
     branches: [fix/realizo-clear-errors-white-label-20261102]
-    paths: ['.github/workflows/realizo-pricing-fix-sandbox-v3.yml']
+    paths:
+      - '.github/workflows/realizo-pricing-fix-sandbox-v3.yml'
+      - 'lib/realizo-creative/wallet-generation.js'
+      - 'components/RealizoTemplateCreator.jsx'
+      - 'app/api/wallet/quote/route.js'
+      - 'tests/realizo-inline-charge-white-label.test.mjs'
+      - 'tests/realizo-wallet-engine.test.mjs'
   workflow_dispatch:
 permissions: {contents: read}
 concurrency:
