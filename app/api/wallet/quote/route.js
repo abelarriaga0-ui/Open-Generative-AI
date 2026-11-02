@@ -19,7 +19,7 @@ export async function POST(request) {
       return Response.json({error:'payload_too_large'},{status:413});
     const body=await request.json();
     await ensureOwnedMedia(env,user,body.input);
-    const quote=await quoteLiveVideo(body.model_id,body.input);
+    const quote=await quoteLiveVideo(body.model_id,body.input,env.MUAPI_API_KEY);
     const wallet=await env.WALLETS_DB.prepare(
       'SELECT available_cents FROM wallets WHERE user_id=?'
     ).bind(user.id).first();
