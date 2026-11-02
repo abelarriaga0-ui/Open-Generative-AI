@@ -75,7 +75,7 @@ export async function POST(request){
       method:'POST',headers:{Authorization:'Bearer '+env.OPENAI_API_KEY,'Content-Type':'application/json'},
       body:JSON.stringify({
         model:env.OPENAI_PREMIUM_MODEL,
-        store:false,max_output_tokens:1500,
+        store:false,max_output_tokens:3000,reasoning:{effort:'low'},
         input:[{role:'user',content:[
           {type:'input_text',text},
           {type:'input_image',image_url:imageUrl,detail:'high'}
