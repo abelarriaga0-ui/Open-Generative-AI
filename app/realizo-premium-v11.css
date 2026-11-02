@@ -106,3 +106,22 @@
 @media(max-width:850px){.realizo-v11-topnav{display:none}.realizo-v11-hero{grid-template-columns:1fr}.realizo-v11-hero-stage{min-height:180px;max-height:180px}.realizo-v11-hero-scene{top:-40%;bottom:-50%}.realizo-v11-benefits{grid-template-columns:1fr}.realizo-v11-benefits>div{border:0;border-bottom:1px solid #4d4450;justify-content:flex-start}.realizo-v11-benefits>div:last-child{border:0}.realizo-v11-cards,.realizo-v11-featured .realizo-v11-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.realizo-v11-template-beats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:520px){.realizo-content{padding:12px!important}.realizo-v11-hero-content{padding:28px 21px}.realizo-v11-hero h1{font-size:37px}.realizo-v11-benefits{padding:15px}.realizo-v11-featured-head h2{font-size:21px}.realizo-v11-cards,.realizo-v11-featured .realizo-v11-cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.realizo-v11-featured .realizo-v11-image-link{min-height:222px}.realizo-v11-card-overlay{left:9px;right:9px}.realizo-v11-card-overlay h3{font-size:14px}.realizo-v11-card-overlay p{font-size:10px}.realizo-v11-how{gap:12px}.realizo-v11-template-options{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.realizo-v11-card,.realizo-v11-card-photo{transition:none!important}}
+
+/* V11 photographic art direction. Asset images are used as inspiration/demo
+   only, not falsely labeled as generated client videos. Local WebP remains
+   available beneath remote example photographs should any CDN be unreachable. */
+.realizo-v11-photo-0,.realizo-v11-hero-scene-a{
+ background-image:linear-gradient(0deg,#08091033,transparent 45%),url('https://images.pexels.com/photos/30473024/pexels-photo-30473024.jpeg?auto=compress&cs=tinysrgb&w=650');
+ background-size:cover;background-position:center 28%;
+}
+.realizo-v11-photo-1,.realizo-v11-hero-scene-b,.realizo-v11-photo-6{
+ background-image:linear-gradient(0deg,#08091033,transparent 45%),url('https://media.macphun.com/img/uploads/customer/blog/1752169898/1752170008686ffe183af522.98492050.jpg?q=85&w=1680');
+ background-size:cover;background-position:center;
+}
+.realizo-v11-photo-2,.realizo-v11-hero-scene-c,.realizo-v11-photo-7{
+ background-image:linear-gradient(0deg,#08091033,transparent 45%),url('https://media.gq-magazin.de/photos/685519b8235fb048f801f642/1%3A1/w_2000%2Ch_2000%2Cc_limit/Shampoo%20Aufmacher.jpg');
+ background-size:cover;background-position:center;
+}
+.realizo-v11-photo-3{background-image:url('https://images.pexels.com/photos/8159658/pexels-photo-8159658.jpeg?auto=compress&cs=tinysrgb&w=650');background-size:cover;background-position:center}
+.realizo-v11-photo-4{background-image:url('https://images.pexels.com/photos/30473032/pexels-photo-30473032.jpeg?auto=compress&cs=tinysrgb&w=650');background-size:cover;background-position:center}
+.realizo-v11-photo-5{background-image:url('https://assets.kive.ai/sizes%2Fmkf3mGTDC5XNoDR6mYXu%2FT7zsjkPbMiHS7nGTDv5v_1600.jpg');background-size:cover;background-position:center}
