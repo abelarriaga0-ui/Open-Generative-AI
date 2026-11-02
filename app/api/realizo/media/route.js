@@ -28,7 +28,7 @@ export async function POST(request) {
     const id=crypto.randomUUID(), objectKey=user.id+'/'+id;
     const expires=nowSeconds()+MEDIA_LIFETIME;
     const r2=Boolean(env.REALIZO_MEDIA);
-    if(!r2 && (env.REALIZO_ENV!=='sandbox'||buffer.length>900000))
+    if(!r2 && ((env.REALIZO_ENV!=='sandbox' && env.REALIZO_MEDIA_D1_FALLBACK!=='true')||buffer.length>900000))
       return Response.json({error:'image_too_large_for_sandbox'},{status:413});
     const location=r2?objectKey:'d1:'+objectKey;
     if(r2){
