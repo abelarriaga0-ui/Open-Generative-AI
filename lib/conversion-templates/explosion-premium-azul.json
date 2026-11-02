@@ -1,0 +1,42 @@
+{
+  "id": "explosion-premium-azul",
+  "version": 1,
+  "name": "Explosión Premium Azul",
+  "category": "premium",
+  "previewUrl": "/templates/explosion-premium-azul.webp",
+  "aspectRatio": "2:3",
+  "expectedWidth": 1373,
+  "expectedHeight": 2048,
+  "productSlot": {
+    "x": 0.341,
+    "y": 0.359,
+    "width": 0.318,
+    "height": 0.477
+  },
+  "lockedVisuals": [
+    "fondo azul degradado",
+    "atleta sonriente con shaker en la esquina superior derecha",
+    "explosión de polvo y leche",
+    "flores de vainilla, vainas y hojas verdes",
+    "tipografía monumental blanca vertical",
+    "distribución exacta de los textos"
+  ],
+  "fixedClaims": [
+    "23g de Proteína Vegetal",
+    "Sin Lácteos",
+    "Sabor Vainilla",
+    "Energía Pura",
+    "0g Azúcar"
+  ],
+  "referenceEnvKey": "REALIZO_TEMPLATE_EXPLOSION_URL",
+  "modelEnvKey": "REALIZO_TEMPLATE_IMAGE_MODEL_ID",
+  "mode": "strict-reference-image-edit",
+  "referenceOrder": [
+    "original_template",
+    "customer_product"
+  ],
+  "replaceOnly": [
+    "main_product_container"
+  ],
+  "fidelityCaveat": "Instrucciones estrictas no garantizan igualdad pixel a pixel al usar IA generativa"
+}

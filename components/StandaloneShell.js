@@ -11,6 +11,7 @@ const DesignAgentStudio = dynamic(() => import('studio').then(mod => mod.DesignA
 });
 import axios from 'axios';
 import ApiKeyModal from './ApiKeyModal';
+import ConversionTemplatesStudio from './ConversionTemplatesStudio';
 import { getCommonCopy, getLocaleConfig, localizeStudioPath } from '@/lib/locales';
 
 // Tab/category ids, icons, and English `label` fallbacks are stable
@@ -19,6 +20,17 @@ import { getCommonCopy, getLocaleConfig, localizeStudioPath } from '@/lib/locale
 // inside the component below, with these English strings as the fallback
 // when a locale bundle is missing the key.
 const TABS = [
+  {
+    id: 'conversion-images',
+    label: 'Imágenes que venden',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="3" />
+        <path d="m7 15 3-3 2 2 3-4 2 2" />
+        <path d="M16 4v4M14 6h4" />
+      </svg>
+    )
+  },
   {
     id: 'image',
     label: 'Image Studio',
@@ -211,7 +223,7 @@ const NAVIGATION_CATEGORIES = [
   {
     id: 'images',
     label: 'Images',
-    tabIds: ['image', 'layers', 'cinema', 'design-agent', 'ai-influencer'],
+    tabIds: ['conversion-images', 'image', 'layers', 'cinema', 'design-agent', 'ai-influencer'],
     icon: (
       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="18" height="18" rx="2"/>
@@ -975,6 +987,9 @@ export default function StandaloneShell({ locale = 'en' }) {
 
         {/* Studio Content */}
         <div className="flex-1 min-h-0 h-full relative overflow-hidden bg-[#030303]">
+        <div className={activeTab === 'conversion-images' ? "h-full w-full" : "hidden"}>
+          <ConversionTemplatesStudio onGenerationStart={makeGenerationStartCallback('conversion-images')} onGenerationEnd={makeGenerationEndCallback('conversion-images')} onGenerationComplete={makeSuccessCallback('conversion-images')} onGenerationError={makeErrorCallback('conversion-images')} />
+        </div>
         <div className={activeTab === 'image' ? "h-full w-full" : "hidden"}>
           <ImageStudio apiKey={apiKey} locale={locale} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationStart={makeGenerationStartCallback('image')} onGenerationEnd={makeGenerationEndCallback('image')} onGenerationComplete={makeSuccessCallback('image')} onGenerationError={makeErrorCallback('image')} />
         </div>

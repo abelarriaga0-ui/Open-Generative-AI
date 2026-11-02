@@ -1,0 +1,42 @@
+name: Realizo plantillas — validación sin despliegue
+on:
+  push:
+    branches:
+      - feature/realizo-plantillas-imagenes
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-templates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verificar sintaxis del módulo
+        run: |
+          node --check lib/conversion-templates/analysis.js
+          node --check lib/conversion-templates/analysis-result.js
+          node --check lib/conversion-templates/catalog.js
+          node --check app/api/conversion-templates/analyze/route.js
+          node --check app/api/conversion-templates/generate/route.js
+          node --check app/api/conversion-templates/upload/route.js
+          node --check app/api/conversion-templates/analysis/'[id]'/route.js
+      - name: Tests aislados de plantillas
+        run: node --test tests/conversion-templates.test.mjs tests/conversion-analysis.test.mjs
+      - name: Verificar JSX del módulo y navegación
+        run: |
+          npx --yes esbuild@0.25.12 components/ConversionTemplatesStudio.jsx --loader:.jsx=jsx --outfile=/tmp/realizo-conversion-ui.js
+          npx --yes esbuild@0.25.12 components/StandaloneShell.js --loader:.js=jsx --outfile=/tmp/realizo-navigation.js
+      - name: Confirmar rutas esenciales y no desplegar
+        run: |
+          test -f components/ConversionTemplatesStudio.jsx
+          test -f public/templates/explosion-premium-azul.webp
+          test -f setup/REALIZO-PLANTILLAS-MODELOS.sql
+          echo "Validado; NO desplegado."
