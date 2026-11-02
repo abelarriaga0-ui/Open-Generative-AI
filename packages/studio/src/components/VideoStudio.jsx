@@ -2353,7 +2353,12 @@ export default function VideoStudio({
         if (currentModel?.hasPrompt && trimmedPrompt) {
           v2vParams.prompt = trimmedPrompt;
         }
-        res = onWalletGenerate && generationReady ? await onWalletGenerate(v2vParams) : await processV2V(apiKey, v2vParams);
+        res = onWalletGenerate && generationReady ? await onWalletGenerate(v2vParams,{creativeContext:preparedBrief?.project_id?{
+           project_id:preparedBrief.project_id,
+           cast_mode:preparedBrief.cast_mode,
+           audio_mode:preparedBrief.audio_mode||'no_voice',
+           creative_style:preparedBrief.creative_style,
+          }:null}) : await processV2V(apiKey, v2vParams);
         if (!res?.url) throw new Error(copy.errors.noVideoUrlReturned);
 
         const genId = res.request_id || res.id || Date.now().toString();
@@ -2451,7 +2456,12 @@ export default function VideoStudio({
         if (!grouped && resolutions.length > 0) params.resolution = selectedResolution;
         if (!grouped && !selectedVeoTool && selectedQuality) params.quality = selectedQuality;
 
-        res = onWalletGenerate && generationReady ? await onWalletGenerate(params) : await generateVideo(apiKey, params);
+        res = onWalletGenerate && generationReady ? await onWalletGenerate(params,{creativeContext:preparedBrief?.project_id?{
+           project_id:preparedBrief.project_id,
+           cast_mode:preparedBrief.cast_mode,
+           audio_mode:preparedBrief.audio_mode||'no_voice',
+           creative_style:preparedBrief.creative_style,
+          }:null}) : await generateVideo(apiKey, params);
         if (!res?.url) throw new Error(copy.errors.noVideoUrlReturned);
 
         const genId = res.request_id || res.id || Date.now().toString();
