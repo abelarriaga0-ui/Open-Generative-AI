@@ -89,12 +89,17 @@ export default function RealizoStudio({accountId,guest=false}){
    if(!root)return;
    const protect=()=>{
      root.querySelectorAll('video').forEach(video=>{
-       video.setAttribute('controlsList','nodownload noremoteplayback noplaybackrate');
+       // Native downloads are available for completed owned videos only.
+        const owned=video.dataset.realizoOwnedVideo==='true';
+        video.setAttribute('controlsList',owned
+          ?'noremoteplayback noplaybackrate'
+          :'nodownload noremoteplayback noplaybackrate');
        video.disablePictureInPicture=true;
      });
    };
    const preventMediaMenu=event=>{
-     if(event.target?.closest?.('video,.realizo-native-video,.realizo-template-modal'))
+     if(event.target?.closest?.('[data-realizo-owned-video="true"]'))return;
+      if(event.target?.closest?.('video,.realizo-native-video,.realizo-template-modal'))
        event.preventDefault();
    };
    const observer=new MutationObserver(protect);
@@ -331,9 +336,9 @@ export default function RealizoStudio({accountId,guest=false}){
           jobs.length?<div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {jobs.map(job=><article key={job.id} className="rounded-2xl border border-[#E9DEE2] bg-[#FAF7F4] overflow-hidden">
               <div className="h-32 bg-[#EBE1F6] flex items-center justify-center">
-                {job.video_url?<video src={job.video_url} controls controlsList="nodownload noremoteplayback noplaybackrate"
-            disablePictureInPicture onContextMenu={e=>e.preventDefault()}
-            preload="metadata" className="w-full h-full object-cover" />:
+                {job.video_url?<video src={job.video_url} controls
+            data-realizo-owned-video="true" controlsList="noremoteplayback noplaybackrate"
+            disablePictureInPicture preload="metadata" className="w-full h-full object-cover" />:
                  <Icon name="video" size={39}/>}
               </div>
               <div className="p-4 space-y-2">
@@ -365,7 +370,7 @@ export default function RealizoStudio({accountId,guest=false}){
               <p role="status" className="text-xs text-[#674B8D]">{downloadProgress}</p>
               <a href={downloadReady.url} download={downloadReady.filename} className="text-sm font-semibold underline text-[#6E4BD2]">Descargar MP4 ahora</a>
              </div>}
-             {downloadError&&<p role="alert" className="text-xs text-red-700">{downloadError}</p>}
+             {downloadError&&<p role="alert" className="text-xs text-red-700">{downloadError} Si se reproduce el video, abre su menú de tres puntos (⋮) y elige Descargar, o haz clic derecho y selecciona Guardar video como.</p>}
             </div>}
               </div>
             </article>)}
