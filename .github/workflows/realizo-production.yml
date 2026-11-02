@@ -8,6 +8,7 @@ on:
       - "components/ConversionTemplatesStudio.jsx"
       - "components/RealizoStudio.jsx"
       - "lib/conversion-templates/**"
+      - "lib/wallet/request-policy.js"
       - "wrangler.production.jsonc"
   workflow_dispatch:
 permissions:
