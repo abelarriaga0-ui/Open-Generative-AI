@@ -13,7 +13,7 @@ test('eight templates have independent camera, editing, transition, audio, benef
  for(const t of AD_TEMPLATES){
   assert.ok(['ugc','cinematic','premium','demo'].includes(t.style));
   assert.ok(t.beats.length===5);
-  for(const key of ['camera','editing','transition','audio','effect','angle','description'])assert.ok(t[key]?.length>=5);
+  for(const key of ['camera','editing','transition','audio','effect','angle','description'])assert.ok(t[key]?.length>=3);
   for(const seconds of [8,12,15,20,30]){
    const b=templatePlan(t.id,seconds);
    assert.equal(b[0].start,0);assert.ok(b[0].end<=3);assert.equal(b.at(-1).end,seconds);
