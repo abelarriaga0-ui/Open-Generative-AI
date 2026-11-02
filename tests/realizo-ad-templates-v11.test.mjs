@@ -9,7 +9,7 @@ const studio=read('components/RealizoStudio.jsx'),premium=read('components/Reali
 
 test('one master template retains its camera, editing, sound and 30-second beats',()=>{
  assert.equal(AD_TEMPLATES.length,1);
- assert.equal(new Set(AD_TEMPLATES.map(t=>t.id)).size,8);
+ assert.equal(new Set(AD_TEMPLATES.map(t=>t.id)).size,1);
  for(const t of AD_TEMPLATES){
   assert.ok(['ugc','cinematic','premium','demo'].includes(t.style));
   assert.ok(t.beats.length===5);
@@ -54,13 +54,13 @@ test('paid research must receive locked template in the SAME OpenAI request with
  const project={
   id:'test',signedImage:'https://example.org/product.jpg',product_name:'NOIL',description:'Shampoo perfumado',
   market_code:'EC',sales_angle:'benefits',creative_style:'ugc',video_language:'es',
-  video_model_id:'seedance-2.5-intl-omni-reference',video_duration_seconds:15,
+  video_model_id:'seedance-2.5-intl-omni-reference',video_duration_seconds:30,
   template_id:'ugc-vendedor',template_actor:'hombre',template_setting:'baño'
  };
  const r=buildResearchRequest({OPENAI_PREMIUM_MODEL:'test',REALIZO_ENV:'sandbox'},project);
  assert.match(r.instructions,/PLANTILLA ELEGIDA POR EL CLIENTE/);
  assert.match(r.instructions,/MUAPI MASTER 30S/);
- assert.match(r.instructions,/Los tres conceptos deben respetar el mismo storyboard/);
+ assert.match(r.instructions,/mismo esquema de venta y montaje/i);
  assert.match(r.input[0].content[0].text,/template_id/);
  assert.equal(r.tool_choice,'required');assert.equal(r.max_tool_calls,5);
  assert.equal(r.input[0].content.filter(x=>x.type==='input_image').length,1);
