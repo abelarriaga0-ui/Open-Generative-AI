@@ -67,3 +67,5 @@ jobs:
           if(wallet.status!==401)throw Error('Wallet not protected');
           console.log('PASS: branded preview available; wallet secure; no AI charges.');
           JS
+
+# Revalidate final gallery download integration on desktop and mobile.
