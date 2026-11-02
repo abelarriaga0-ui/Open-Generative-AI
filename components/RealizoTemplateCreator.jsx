@@ -23,7 +23,19 @@ const errorMap={
  provider_price_inputs_invalid:'Este modelo no acepta la combinación seleccionada de archivos y ajustes. No se descontaron créditos.',
  muapi_rate_limited:'El servicio está ocupado temporalmente. Inténtalo nuevamente.',
  insufficient_funds:'Saldo insuficiente. Recarga para continuar.',
- price_changed_confirm_again:'El precio cambió. Necesitas volver a confirmar el importe.'
+ price_changed_confirm_again:'El precio cambió. Necesitas volver a confirmar el importe.',
+ generation_requires_video_reference:'Este modelo requiere un video como referencia; una fotografía no es suficiente.',
+ generation_image_reference_invalid:'Este modelo no admite la fotografía de referencia seleccionada.',
+ generation_duration_invalid:'La duración seleccionada no es compatible con este modelo.',
+ generation_quality_invalid:'La resolución o el formato no son compatibles con este modelo.',
+ generation_parameters_invalid:'La combinación seleccionada de referencias y ajustes no es compatible con este modelo.',
+ generation_model_unavailable:'Este modelo no está disponible para crear el video.',
+ generation_service_busy:'El servicio está ocupado. Inténtalo más tarde.',
+ generation_service_auth_unavailable:'El servicio no está configurado correctamente. Contacta con soporte.',
+ generation_service_balance_unavailable:'El servicio está temporalmente indisponible. Contacta con soporte.',
+ generation_payload_too_large:'Los archivos o ajustes superan el tamaño permitido.',
+ generation_service_unavailable:'El servicio no está disponible en este momento.',
+ upstream_rejected:'La configuración del video fue rechazada. Revisa la compatibilidad del modelo y las referencias.'
 };
 async function read(r){
  const data=await r.json().catch(()=>({}));
