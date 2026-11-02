@@ -27,7 +27,11 @@ jobs:
             const data=await response.json().catch(()=>null);
             console.log(new URL(url).pathname,'status',response.status,'type',response.headers.get('content-type'),
              'models?',Array.isArray(data?.models),'single model?',typeof data?.name==='string',
-             'has error?',Boolean(data?.detail || data?.error));
+             'has error?',Boolean(data?.detail || data?.error),
+             'category',typeof data?.category==='string'?data.category:null,
+             'dynamic',typeof data?.dynamic_pricing==='boolean'?data.dynamic_pricing:null,
+             'has endpoint',Boolean(data?.endpoint||data?.endpoint_url),
+             'estimate path valid',typeof data?.estimate_endpoint==='string');
            }catch(e){console.log(new URL(url).pathname,'network_failure',e.name)}
           }
           JS
