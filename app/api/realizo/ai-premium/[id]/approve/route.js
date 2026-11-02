@@ -59,7 +59,11 @@ export async function POST(request,{params}){
     return Response.json({error:'invalid_spoken_script'},{status:400});
   const shotPreference=['auto','single','multi'].includes(body.shot_preference)?body.shot_preference:'auto';
   const directorConcept={...concept,video_prompt:userPrompt,spoken_script:userSpeech};
-  const modelId=project.video_model_id||'seedance-2.5-omni-reference';
+  // The research is already paid for. An owner may explicitly switch to a
+  // photo-compatible motor at review time without paying OpenAI again.
+  const modelId=selectedTemplate
+    ? project.video_model_id
+    : String(body.video_model_id||project.video_model_id||'');
   let videoChoice;
   try{
     videoChoice=resolvePremiumVideoChoice(modelId,body.video_duration_seconds??project.video_duration_seconds);
@@ -86,8 +90,8 @@ export async function POST(request,{params}){
   // statements visibly distinguishable from claims substantiated by sources.
   const finalPrompt=director.prompt.slice(0,5500);
   await db.prepare(
-    "UPDATE realizo_ai_projects SET status='approved',video_duration_seconds=?,selected_concept=?,approved_prompt=?,updated_at=datetime('now') WHERE id=? AND user_id=?"
-  ).bind(duration,selection,finalPrompt,id,user.id).run();
+    "UPDATE realizo_ai_projects SET status='approved',video_model_id=?,video_workflow_id=?,video_duration_seconds=?,selected_concept=?,approved_prompt=?,updated_at=datetime('now') WHERE id=? AND user_id=?"
+  ).bind(modelId,workflowId,duration,selection,finalPrompt,id,user.id).run();
   project=await db.prepare('SELECT * FROM realizo_ai_projects WHERE id=? AND user_id=?')
     .bind(id,user.id).first();
   const asset=await db.prepare(

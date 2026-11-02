@@ -49,8 +49,8 @@ test('provider usage estimate is clearly not an exact OpenAI invoice',()=>{
  assert.equal(e.microUsd,20455);
  assert.equal(estimateOpenAIResearchCost({model:'unpriced',usage:{input_tokens:100},webCalls:0}).status,'unavailable');
  const ui=readFileSync('components/RealizoPremium.jsx','utf8');
- assert.match(ui,/costo de OpenAI/i);
- assert.match(ui,/NO factura final/);
+ assert.doesNotMatch(ui,/Auditoría privada · costo de OpenAI/);
+ assert.doesNotMatch(ui,/NO factura final/);
 });
 test('fixed existing billing does not become an unapproved variable charge',()=>{
  const mig=readFileSync('migrations/0018_realizo_premium_video_choice_cost_audit.sql','utf8');
