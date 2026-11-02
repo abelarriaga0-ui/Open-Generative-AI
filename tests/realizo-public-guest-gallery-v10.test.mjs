@@ -23,7 +23,7 @@ test('guests can explore public pages but creating or viewing credits requires l
  assert.match(studio,/function chooseCreatorMode\(mode\)\{\s*if\(guest\)return requireLogin\(\)/);
  assert.match(studio,/function openEditor\(\)\{if\(guest\)return requireLogin\(\)/);
  assert.match(studio,/href=\{guest\?loginUrl:'\/wallet'\}/);
- assert.match(studio,/nav\('templates','Estilos e ideas'/);
+ assert.match(studio,/nav\('templates','Plantillas'/);
  assert.match(studio,/nav\('videos','Mis videos'/);
  assert.match(studio,/Iniciar sesión/);
 });
@@ -36,15 +36,11 @@ test('guest library is explicitly empty with a generate video button that signs 
  assert.match(studio,/if\(guest\)return;\s*try\{/);
  assert.match(studio,/\{!guest&&premiumProjects.length>0/);
 });
-test('original generated photos are served locally as a demo sprite in both galleries',()=>{
- assert.match(templates,/realizo-template-photo-layer/);
+test('template gallery is photographic and safe for anonymous visitors',()=>{
+ assert.match(templates,/realizo-v11-card-photo/);
  assert.match(gallery,/realizo-photo-format-image/);
- assert.doesNotMatch(templates,/realizo-template-face|realizo-template-prop/);
- assert.doesNotMatch(gallery,/realizo-scene-avatar|realizo-scene-product/);
- assert.match(css,/url\('\/assets\/realizo\/templates\/demo-photos.webp'\)/);
+ assert.match(templates,/Las fotos son vistas de estilo/);
  assert.match(css,/realizo-public-empty/);
- assert.match(templates,/Vistas ilustrativas del estilo/);
- assert.match(gallery,/NOT\s*\n\/\/ playable video samples/);
 });
 test('guest mode cannot bypass server-side wallet protection',()=>{
  assert.match(studio,/if\(guest\)return requireLogin\(\)/);
