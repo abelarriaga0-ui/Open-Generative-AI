@@ -5,6 +5,7 @@ on:
     paths:
       - ".github/workflows/realizo-consolidation-audit.yml"
   workflow_dispatch:
+# Fresh read-only check after removing legacy Workers.
 permissions:
   contents: read
 jobs:
