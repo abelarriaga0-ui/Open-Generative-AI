@@ -38,3 +38,59 @@ jobs:
           node-version: "22"
       - name: Billeteras, Sandbox y sintaxis ESM (sin secretos ni servicios externos)
         run: npm run test:wallet
+
+  deploy-realizo-sandbox:
+    needs: sqlite-invariants
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 40 && github.event.pull_request.head.ref == 'fix/realizo-clear-errors-white-label-20261102' && github.event.pull_request.head.repo.full_name == 'abelarriaga0-ui/Open-Generative-AI' && github.repository == 'abelarriaga0-ui/Open-Generative-AI' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    permissions:
+      contents: read
+    env:
+      CI: 'true'
+      NEXT_TELEMETRY_DISABLED: '1'
+      REALIZO_ENV: sandbox
+      REALIZO_AUTH_PROVIDER: native
+      PAYPAL_MODE: sandbox
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Verify sandbox configuration and new error messages
+        run: |
+          node scripts/check-realizo-auth-sandbox.mjs
+          npm run wallet:preflight:sandbox
+          node --test tests/realizo-inline-charge-white-label.test.mjs tests/realizo-real-cost-dynamic-quote.test.mjs
+      - name: Build isolated sandbox Worker
+        run: |
+          npm run cloudflare:build:realizo-auth-sandbox
+          test -s .open-next/worker.js
+      - name: Deploy Cloudflare auth Sandbox ONLY
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          node scripts/check-realizo-auth-sandbox.mjs
+          npx --no-install opennextjs-cloudflare deploy --config wrangler.auth-sandbox.jsonc
+      - name: Confirm live deployment and authenticated routes
+        run: |
+          node --input-type=module <<'JS'
+          const origin='https://realizo-auth-sandbox.abelarriaga0.workers.dev';
+          const url=origin+'/studio';
+          const r=await fetch(url,{signal:AbortSignal.timeout(30000)});
+          if(r.status!==200)throw Error('Sandbox studio HTTP '+r.status);
+          const wallet=await fetch(origin+'/api/wallet',{signal:AbortSignal.timeout(30000)});
+          if(wallet.status!==401)throw Error('Wallet auth HTTP '+wallet.status);
+          console.log('Sandbox LIVE:',url,'studio:',r.status,'wallet access:',wallet.status);
+          JS
