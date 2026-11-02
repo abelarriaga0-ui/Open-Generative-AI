@@ -7,6 +7,7 @@ import {buildCommercialDirectorPackage,normalizeProductCopy} from '@/lib/realizo
 import {acceptsSellerConfirmation} from '@/lib/realizo-creative/approval-consent';
 import {getAdTemplate} from '@/lib/realizo-creative/ad-templates';
 import {normalizeCastMode,isFilmStyle} from '@/lib/realizo-creative/cast-mode';
+import {normalizeAudioMode,filmAudioValid} from '@/lib/realizo-creative/audio-mode';
 
 export const dynamic='force-dynamic';
 export async function POST(request,{params}){
@@ -60,7 +61,10 @@ export async function POST(request,{params}){
     return Response.json({error:'invalid_spoken_script'},{status:400});
   const shotPreference=['auto','single','multi'].includes(body.shot_preference)?body.shot_preference:'auto';
   const castMode=isFilmStyle(finalStyle)?normalizeCastMode(body.cast_mode??project.cast_mode):'with_people';
-  const directorConcept={...concept,video_prompt:userPrompt,spoken_script:userSpeech};
+  const audioMode=isFilmStyle(finalStyle)?normalizeAudioMode(body.audio_mode??project.audio_mode):'no_voice';
+  if(isFilmStyle(finalStyle)&&!filmAudioValid(audioMode,castMode))return Response.json({error:'premium_audio_cast_conflict'},{status:422});
+  if(isFilmStyle(finalStyle)&&audioMode!=='no_voice'&&!userSpeech)return Response.json({error:'premium_audio_script_required'},{status:422});
+  const directorConcept={...concept,video_prompt:userPrompt,spoken_script:isFilmStyle(finalStyle)&&audioMode==='no_voice'?'':userSpeech};
   // The research is already paid for. An owner may explicitly switch to a
   // photo-compatible motor at review time without paying OpenAI again.
   const modelId=selectedTemplate
@@ -81,7 +85,7 @@ export async function POST(request,{params}){
   const director=buildCommercialDirectorPackage({
     concept:directorConcept,productName:normalizeProductCopy(project.product_name),
     description:normalizeProductCopy(project.description),cta:concept.cta||project.cta,
-    market:project.market_code,videoLanguage:project.video_language||'es',style:finalStyle,shotPreference,castMode,duration,
+    market:project.market_code,videoLanguage:project.video_language||'es',style:finalStyle,shotPreference,castMode,audioMode,duration,
     imageProvided:true,modelId,workflowId,
     productGeometry:findings.product_visual_geometry||null,
     templateId:selectedTemplate?.id||null,templateActor:project.template_actor||'auto',
@@ -92,8 +96,8 @@ export async function POST(request,{params}){
   // statements visibly distinguishable from claims substantiated by sources.
   const finalPrompt=director.prompt.slice(0,5500);
   await db.prepare(
-    "UPDATE realizo_ai_projects SET status='approved',video_model_id=?,video_workflow_id=?,video_duration_seconds=?,selected_concept=?,approved_prompt=?,cast_mode=?,updated_at=datetime('now') WHERE id=? AND user_id=?"
-  ).bind(modelId,workflowId,duration,selection,finalPrompt,castMode,id,user.id).run();
+    "UPDATE realizo_ai_projects SET status='approved',video_model_id=?,video_workflow_id=?,video_duration_seconds=?,selected_concept=?,approved_prompt=?,cast_mode=?,audio_mode=?,updated_at=datetime('now') WHERE id=? AND user_id=?"
+  ).bind(modelId,workflowId,duration,selection,finalPrompt,castMode,audioMode,id,user.id).run();
   project=await db.prepare('SELECT * FROM realizo_ai_projects WHERE id=? AND user_id=?')
     .bind(id,user.id).first();
   const asset=await db.prepare(
@@ -113,7 +117,7 @@ export async function POST(request,{params}){
       revision:crypto.randomUUID(),project_id:id,approved_concept:selection,
       media_role:director.model_capabilities.imageRole==='product_reference'?'reference_only':
         director.model_capabilities.imageRole==='start_frame'?'start_frame':'none',creative_style:finalStyle,
-      shot_preference:shotPreference,cast_mode:castMode,creative_concept:directorConcept,
+      shot_preference:shotPreference,cast_mode:castMode,audio_mode:audioMode,creative_concept:directorConcept,
       template_id:selectedTemplate?.id||null,template_name:selectedTemplate?.name||null,
       overlay_cta:director.cta,spoken_script:director.spoken_script,
       product_claims_to_verify:claimsToVerify,
