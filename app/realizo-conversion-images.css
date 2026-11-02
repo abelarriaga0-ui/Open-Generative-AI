@@ -18,9 +18,9 @@
 .realizo-images-count{font-size:11px;color:#a79ca4;padding-bottom:6px}
 .realizo-images-showcase{display:grid;gap:16px}
 .realizo-images-feature{display:grid;grid-template-columns:minmax(0,370px) minmax(0,1fr);border-radius:25px;background:radial-gradient(ellipse at 83% 21%,#4a2b2940,transparent 45%),#17141c;border:1px solid #55424a;overflow:hidden;box-shadow:0 20px 50px #0005;min-height:365px}
-.realizo-images-photo{position:relative;overflow:hidden;background:#11275a;width:100%;min-height:375px;display:flex;align-items:center;justify-content:center;border-right:1px solid #ffffff14}
+.realizo-images-photo{position:relative;overflow:hidden;background:radial-gradient(ellipse at 50% 40%,#1f4b96,#101b40 72%,#10101f);width:100%;min-height:375px;display:flex;align-items:center;justify-content:center;border-right:1px solid #ffffff14}
 .realizo-images-photo:after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(0deg,#0009,transparent 38%,transparent 72%,#0003)}
-.realizo-images-photo img{width:100%;height:100%;object-fit:cover;object-position:center;transition:transform .4s ease}
+.realizo-images-photo img{width:auto;max-width:92%;height:365px;object-fit:contain;object-position:center;border-radius:7px;box-shadow:0 12px 36px #0009;transition:transform .4s ease}
 .realizo-images-photo:hover img{transform:scale(1.035)}
 .realizo-images-photo-label{position:absolute;left:15px;top:15px;z-index:2;border:1px solid #ffffff55;background:#15111c9e;color:#fff5e9;border-radius:100px;padding:8px 12px;font-size:10px;font-weight:850;letter-spacing:.14em}
 .realizo-images-missing{position:absolute;z-index:4;inset:0;display:grid;place-items:center;background:#1b2c5e;color:#fff}
