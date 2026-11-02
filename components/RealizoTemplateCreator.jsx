@@ -15,13 +15,13 @@ const errorMap={
  template_script_needs_review:'El diálogo no tiene una duración natural de 30 segundos. Vuelve a prepararlo.',
  locked_template_prompt_too_long:'La información es demasiado extensa para esta plantilla. Reduce la descripción.',
  invalid_media_reference:'Tu fotografía caducó. Vuelve a subirla.',
- unsupported_model:'Este modelo de Muapi no está disponible en este momento.',
- unsupported_model_endpoint:'Este modelo no tiene una ruta válida en Muapi.',
- model_pricing_unavailable:'Muapi no proporcionó un precio verificable. No se ha cobrado nada.',
- muapi_catalog_unavailable:'Muapi no respondió a la cotización. No se descontaron créditos.',
- muapi_pricing_contract_mismatch:'Muapi no pudo calcular el precio con estos parámetros. No se ha cobrado nada.',
- provider_price_inputs_invalid:'La cotización de Muapi rechazó estos parámetros. No se ha cobrado nada.',
- muapi_rate_limited:'Muapi está limitando las consultas. Inténtalo nuevamente.',
+ unsupported_model:'Este modelo no está disponible en este momento.',
+ unsupported_model_endpoint:'Este modelo todavía no está disponible para generar videos.',
+ model_pricing_unavailable:'No pudimos verificar el precio de este video. No se ha cobrado nada.',
+ muapi_catalog_unavailable:'No pudimos conectar con el servicio de precios. No se descontaron créditos.',
+ muapi_pricing_contract_mismatch:'El modelo no permite calcular el precio con esta configuración. Revisa las referencias y la duración. No se descontaron créditos.',
+ provider_price_inputs_invalid:'Este modelo no acepta la combinación seleccionada de archivos y ajustes. No se descontaron créditos.',
+ muapi_rate_limited:'El servicio está ocupado temporalmente. Inténtalo nuevamente.',
  insufficient_funds:'Saldo insuficiente. Recarga para continuar.',
  price_changed_confirm_again:'El precio cambió. Necesitas volver a confirmar el importe.'
 };
@@ -107,7 +107,7 @@ export default function RealizoTemplateCreator({onBack,onWalletRefresh,onViewVid
      }));
      if(result.status==='unknown'){
        setJobId(result.job_id||'pending');
-       throw Error('Muapi puede haber recibido la solicitud. Consulta Mis videos; no vuelvas a pagar.');
+       throw Error('La solicitud puede estar procesándose. Consulta Mis videos; no vuelvas a pagar.');
      }
      if(!result.job_id)throw Error('No se recibió identificador. Revisa Mis videos.');
      setJobId(result.job_id);
@@ -118,7 +118,7 @@ export default function RealizoTemplateCreator({onBack,onWalletRefresh,onViewVid
          {credentials:'same-origin',cache:'no-store'}));
        if(poll.status==='completed'){
          const url=extractGeneratedVideoUrl(poll);
-         if(!url)throw Error('Muapi terminó pero no devolvió un video. Consulta Mis videos.');
+         if(!url)throw Error('La generación terminó sin un archivo disponible. Consulta Mis videos.');
          setGenerated(url);setPhase('completed');onWalletRefresh?.();return;
        }
        if(poll.status==='failed')throw Error('La generación falló. Consulta Mis videos para verificar la devolución.');
@@ -132,7 +132,7 @@ export default function RealizoTemplateCreator({onBack,onWalletRefresh,onViewVid
    <div className="realizo-template-creator-head">
      <span className="realizo-v11-eyebrow">CREAR DESDE PLANTILLA</span>
      <h1>Tu producto. <em>Este video.</em></h1>
-     <div className="realizo-template-chips"><span>Muapi · Seedance 2.5</span><span>30 s</span><span>9:16</span><span>Español</span></div>
+     <div className="realizo-template-chips"><span>Realizo · Seedance 2.5</span><span>30 s</span><span>9:16</span><span>Español</span></div>
    </div>
    <div className="realizo-template-creator-grid">
      <div className="realizo-template-panel">
@@ -177,13 +177,13 @@ export default function RealizoTemplateCreator({onBack,onWalletRefresh,onViewVid
        {quote&&!jobId&&<div className="realizo-template-quote" role="region" aria-label="Precio de generación">
          <span>Precio exacto de esta generación</span>
          <strong>{money(quote.price_cents)}</strong>
-         <small>Saldo disponible: {money(quote.available_cents)} · Muapi cobra la generación después de confirmar. La adaptación del guion no tiene otro cargo para el cliente.</small>
+         <small>Saldo disponible: {money(quote.available_cents)} · El cobro de esta generación se realiza tras tu confirmación. La adaptación del guion no tiene otro cargo.</small>
          <button className="realizo-template-primary" type="button" disabled={busy||!quote.affordable}
           onClick={generate}>Confirmar y generar · {money(quote.price_cents)}</button>
          {!quote.affordable&&<p>Saldo insuficiente. <Link href="/wallet">Recargar créditos</Link></p>}
        </div>}
        {jobId&&!generated&&<div className="realizo-template-quote" role="status">
-         <strong>Generación enviada</strong><p>Muapi está creando tu video. No se volverá a cobrar esta solicitud.</p>
+         <strong>Generación enviada</strong><p>Estamos creando tu video. No se volverá a cobrar esta solicitud.</p>
          <button type="button" className="realizo-template-back" onClick={onViewVideos}>Ver Mis videos</button>
        </div>}
        {error&&<p role="alert" className="realizo-template-error">{error}</p>}
