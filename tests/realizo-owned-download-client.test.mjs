@@ -55,3 +55,33 @@ test('reject invalid identifiers before fetch',async()=>{
  globalThis.fetch=async()=>{throw new Error('should not request network')};
  await assert.rejects(downloadRealizoVideo('untrusted'),/identificar tu video/);
 });
+
+test('browser saves owner MP4 after Worker proxy 502 when CDN permits CORS',async()=>{
+ const clicks=mockDocument();
+ const direct='https://cdn.muapi.ai/outputs/generated/video123.mp4';
+ let calls=0;
+ globalThis.fetch=async(url,options)=>{
+  calls++;
+  if(calls===1){
+   assert.equal(options.credentials,'same-origin');
+   return Response.json({error:'video_unavailable',provider_status:403},{status:502});
+  }
+  assert.equal(url,direct);
+  assert.equal(options.mode,'cors');
+  assert.equal(options.credentials,'omit');
+  assert.equal(options.headers.Range,'bytes=0-');
+  return new Response(new Uint8Array([0,0,0,24,102,116,121,112]),{
+   status:206,headers:{'Content-Type':'video/mp4','Content-Length':'8'}});
+ };
+ const file=await downloadRealizoVideo(ID,{directUrl:direct});
+ assert.equal(calls,2);
+ assert.equal(file.filename,'realizo-'+ID+'.mp4');
+ assert.equal(clicks(),1);
+});
+test('malicious or unrelated fallback URLs are not fetched',async()=>{
+ mockDocument();
+ let calls=0;
+ globalThis.fetch=async()=>{calls++;return Response.json({error:'video_unavailable'},{status:502})};
+ await assert.rejects(downloadRealizoVideo(ID,{directUrl:'https://evil.example/video.mp4'}),/recuperar el archivo/);
+ assert.equal(calls,1);
+});
