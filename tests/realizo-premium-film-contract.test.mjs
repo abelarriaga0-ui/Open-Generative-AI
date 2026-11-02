@@ -20,7 +20,7 @@ const make=(castMode='product_only',shotPreference='multi')=>buildCommercialDire
  duration:8,shotPreference,productGeometry:null,imageProvided:true,
 });
 const mockProject=(prompt,cast_mode='product_only')=>({
- id,status:'approved',creative_style:'premium',cast_mode,approved_prompt:prompt,
+ id,status:'approved',creative_style:'premium',cast_mode,audio_mode:'no_voice',approved_prompt:prompt,
  video_model_id:model,video_duration_seconds:8,
 });
 function dbFor(project){return {prepare:()=>({bind:()=>({first:async()=>project})})};}
@@ -51,7 +51,7 @@ test('single shot means a physically continuous take and NO cuts',()=>{
 });
 test('server gate accepts exact approved cinematic film and rejects old ad before reservation',async()=>{
  const approved=make().prompt;
- const context={project_id:id,creative_style:'premium',cast_mode:'product_only'};
+ const context={project_id:id,creative_style:'premium',cast_mode:'product_only',audio_mode:'no_voice'};
  const input={prompt:approved,duration:8};
  assert.equal(await verifyPremiumGeneration(dbFor(mockProject(approved)),id,model,input,context),null);
  assert.equal(await verifyPremiumGeneration(dbFor(mockProject(approved)),id,model,{...input,prompt:'Mujer se toca el cabello. Producto como solución.'},context),'premium_brief_reapproval_required');
