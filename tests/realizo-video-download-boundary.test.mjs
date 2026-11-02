@@ -20,6 +20,8 @@ test('all generated videos use owner-only download button, not provider download
  const history=read('components/RealizoStudio.jsx');
  assert.match(creator,/downloadRealizoVideo\(jobId\)/);
  assert.match(history,/downloadRealizoVideo\(job\.id\)/);
+ assert.match(history,/import\s*\{\s*downloadRealizoVideo\s*\}\s*from\s*['\"]@\/lib\/realizo-creative\/download-video['\"]/);
+ assert.match(history,/try\{await downloadRealizoVideo\(job\.id\)\}catch/);
  assert.match(history,/MutationObserver\(protect\)/);
  assert.doesNotMatch(history,/href=\{job\.video_url\}/);
  assert.doesNotMatch(creator,/href=\{generated\}/);
