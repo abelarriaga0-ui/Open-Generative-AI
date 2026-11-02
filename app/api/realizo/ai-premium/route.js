@@ -52,6 +52,7 @@ export async function POST(request){
   try{data=validatePremiumInput(body)}
   catch(e){
    if(e.message==='invalid_ad_template')return error('invalid_ad_template',422);
+   if(e.message==='premium_audio_cast_conflict')return error('premium_audio_cast_conflict',422);
    throw e;
   }
   if(body.max_price_cents!==access.price_cents ||
