@@ -6,7 +6,7 @@ const original=globalThis.fetch;
 const demo={name:'kling-o1-reference-to-video',category:'Image to Video',dynamic_pricing:true,
  endpoint:'/api/v1/kling-o1-reference-to-video',
  estimate_endpoint:'/api/v1/models/kling-o1-reference-to-video/estimate-cost',cost_currency:'USD'};
-const payload={duration:7,aspect_ratio:'9:16',prompt:'Demo de producto'};
+const payload={duration:7,aspect_ratio:'9:16',prompt:'Demo de producto',video_url:'https://example.com/reference.mp4'};
 const okay=data=>({ok:true,status:200,json:async()=>data});
 test.afterEach(()=>{globalThis.fetch=original});
 test('quote uses individual Muapi model cost estimator without hardcoded tariffs',async()=>{
@@ -59,4 +59,32 @@ test('API endpoints for quote and generation use only server Muapi key and prese
  assert.match(g,/quoteLiveVideo\(body\.model_id,body\.input,env\.MUAPI_API_KEY\)/);
  assert.match(g,/quote\.provider_cost_cents>body\.max_price_cents/);
  assert.match(g,/createReservedJob/);
+});
+
+test('photo-only Kling O1 reference video is rejected before price lookup or wallet debit',async()=>{
+ let calls=0;
+ globalThis.fetch=async()=>{calls++;throw Error('should never call provider')};
+ await assert.rejects(
+  quoteLiveVideo('kling-o1-reference-to-video',{prompt:'Demo',duration:7,images_list:['https://example.com/product.jpg']}),
+  /model_requires_video_reference/
+ );
+ assert.equal(calls,0);
+});
+test('Muapi 400 invalid estimator inputs is not misreported as catalogue outage',async()=>{
+ globalThis.fetch=async url=>String(url).endsWith('/estimate-cost')
+  ?{ok:false,status:400,json:async()=>({error:{code:'COST_CALC_FAILED'}})}:okay(demo);
+ await assert.rejects(quoteLiveVideo(demo.name,payload),/provider_price_inputs_invalid/);
+});
+test('photo-only research excludes video-input-only Kling and preserves an image alternative',async()=>{
+ const {premiumVideoOptions,resolvePremiumVideoChoice}=await import('../lib/realizo-creative/video-specs.js');
+ const list=premiumVideoOptions();
+ assert.ok(!list.some(v=>v.id==='kling-o1-reference-to-video'));
+ assert.throws(()=>resolvePremiumVideoChoice('kling-o1-reference-to-video',7),/invalid_video_configuration/);
+ assert.ok(list.some(v=>v.id==='seedance-2.5-intl-omni-reference'));
+ const api=readFileSync('app/api/realizo/ai-premium/[id]/approve/route.js','utf8');
+ const screen=readFileSync('components/RealizoPremium.jsx','utf8');
+ assert.match(api,/body\.video_model_id\|\|project\.video_model_id/);
+ assert.match(api,/SET status='approved',video_model_id=\?,video_workflow_id=\?/);
+ assert.match(screen,/setReviewModelId/);
+ assert.match(screen,/video_model_id:reviewModelId\|\|project\.video_model_id/);
 });
