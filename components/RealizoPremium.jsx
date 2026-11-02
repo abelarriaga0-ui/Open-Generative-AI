@@ -503,10 +503,6 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
     {project.status==='needs_review'&&!ready&&<p className="text-sm text-[#9A6257]">La investigación necesita revisión técnica antes de volver a intentarse. No se volverá a cobrar automáticamente.</p>}
     {ready&&<>
       <div className="text-sm font-semibold text-[#6B4B8C] rounded-xl bg-[#F3EBFA] p-3 space-y-3">
-       {project.video_model_id==='kling-o1-reference-to-video'&&
-        <p role="status" className="rounded-lg bg-[#FFF0DC] px-3 py-2 text-[#7C461D]">
-         Este motor necesita un video de referencia. Para generar desde tu fotografía, elige otro motor; no pagarás otra investigación.
-        </p>}
        <div className="flex flex-wrap gap-3 items-center">
         <label className="flex flex-wrap items-center gap-2">
          Motor:
