@@ -96,8 +96,8 @@ export async function POST(request,{params}){
   // statements visibly distinguishable from claims substantiated by sources.
   const finalPrompt=director.prompt.slice(0,5500);
   await db.prepare(
-    "UPDATE realizo_ai_projects SET status='approved',video_model_id=?,video_workflow_id=?,video_duration_seconds=?,selected_concept=?,approved_prompt=?,cast_mode=?,audio_mode=?,updated_at=datetime('now') WHERE id=? AND user_id=?"
-  ).bind(modelId,workflowId,duration,selection,finalPrompt,castMode,audioMode,id,user.id).run();
+    "UPDATE realizo_ai_projects SET status='approved',video_model_id=?,video_workflow_id=?,video_duration_seconds=?,selected_concept=?,approved_prompt=?,creative_style=?,cast_mode=?,audio_mode=?,updated_at=datetime('now') WHERE id=? AND user_id=?"
+  ).bind(modelId,workflowId,duration,selection,finalPrompt,finalStyle,castMode,audioMode,id,user.id).run();
   project=await db.prepare('SELECT * FROM realizo_ai_projects WHERE id=? AND user_id=?')
     .bind(id,user.id).first();
   const asset=await db.prepare(
