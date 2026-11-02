@@ -1,0 +1,53 @@
+name: Realizo pricing diagnosis (all models, read-only)
+on:
+  push:
+    branches: [fix/realizo-unified-muapi-pricing-v3]
+    paths: ['.github/workflows/realizo-pricing-diagnose-v3.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-price-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Find every displayed error and price API caller
+        run: |
+          git grep -nE 'No se pudo consultar el precio|muapi_catalog_unavailable|quoteLiveVideo|/api/wallet/quote' -- ':!package-lock.json' | head -70 || true
+      - name: Probe exact dynamic model pricing without spending credits
+        run: |
+          node --input-type=module <<'JS'
+          const base='https://api.muapi.ai/api/v1/models';
+          const ids=['kling-o1-reference-to-video','seedance-2.5-intl-omni-reference','veo3-fast','seedance-2.5-intl-omni'];
+          const safe=async(url,options={})=>{
+            try {
+              const r=await fetch(url,{...options,signal:AbortSignal.timeout(16000)});
+              const body=await r.json().catch(()=>null);
+              return {status:r.status,body};
+            }catch(e){return {status:0,networkError:e.name}}
+          };
+          for(const name of ids){
+            const {status,body,networkError}=await safe(base+'/'+name);
+            const model=body?.model||body||{};
+            console.log('MODEL',JSON.stringify({name,status,networkError,entry:typeof model.name==='string'?model.name:null,
+             category:model.category,pricing:model.dynamic_pricing,
+             endpoint:model.endpoint,estimate:model.estimate_endpoint,
+             priceType:typeof model.cost,required:model.input_schema?.required,
+             schemaKeys:Object.keys(model.input_schema?.properties||{}).slice(0,45)}));
+            if(status!==200)continue;
+            const payload={duration:name.includes('kling')?7:8,aspect_ratio:'9:16',resolution:'720p',prompt:'A short video of a person using a product.'};
+            if(name.startsWith('seedance')){payload.images_list=['https://example.org/product.jpg'];payload.omni_reference_task_type='reference';}
+            if(name.startsWith('kling')){payload.images_list=['https://example.org/product.jpg'];}
+            const res=await safe(base+'/'+name+'/estimate-cost',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+            const d=res.body||{};
+            const e=d.error||d.detail;
+            console.log('ESTIMATE',JSON.stringify({name,status:res.status,networkError:res.networkError,
+              quotedCost:typeof d.cost==='number'?d.cost:null,currency:d.currency,
+              error:typeof e==='string'?e.slice(0,260):JSON.stringify(e||'').slice(0,420)}));
+          }
+          const broken=await safe(base+'/seedance-2.5-intl-omni-reference',{headers:{'x-api-key':'deliberately-invalid-public-key'}});
+          console.log('PUBLIC_WITH_INVALID_KEY',JSON.stringify({status:broken.status,hasModel:!!broken.body?.name}));
+          JS
