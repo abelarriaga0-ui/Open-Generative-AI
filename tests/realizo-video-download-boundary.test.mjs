@@ -6,14 +6,14 @@ import {TEMPLATE_PREVIEW_SRC} from '../lib/realizo-creative/template-video-input
 const read=p=>readFileSync(p,'utf8');
 test('preview never offers native video download controls or external provider fallback',()=>{
   const library=read('components/RealizoTemplateLibrary.jsx');
-  assert.equal(TEMPLATE_PREVIEW_SRC,'/assets/realizo/templates/ugc-preview-30s.mp4');
+  assert.equal(TEMPLATE_PREVIEW_SRC,'/assets/realizo/templates/ugc-preview-native-30s.mp4');
   assert.match(library,/controlsList="nodownload noremoteplayback noplaybackrate"/);
   assert.match(library,/onContextMenu=\{blockSave\}/);
   assert.match(library,/realizo-template-safe-player/);
   assert.match(library,/realizo-template-preview-mark/);
   assert.doesNotMatch(library,/src=\{source\} controls\b|TEMPLATE_PREVIEW_PROVIDER_SRC/);
   assert.equal(existsSync('public/assets/realizo/templates/ugc-master-30s.mp4'),false);
-  assert.ok(statSync('public/assets/realizo/templates/ugc-preview-30s.mp4').size<1000000);
+  assert.ok(statSync('public/assets/realizo/templates/ugc-preview-native-30s.mp4').size>3000000);
 });
 test('all generated videos use owner-only download button, not provider download links',()=>{
  const creator=read('components/RealizoTemplateCreator.jsx');
@@ -42,4 +42,17 @@ test('download resolver rejects other users, unfinished jobs and untrusted URLs'
  assert.equal(extractOwnedDownloadUrl({status:'completed',result_json:JSON.stringify({outputs:[output]})}),output);
  assert.equal(extractOwnedDownloadUrl({status:'submitted',result_json:JSON.stringify({outputs:[output]})}),null);
  assert.equal(extractOwnedDownloadUrl({status:'completed',result_json:JSON.stringify({outputs:['https://evil.example/video.mp4']})}),null);
+});
+
+test('downloads are submitted as native browser POST attachments, not delayed Blob click',()=>{
+ const client=read('lib/realizo-creative/download-video.js');
+ const api=read('app/api/realizo/jobs/[id]/download/route.js');
+ assert.match(client,/export async function downloadRealizoVideo/);
+ assert.match(client,/form\.method='POST'/);
+ assert.match(client,/form\.submit\(\)/);
+ assert.match(client,/encodeURIComponent\(jobId\)/);
+ assert.doesNotMatch(client,/\.blob\(\)|URL\.createObjectURL/);
+ assert.match(api,/redirect:'follow'/);
+ assert.match(api,/Content-Disposition/);
+ assert.match(api,/attachment; filename/);
 });
