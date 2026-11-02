@@ -43,6 +43,8 @@ export default function RealizoStudio({accountId,guest=false}){
  const [pilotPrice,setPilotPrice]=useState(null);
  const [jobs,setJobs]=useState([]);
  const [jobsLoading,setJobsLoading]=useState(false);
+ const [downloadJob,setDownloadJob]=useState(null);
+ const [downloadError,setDownloadError]=useState('');
  const [premiumProjects,setPremiumProjects]=useState([]);
  const [page,setPage]=useState('home');
  const [formatPreset,setFormatPreset]=useState('ugc');
@@ -325,6 +327,7 @@ export default function RealizoStudio({accountId,guest=false}){
      </>}
 
      {page==='videos'&&<section className="realizo-videos-page max-w-[1250px] mx-auto">
+      {downloadError&&<p role="alert" className="mb-3 text-sm text-red-600">{downloadError}</p>}
        <p className="uppercase tracking-[.19em] text-[#8A61B5] font-bold text-[11px] mb-2">Biblioteca</p>
        <h1 className="text-[36px] tracking-tight font-extrabold">Tu biblioteca creativa<span className="text-[#EB8A87]">.</span></h1>
        <p className="realizo-videos-intro">Todos tus anuncios y proyectos preparados, organizados en un mismo espacio.</p>
@@ -339,7 +342,9 @@ export default function RealizoStudio({accountId,guest=false}){
           jobs.length?<div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {jobs.map(job=><article key={job.id} className="rounded-2xl border border-[#E9DEE2] bg-[#FAF7F4] overflow-hidden">
               <div className="h-32 bg-[#EBE1F6] flex items-center justify-center">
-                {job.video_url?<video src={job.video_url} controls preload="metadata" className="w-full h-full object-cover" />:
+                {job.video_url?<video src={job.video_url} controls controlsList="nodownload noremoteplayback noplaybackrate"
+            disablePictureInPicture onContextMenu={e=>e.preventDefault()}
+            preload="metadata" className="w-full h-full object-cover" />:
                  <Icon name="video" size={39}/>}
               </div>
               <div className="p-4 space-y-2">
@@ -348,7 +353,15 @@ export default function RealizoStudio({accountId,guest=false}){
                <span className="inline-flex text-[11px] rounded-full bg-[#EBE1F8] text-[#7155A1] px-3 py-1 font-semibold">
                 {job.status==='completed'?'Completado':job.status==='failed'?'No completado':job.status==='unknown'?'En revisión':'En proceso'}
                </span>
-               {job.video_url&&<a href={job.video_url} target="_blank" rel="noopener noreferrer" className="block text-[#6E4BD2] underline text-sm font-semibold">Abrir video</a>}
+               {job.video_url&&<button type="button" disabled={downloadJob===job.id}
+             onClick={async()=>{
+              setDownloadJob(job.id);setDownloadError('');
+              try{await downloadRealizoVideo(job.id)}catch(e){setDownloadError(e.message)}
+              finally{setDownloadJob(null)}
+             }}
+             className="block text-[#6E4BD2] underline text-sm font-semibold">
+             {downloadJob===job.id?'Preparando descarga…':'↓ Descargar con Realizo'}
+            </button>}
               </div>
             </article>)}
           </div>:
