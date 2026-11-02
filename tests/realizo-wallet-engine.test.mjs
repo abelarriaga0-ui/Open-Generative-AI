@@ -28,7 +28,8 @@ test('original multi-model picker remains available while paid requests require 
  assert.doesNotMatch(editor,/selectedModel!==id \|\| !imageMode/);
  const wrapper=readFileSync('components/RealizoStudio.jsx','utf8');
  assert.match(wrapper,/setGenerationReady\(Boolean\(x\?\.generation_enabled &&/);
- assert.match(wrapper,/Elige tu modelo, duración y resolución/);
+ assert.match(wrapper,/onWalletGenerate=\{onWalletGenerate\}/);
+ assert.match(wrapper,/billableModelIds=\{billableModelIds\}/);
  const flags=JSON.parse(readFileSync('wrangler.auth-sandbox.jsonc','utf8')).vars;
  assert.equal(flags.REALIZO_MULTI_MODEL_SANDBOX,'true');
  assert.equal(flags.REALIZO_MUAPI_PILOT_ACCOUNT_ID,undefined);
