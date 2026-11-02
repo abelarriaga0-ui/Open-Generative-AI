@@ -1,0 +1,79 @@
+name: Realizo - consolidate the existing studio safely
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/realizo-consolidated-release.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: realizo-existing-studio-consolidation
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      NEXT_TELEMETRY_DISABLED: '1'
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify destination, preserve database, prohibit collection before Live verification
+        run: |
+          node - <<'JS'
+          const fs=require('node:fs');
+          const cfg=JSON.parse(fs.readFileSync('wrangler.consolidated.jsonc','utf8'));
+          if(cfg.name!=='realizo-auth-sandbox'||
+            cfg.d1_databases?.[0]?.database_id!=='2561f6c8-bfb2-4ea4-8527-7fec29188edf'||
+            cfg.vars.REALIZO_ENV!=='production'||
+            cfg.vars.REALIZO_LIVE_PAYMENTS_ENABLED!=='false'||
+            cfg.vars.MUAPI_GENERATION_ENABLED!=='false'||
+            cfg.vars.REALIZO_MEDIA_D1_FALLBACK!=='true')
+              throw Error('Unexpected or unsafe canonical worker configuration');
+          if(!process.env.CLOUDFLARE_API_TOKEN)throw Error('Cloudflare token missing');
+          console.log('Verified canonical studio and existing D1; Live charging remains off.');
+          JS
+      - name: Compile current Realizo application, including studio and all user workflows
+        run: |
+          npm pkg set 'devDependencies.@tailwindcss/vite=4.3.3'
+          npm install --no-audit --no-fund --legacy-peer-deps
+          npm install --no-save --package-lock=false next@16.4.2 @opennextjs/cloudflare@1.20.12 wrangler@4.156.2
+          npm run build:packages
+          npx opennextjs-cloudflare build --config wrangler.consolidated.jsonc
+          test -s .open-next/worker.js
+      - name: Verify existing account, reference media, and creative project records in-place
+        run: |
+          set -euo pipefail
+          npx wrangler d1 execute WALLETS_DB --config wrangler.consolidated.jsonc --remote --command "SELECT CASE WHEN (SELECT COUNT(*) FROM realizo_accounts)>=1 AND (SELECT COUNT(*) FROM realizo_media_assets)>=37 AND (SELECT COUNT(*) FROM realizo_ai_projects)>=19 THEN 1 ELSE 0 END AS existing_data_preserved;" > /tmp/realizo-inventory.json
+          node - <<'JS'
+          const f=require('node:fs').readFileSync('/tmp/realizo-inventory.json','utf8');
+          if(!/"existing_data_preserved"\s*:\s*1/.test(f))throw Error('Existing user content count mismatch; deployment aborted.');
+          console.log('Existing identity, media and AI project record counts preserved.');
+          JS
+          npx wrangler d1 migrations apply WALLETS_DB --config wrangler.consolidated.jsonc --remote
+      - name: Deploy current studio to the SAME original URL and preserve existing Worker secrets
+        run: npx opennextjs-cloudflare deploy --config wrangler.consolidated.jsonc
+      - name: Verify public studio, login, content catalog, and blocked anonymous wallet
+        run: |
+          node --input-type=module <<'JS'
+          const origin='https://realizo-auth-sandbox.abelarriaga0.workers.dev';
+          const paths=[['/studio',200],['/login',200],['/api/auth/features',200],['/api/conversion-templates',200],['/api/wallet',401]];
+          for(const [p,status] of paths){
+            const r=await fetch(origin+p,{redirect:'manual',signal:AbortSignal.timeout(20000)});
+            if(r.status!==status)throw Error('Route '+p+' failed HTTP '+r.status+'; expected '+status);
+            if(p==='/api/conversion-templates'){
+              const j=await r.json();
+              if(!Array.isArray(j.templates)||!j.templates.length||j.templates.some(t=>t.available))
+                throw Error('Catalog not ready or paid generation unexpectedly active');
+            }
+          }
+          console.log('Canonical public studio OK, login OK, catalog OK, anonymous wallet blocked; paid checkout disabled.');
+          JS
