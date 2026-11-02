@@ -2,7 +2,7 @@ import {
   getWalletEnvironment, requireWalletUser,
   getGenerationJob, updateJobStatus, jsonError
 } from '@/lib/wallet/server';
-import { isMuapiGenerationEnabled } from '@/lib/wallet/generation-policy';
+import { isMuapiGenerationEnabled, isConversionImageGenerationEnabled } from '@/lib/wallet/generation-policy';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +19,12 @@ export async function GET(request, { params }) {
         result: job.status === 'completed' && job.result_json ? JSON.parse(job.result_json) : undefined },
         { headers: { 'Cache-Control': 'no-store' } });
     }
-    if (!isMuapiGenerationEnabled(env,user)) {
+    const isTemplateImageJob = [env.REALIZO_TEMPLATE_IMAGE_MODEL_ID, env.REALIZO_TEMPLATE_ANALYZER_MODEL_ID]
+      .filter(Boolean).includes(job.model_id);
+    const enabled = isTemplateImageJob
+      ? isConversionImageGenerationEnabled(env)
+      : isMuapiGenerationEnabled(env,user);
+    if (!enabled) {
       return Response.json({ error: 'generation_disabled_in_test_environment' }, { status: 503 });
     }
     if (!env.MUAPI_API_KEY) return Response.json({ error: 'muapi_secret_not_configured' }, { status: 503 });
