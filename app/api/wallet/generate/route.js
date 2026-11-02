@@ -8,6 +8,7 @@ import {isPilotAccount,claimPilotSlot,isPilotPriceConfigValid,isOwnedSignedProdu
 import { isAllowedMuapiEndpoint } from '@/lib/wallet/muapi-endpoint';
 import {isOwnerMultiModelSandbox} from '@/lib/wallet/multi-model-access';
 import {quoteLiveVideo,ensureOwnedMedia,userFacingQuoteError,normalizeLiveVideoInput} from '@/lib/wallet/live-video-models';
+import {verifyPremiumGeneration} from '@/lib/realizo-creative/premium-generation-gate';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,6 +81,8 @@ export async function POST(request) {
         !/^[A-Za-z0-9_-]{8,128}$/.test(body.idempotency_key)) {
       return Response.json({ error: 'invalid_generation_request' }, { status: 400 });
     }
+    const premiumError=await verifyPremiumGeneration(env.WALLETS_DB,user.id,body.model_id,body.input,body.creative_context);
+    if(premiumError)return Response.json({error:premiumError},{status:422});
     phase='model-lookup';
     const pilot=env.REALIZO_ENV==='sandbox';
     const multiModel=pilot && await isOwnerMultiModelSandbox(env,user);
