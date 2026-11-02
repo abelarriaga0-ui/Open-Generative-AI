@@ -36,7 +36,7 @@ test('only customer product values and explicitly requested character are change
 });
 test('template preview uses actual video file, never a decorative-only background',()=>{
  const library=read('components/RealizoTemplateLibrary.jsx');
- assert.equal(TEMPLATE_PREVIEW_SRC,'/assets/realizo/templates/ugc-preview-30s.mp4');
+ assert.equal(TEMPLATE_PREVIEW_SRC,'/assets/realizo/templates/ugc-preview-native-30s.mp4');
  assert.match(library,/onMouseEnter=\{enter\}/);
  assert.match(library,/<video ref=\{preview\}/);
  assert.match(library,/role="dialog"/);
