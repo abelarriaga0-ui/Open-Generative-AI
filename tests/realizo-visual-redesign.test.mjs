@@ -9,7 +9,7 @@ test('REALIZO premium visual workspace has actual navigation and three existing 
  assert.match(studio,/nav\('home','Inicio','video'\)/);
  assert.match(studio,/nav\('create','Crear video','video',startNewVideo\)/);
  assert.match(studio,/nav\('videos','Mis videos','folder'\)/);
- assert.match(studio,/RealizoVisualGallery onChoose=\{chooseVisualFormat\}/);
+ assert.match(studio,/RealizoTemplateLibrary featured onChoose=\{chooseAdTemplate\}/);
  assert.match(studio,/function chooseVisualFormat\(format\)/);
  assert.match(studio,/setCreatorMode\('premium'\)/);
  assert.match(studio,/setFormatPreset\(format\)/);
@@ -42,7 +42,7 @@ test('visual overrides are scoped, no changes to backend, generation, billing or
  assert.match(source('app/wallet/page.jsx'),/onPaid=\{\(\)=>window.location.reload\(\)\} theme="dark"/);
  assert.match(source('app/wallet/page.jsx'),/<PaypalTopup /);
  assert.match(source('components/RealizoPremium.jsx'),/initialStyle='ugc'/);
- assert.match(source('components/RealizoPremium.jsx'),/creative_style:initialStyle/);
+ assert.match(source('components/RealizoPremium.jsx'),/creative_style:template\?\.style\|\|initialStyle/);
  const originalStudio=source('components/RealizoStudio.jsx');
  assert.match(originalStudio,/fetch\('\/api\/wallet'/);
  assert.match(originalStudio,/fetch\('\/api\/realizo\/jobs'/);
