@@ -31,7 +31,6 @@ export default function PaypalTopup({ minCents, firstTopup, onPaid, theme = 'dar
   const [loading, setLoading] = useState(false);
   const [cardAvailable,setCardAvailable]=useState(null);
   const [retryCount,setRetryCount]=useState(0);
-  const [autoInterest,setAutoInterest]=useState(false);
   const amountRef=useRef(amount);
   amountRef.current=amount;
   const cardsRef=useRef(null);
@@ -127,7 +126,7 @@ export default function PaypalTopup({ minCents, firstTopup, onPaid, theme = 'dar
         onCancel: () => setStatus('Pago cancelado. No se añadió saldo.'),
       });
       if (!buttons.isEligible()) {
-        setError('PayPal no está disponible para esta cuenta o navegador.');
+        if(!cardFields?.isEligible())setError('PayPal no habilitó botones ni tarjeta integrada para esta cuenta o navegador.');
         return;
       }
       await buttons.render(node.current);
@@ -185,12 +184,10 @@ export default function PaypalTopup({ minCents, firstTopup, onPaid, theme = 'dar
       </section>
       <div ref={node} aria-label="Pagar con cuenta PayPal" />
       <section className="space-y-2 rounded-xl border border-white/20 p-3">
-        <label className="flex gap-2 items-start text-sm"><input type="checkbox"
-          checked={autoInterest} onChange={e=>setAutoInterest(e.target.checked)}/>
-          <span>Me interesa activar recargas automáticas de $20 cuando mi saldo llegue a $5.</span>
+        <label className="flex gap-2 items-start text-sm"><input type="checkbox" disabled checked={false}/>
+          <span>Recarga automática de $20 al llegar a $5 <strong>(todavía no disponible)</strong>.</span>
         </label>
-        <p className="text-xs text-white/60">Todavía no se realizan cargos automáticos. Para activarlos deberás autorizar expresamente los pagos futuros y vincular un método compatible.</p>
-        {autoInterest&&<p role="status" className="text-xs text-amber-300">No se ha activado ninguna recarga automática.</p>}
+        <p className="text-xs text-white/60">Se habilitará cuando PayPal permita guardar un método de pago con autorización expresa del cliente y el servidor tenga controles contra cargos repetidos. Actualmente no se ejecutan cargos automáticos.</p>
       </section>
     </div>
   );
