@@ -7,7 +7,7 @@ import { isMuapiGenerationEnabled } from '@/lib/wallet/generation-policy';
 import {isPilotAccount,claimPilotSlot,isPilotPriceConfigValid,isOwnedSignedProductImage,PILOT_MODEL_ID} from '@/lib/wallet/muapi-pilot';
 import { isAllowedMuapiEndpoint } from '@/lib/wallet/muapi-endpoint';
 import {isOwnerMultiModelSandbox} from '@/lib/wallet/multi-model-access';
-import {quoteLiveVideo,ensureOwnedMedia,userFacingQuoteError} from '@/lib/wallet/live-video-models';
+import {quoteLiveVideo,ensureOwnedMedia,userFacingQuoteError,normalizeLiveVideoInput} from '@/lib/wallet/live-video-models';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +16,7 @@ function classifyRejectedGeneration(status, detail) {
   // The upstream error may be arbitrary user content. Interpret known fields,
   // but never return or log raw upstream response text.
   const error=safe.error;
+  const fields=Array.isArray(safe.detail)?safe.detail.flatMap(d=>Array.isArray(d?.loc)?d.loc.map(String):[]):[];
   const payload= [
     typeof error === 'string' ? error : '',
     typeof error?.message === 'string' ? error.message : '',
@@ -23,6 +24,11 @@ function classifyRejectedGeneration(status, detail) {
     typeof safe.detail === 'string' ? safe.detail : '',
     typeof safe.message === 'string' ? safe.message : ''
   ].join(' ').toLowerCase().slice(0,1400);
+  if(fields.some(f=>/^(?:image_urls|images_list|image_url|first_frame_url|reference_image_urls)$/.test(f)))
+    return 'generation_image_reference_invalid';
+  if(fields.includes('duration'))return 'generation_duration_invalid';
+  if(fields.includes('resolution')||fields.includes('aspect_ratio'))return 'generation_quality_invalid';
+  if(fields.includes('prompt'))return 'generation_prompt_invalid';
   if (status === 401 || status === 403) return 'generation_service_auth_unavailable';
   if (status === 402) return 'generation_service_balance_unavailable';
   if (status === 404) return 'generation_model_unavailable';
@@ -147,7 +153,14 @@ export async function POST(request) {
         return Response.json({error:'pilot_image_or_prompt_invalid'},{status:400});
       }
     }
-    const pricedInput = { ...body.input, ...fixed };
+    // Match the exact documented reference fields used during price estimation.
+    // Unsupported inputs fail before provider billing; do not auto-switch models.
+    let pricedInput;
+    try{
+      pricedInput=normalizeLiveVideoInput(body.model_id,{...body.input,...fixed});
+    }catch(err){
+      return Response.json({error:userFacingQuoteError(err)},{status:422});
+    }
 
     phase='wallet-reservation';
     const job = await createReservedJob(env.WALLETS_DB, {
