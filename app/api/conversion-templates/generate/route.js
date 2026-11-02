@@ -7,6 +7,8 @@ import { isMuapiGenerationEnabled } from '@/lib/wallet/generation-policy';
 import {
   findConversionTemplate, buildStrictTemplatePrompt, isSafePublicImageUrl
 } from '@/lib/conversion-templates/catalog';
+import { buildApprovedEditAppendix } from '@/lib/conversion-templates/analysis';
+import { loadApprovedAnalysis } from '@/lib/conversion-templates/analysis-result';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,7 +42,7 @@ export async function POST(request) {
       return Response.json({ error: 'template_not_configured' }, { status: 503 });
     }
     const model = await getPricedModel(env.WALLETS_DB, modelId);
-    if (!model || !/^[A-Za-z0-9_-]+$/.test(model.muapi_endpoint)) {
+    if (!model || model.muapi_endpoint !== 'nano-banana-2-1-edit') {
       return Response.json({ error: 'priced_image_model_unavailable' }, { status: 503 });
     }
     const allowed = JSON.parse(model.allowed_input_keys_json);
@@ -48,9 +50,19 @@ export async function POST(request) {
     if (!Array.isArray(allowed) || !fixed || typeof fixed !== 'object' || Array.isArray(fixed)) {
       return Response.json({ error: 'invalid_image_model_configuration' }, { status: 503 });
     }
-    // Este modelo debe admitir dos referencias. Nunca aceptar modelo, costo ni prompt desde el cliente.
+    // Analizar cambios es opcional, pero si hay análisis debe pertenecer a este usuario y plantilla.
+    let analysis = { changes: [], rejected: [] };
+    if (body.analysis_job_id != null) {
+      try {
+        analysis = await loadApprovedAnalysis(env.WALLETS_DB, user.id, template.id,
+          env.REALIZO_TEMPLATE_ANALYZER_MODEL_ID, body.analysis_job_id);
+      } catch (error) {
+        return Response.json({ error: error.message || 'analysis_validation_failed' }, { status: 422 });
+      }
+    }
+    // El usuario nunca puede enviar un prompt o sobrescribir el modelo/precio.
     const input = {
-      prompt: buildStrictTemplatePrompt(template),
+      prompt: buildStrictTemplatePrompt(template) + buildApprovedEditAppendix(analysis),
       images_list: [referenceUrl, body.product_url]
     };
     if (allowed.includes('aspect_ratio') && !Object.hasOwn(fixed, 'aspect_ratio')) {
@@ -58,6 +70,10 @@ export async function POST(request) {
     }
     if (Object.keys(input).some((key) => !allowed.includes(key) || Object.hasOwn(fixed, key))) {
       return Response.json({ error: 'model_does_not_support_template_references' }, { status: 503 });
+    }
+    if (fixed.resolution !== '4k' || fixed.output_format !== 'png' ||
+        fixed.aspect_ratio !== template.aspectRatio || fixed.google_search !== false) {
+      return Response.json({ error: 'image_model_requires_fixed_4k_configuration' }, { status: 503 });
     }
     const price = model.customer_price_cents;
     const job = await createReservedJob(env.WALLETS_DB, {
