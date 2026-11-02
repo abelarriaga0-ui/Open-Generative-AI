@@ -37,7 +37,7 @@ export default function WalletPage(){
     try{await fetch('/api/auth/logout',{method:'POST',credentials:'same-origin'});}
     finally{window.location.assign('/login');}
   }
-  const entries={deposit:'Recarga',reserve:'Generación reservada',capture:'Video completado',release:'Reserva devuelta'};
+  const entries={deposit:data?.environment==='sandbox'?'Recarga de prueba':'Recarga',reserve:'Generación reservada',capture:'Video completado',release:'Reserva devuelta'};
   return <main className="realizo-wallet-page min-h-screen">
     <header className="border-b border-[#E8E0D9] bg-[#F7F3EE]">
       <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
@@ -55,13 +55,18 @@ export default function WalletPage(){
       </div>
       {error&&<div role="alert" className="rounded-2xl bg-[#FFF2E8] border border-[#E7CDBE] p-5 text-[#654D43]">{error}</div>}
       {!data&&!error&&<p role="status" className="text-[#82718C]">Cargando...</p>}
+      {data?.environment==='sandbox'&&<div role="status" className="rounded-2xl border-2 border-amber-400 bg-amber-50 p-4 text-[#69420E]">
+        <strong className="block">Modo de pruebas — no hay dinero real</strong>
+        Los pagos PayPal Sandbox y los créditos mostrados aquí son simulados. No se envía dinero a tu PayPal real.
+        Para revisar pagos de prueba, consulta la cuenta Business en <a className="underline" href="https://www.sandbox.paypal.com" target="_blank" rel="noopener noreferrer">PayPal Sandbox</a>.
+      </div>}
       {data&&<>
         <div className="grid lg:grid-cols-2 gap-4">
           <section className="relative overflow-hidden rounded-[26px] bg-[#302246] text-white p-7 sm:p-8 shadow-[0_16px_40px_rgba(48,34,70,.13)]">
             <div className="absolute -right-14 -top-14 h-48 w-48 rounded-full bg-[#9D70CF]/20"/>
             <div className="relative">
               <div className="flex items-center justify-between text-[#DCCBEB] text-sm font-semibold">
-                <span>Saldo disponible</span><WalletIcon/>
+                <span>{data.environment==='sandbox'?'Saldo de prueba disponible':'Saldo disponible'}</span><WalletIcon/>
               </div>
               <p className="mt-5 text-[42px] sm:text-[52px] leading-none tracking-[-.04em] font-extrabold text-[#FFC3AF] tabular-nums">{money(data.wallet.available_cents)}</p>
               <p className="mt-6 text-sm text-[#CDBFDF]">Listo para crear tus videos</p>
