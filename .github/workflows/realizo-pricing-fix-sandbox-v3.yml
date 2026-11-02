@@ -1,7 +1,7 @@
 name: Realizo - reliable Muapi pricing for every model (Sandbox)
 on:
   push:
-    branches: [fix/realizo-unified-muapi-pricing-v3]
+    branches: [fix/realizo-clear-errors-white-label-20261102]
     paths: ['.github/workflows/realizo-pricing-fix-sandbox-v3.yml']
   workflow_dispatch:
 permissions: {contents: read}
@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   tests-and-publish:
-    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/fix/realizo-unified-muapi-pricing-v3'
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/fix/realizo-clear-errors-white-label-20261102'
     runs-on: ubuntu-latest
     timeout-minutes: 65
     env:
@@ -36,7 +36,8 @@ jobs:
             tests/realizo-real-cost-dynamic-quote.test.mjs \
             tests/realizo-live-models.test.mjs \
             tests/realizo-template-independent-flow.test.mjs \
-            tests/realizo-video-download-boundary.test.mjs
+            tests/realizo-video-download-boundary.test.mjs \
+            tests/realizo-inline-charge-white-label.test.mjs
           npm run test:wallet
       - name: Compile full Realizo Cloudflare Worker
         run: |
