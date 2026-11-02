@@ -29,7 +29,8 @@
     "REALIZO_AI_PREMIUM_PUBLIC_ENABLED": "false",
     "REALIZO_TEMPLATE_EXPLOSION_URL": "https://realizo.abelarriaga0.workers.dev/templates/explosion-premium-azul.webp",
     "REALIZO_TEMPLATE_IMAGE_MODEL_ID": "realizo_nano_banana_2_1_edit_4k",
-    "REALIZO_TEMPLATE_ANALYZER_MODEL_ID": "realizo_gemini_2_5_flash"
+    "REALIZO_TEMPLATE_ANALYZER_MODEL_ID": "realizo_gemini_2_5_flash",
+    "REALIZO_TEMPLATE_IMAGES_ENABLED": "true"
   },
   "d1_databases": [
     {
