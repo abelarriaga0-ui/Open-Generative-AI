@@ -21,8 +21,8 @@ test('one master template retains its camera, editing, sound and 30-second beats
   }
   const dir=templateDirection(t.id,20,{actor:'hombre',setting:'baño real'});
   assert.match(dir,/MUAPI MASTER 30S/);
-  assert.ok(dir.includes(t.camera));
-  assert.ok(dir.includes(t.transition));
+  assert.ok(dir.includes('0-3 hook spoken'));
+  assert.ok(dir.includes('image reference only'));
   assert.ok(dir.includes('hombre'));
  }
  assert.equal(getAdTemplate('missing'),null);
