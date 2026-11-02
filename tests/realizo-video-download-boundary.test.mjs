@@ -26,6 +26,12 @@ test('all generated videos use owner-only download button, not provider download
  assert.match(history,/setDownloadError/);
  assert.match(history,/role="status"/);
  assert.match(history,/MutationObserver\(protect\)/);
+ assert.match(history,/data-realizo-owned-video="true"/);
+ assert.match(history,/video\.dataset\.realizoOwnedVideo==='true'/);
+ assert.match(history,/\?\s*'noremoteplayback noplaybackrate'/);
+ assert.match(history,/Guardar video como/);
+ const previews=read('components/RealizoTemplateLibrary.jsx');
+ assert.match(previews,/nodownload noremoteplayback noplaybackrate/);
  assert.doesNotMatch(history,/href=\{job\.video_url\}/);
  assert.doesNotMatch(creator,/href=\{generated\}/);
  const editor=read('packages/studio/src/components/VideoStudio.jsx');
