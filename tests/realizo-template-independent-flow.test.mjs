@@ -38,9 +38,13 @@ test('template preview uses actual video file, never a decorative-only backgroun
  const library=read('components/RealizoTemplateLibrary.jsx');
  assert.equal(TEMPLATE_PREVIEW_SRC,'/assets/realizo/templates/ugc-preview-stream-30s.mp4');
  assert.match(library,/onMouseEnter=\{playHover\}/);
- assert.match(library,/<video ref=\{hover\}/);\n assert.match(library,/preload="none"/);\n assert.match(library,/TEMPLATE_HOVER_SRC/);\n assert.match(library,/realizo-template-loading-poster/);
+ assert.match(library,/<video ref=\{hover\}/);
+ assert.match(library,/preload="none"/);
+ assert.match(library,/TEMPLATE_HOVER_SRC/);
+ assert.match(library,/realizo-template-loading-poster/);
  assert.match(library,/role="dialog"/);
- assert.match(library,/onWaiting=\{\(\)=>setLoading\(true\)\}/);\n assert.match(library,/onPlaying=\{\(\)=>\{setFullStarted\(true\)/);
+ assert.match(library,/onWaiting=\{\(\)=>setLoading\(true\)\}/);
+ assert.match(library,/onPlaying=\{\(\)=>\{setFullStarted\(true\)/);
 });
 test('template does not enter the free creative editor or its model/duration controls',()=>{
  const studio=read('components/RealizoStudio.jsx');
