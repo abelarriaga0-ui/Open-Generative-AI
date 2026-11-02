@@ -30,7 +30,7 @@ export async function POST(request) {
       available_cents: wallet.available_cents,
       affordable: wallet.available_cents >= quote.provider_cost_cents,
       currency:'USD',
-      note:'Importe calculado de Muapi, sin recargo para el titular del crédito original. Se confirmará antes de gastar.'
+      note:'Precio calculado para esta configuración. Se confirmará antes de reservar créditos.'
     },{headers:{'Cache-Control':'private, no-store'}});
   }catch(err) {
     const code=userFacingQuoteError(err);
