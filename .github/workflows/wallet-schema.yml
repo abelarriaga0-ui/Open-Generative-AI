@@ -78,12 +78,6 @@ jobs:
           python-version: "3.12"
       - name: Install locked dependencies
         run: npm install --no-audit --no-fund --legacy-peer-deps
-      - name: Diagnose recent completed Sandbox video delivery without exposing URLs
-        continue-on-error: true
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
-        run: node scripts/diagnose-sandbox-video-delivery.mjs
       - name: Verify sandbox configuration and new error messages
         run: |
           node scripts/check-realizo-auth-sandbox.mjs
