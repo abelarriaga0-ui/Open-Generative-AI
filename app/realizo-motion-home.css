@@ -131,3 +131,118 @@
   .realizo-app .realizo-content{padding:16px 12px 45px!important}
   .realizo-app .realizo-topbar{height:66px!important;padding:0 12px!important}
 }
+
+
+/* Realizo compact edition — proportions calibrated at normal 100% browser zoom.
+   Shrink the composition itself rather than scaling the entire site or video. */
+.realizo-motion-home{max-width:1460px;gap:20px}
+.realizo-motion-section-head{margin-bottom:16px}
+.realizo-motion-section-head h2,.realizo-motion-footer-action h2{font-size:clamp(25px,2.25vw,34px);margin-top:7px}
+.realizo-motion-way-grid{gap:12px}
+.realizo-motion-way-card{min-height:168px;padding:18px;border-radius:17px}
+.realizo-motion-way-icon{font-size:27px;margin:13px 0 11px}
+.realizo-motion-way-card strong{font-size:18px}
+.realizo-motion-way-card small{font-size:11px}
+.realizo-motion-featured-copy{padding:clamp(24px,3vw,42px)}
+.realizo-motion-featured-copy h3{font-size:clamp(31px,3vw,45px);margin-top:20px}
+.realizo-motion-featured-copy p{margin-top:11px}
+.realizo-motion-featured-copy>button{margin-top:20px}
+.realizo-motion-mini-specs{margin-top:27px}
+.realizo-motion-featured-video .realizo-template-preview-card{max-width:245px!important;width:min(100%,245px)!important}
+.realizo-motion-featured-video .realizo-template-video-frame{min-height:275px;max-height:315px}
+.realizo-motion-footer-action{padding:23px 26px}
+.realizo-motion-float-label{font-size:9px;padding:8px 11px;letter-spacing:.045em}
+.realizo-motion-stage-back-card{border-radius:14px}
+.realizo-motion-stage-back-card.back-one{left:12%}
+.realizo-motion-stage-back-card.back-two{right:11%}
+.realizo-motion-film{border-width:2px;border-radius:18px;box-shadow:0 23px 52px #000b,0 0 0 4px #ffffff07,0 0 55px #fdb4741d}
+.realizo-motion-film-top{top:13px;left:12px;font-size:8px}
+.realizo-motion-film-bottom{bottom:15px;left:13px;right:12px;gap:5px}
+.realizo-motion-film-bottom strong{font-size:16px}
+.realizo-motion-film-bottom>span{font-size:8px}
+.realizo-app .realizo-topbar{height:70px!important}
+.realizo-app .realizo-content{padding:20px clamp(16px,2.5vw,35px) 50px!important}
+
+@media(min-width:751px){
+ .realizo-motion-hero{height:426px;min-height:0;grid-template-columns:1.04fr .96fr;border-radius:22px}
+ .realizo-motion-hero-copy{padding:31px 0 31px clamp(31px,3.8vw,58px)}
+ .realizo-motion-live{font-size:9px;margin-bottom:17px}
+ .realizo-motion-hero h1{font-size:clamp(39px,3.15vw,56px);line-height:1.065;max-width:570px;letter-spacing:-.062em}
+ .realizo-motion-hero-copy>p{font-size:14px;margin-top:13px}
+ .realizo-motion-hero-actions{margin-top:18px;gap:9px}
+ .realizo-motion-cta{padding:12px 16px;font-size:12px;min-height:44px;gap:19px;border-radius:11px}
+ .realizo-motion-ghost{min-height:44px;padding:10px 14px;font-size:12px;gap:12px;border-radius:11px}
+ .realizo-motion-hero-foot{margin-top:25px;font-size:10px}
+ .realizo-motion-stage{min-height:0;height:100%}
+ .realizo-motion-film{top:50%;bottom:auto;left:50%;translate:-50% -50%;width:auto;height:355px;max-height:calc(100% - 34px);aspect-ratio:9/16}
+ .realizo-motion-stage-halo{width:390px;height:390px;left:15%;top:5%}
+ .realizo-motion-stage-orbit{left:15%;width:74%;top:12%;height:76%}
+ .realizo-motion-stage-orbit.orbit-two{left:5%;width:90%;top:23%;height:54%}
+ .realizo-motion-stage-back-card{top:22%;height:56%;width:28%}
+ .realizo-motion-float-label.float-top{top:17%;right:4%}
+ .realizo-motion-float-label.float-bottom{bottom:17%;left:5%}
+}
+@media(min-width:751px) and (max-width:1100px){
+ .realizo-motion-hero{height:392px;grid-template-columns:1fr .85fr}
+ .realizo-motion-hero-copy{padding-left:29px}
+ .realizo-motion-hero h1{font-size:clamp(36px,4.1vw,46px)}
+ .realizo-motion-stage{min-height:0}
+ .realizo-motion-film{height:315px}
+ .realizo-motion-float-label.float-top{right:0}
+ .realizo-motion-float-label.float-bottom{left:0}
+}
+@media(max-width:750px){
+ .realizo-motion-home{max-width:100%;gap:17px}
+ .realizo-motion-hero{min-height:0;height:auto;border-radius:20px}
+ .realizo-motion-hero-copy{padding:28px 22px 12px}
+ .realizo-motion-live{font-size:8px;margin-bottom:15px}
+ .realizo-motion-hero h1{font-size:clamp(31px,7.6vw,43px);line-height:1.07;letter-spacing:-.057em}
+ .realizo-motion-hero-copy>p{font-size:12px;margin-top:10px}
+ .realizo-motion-hero-actions{margin-top:16px;gap:8px}
+ .realizo-motion-cta,.realizo-motion-ghost{font-size:11px;min-height:42px;padding:10px 12px;gap:9px;border-radius:10px}
+ .realizo-motion-hero-foot{margin-top:18px;font-size:9px}
+ .realizo-motion-stage{min-height:260px;height:260px}
+ .realizo-motion-film{top:50%;bottom:auto;left:50%;translate:-50% -50%;height:240px;width:auto;max-height:calc(100% - 16px);aspect-ratio:9/16}
+ .realizo-motion-stage-halo{width:280px;height:280px;left:25%;top:-5%}
+ .realizo-motion-stage-back-card{top:21%;height:59%;width:25%}
+ .realizo-motion-stage-back-card.back-one{left:22%}
+ .realizo-motion-stage-back-card.back-two{right:20%}
+ .realizo-motion-float-label{font-size:8px;padding:7px 9px}
+ .realizo-motion-float-label.float-top{top:10%;right:8%}
+ .realizo-motion-float-label.float-bottom{bottom:11%;left:9%}
+ .realizo-motion-way-card{min-height:128px;padding:16px}
+ .realizo-motion-way-icon{font-size:25px;margin:10px 0 7px}
+ .realizo-motion-featured-copy{padding:24px}
+ .realizo-motion-featured-copy h3{font-size:35px}
+ .realizo-motion-footer-action{padding:19px}
+ .realizo-app .realizo-content{padding:14px 12px 45px!important}
+ .realizo-app .realizo-topbar{height:64px!important}
+}
+@media(max-width:420px){
+ .realizo-motion-hero-copy{padding:25px 18px 10px}
+ .realizo-motion-hero h1{font-size:31px}
+ .realizo-motion-stage{min-height:220px;height:220px}
+ .realizo-motion-film{height:203px}
+ .realizo-motion-float-label.float-top{right:3%}
+ .realizo-motion-float-label.float-bottom{left:3%}
+ .realizo-motion-way-card{min-height:122px}
+}
+
+
+/* Keep the rest of the studio on the same visual scale. */
+.realizo-app .realizo-brand{font-size:21px!important}
+.realizo-app .realizo-brand svg{width:32px;height:32px}
+.realizo-app .realizo-v11-topnav button{font-size:12px!important;padding-inline:14px}
+.realizo-app .realizo-balance{font-size:12px!important;padding:8px 13px}
+.realizo-app .realizo-page-intro h1{font-size:clamp(30px,2.6vw,42px)!important}
+.realizo-app .realizo-page-heading h1{font-size:clamp(29px,2.6vw,39px)!important}
+.realizo-app .realizo-template-creator-head h1{font-size:clamp(29px,2.7vw,40px)!important}
+.realizo-app .realizo-v11-lib-head h2{font-size:clamp(27px,2.5vw,38px)}
+.realizo-app .realizo-v11-card-overlay h3{font-size:clamp(14px,1.15vw,18px)}
+.realizo-app .realizo-template-creator-grid{gap:18px}
+.realizo-app .realizo-template-creator-head{margin-bottom:17px}
+@media(max-width:750px){
+ .realizo-app .realizo-brand{font-size:20px!important}
+ .realizo-app .realizo-brand svg{width:31px;height:31px}
+ .realizo-app .realizo-page-intro h1,.realizo-app .realizo-page-heading h1{font-size:30px!important}
+}
