@@ -39,11 +39,5 @@
       "database_id": "49a32292-62f7-4165-bc2f-3a1a2bd97c28",
       "migrations_dir": "migrations"
     }
-  ],
-  "r2_buckets": [
-    {
-      "binding": "REALIZO_MEDIA",
-      "bucket_name": "realizo-media"
-    }
   ]
 }
