@@ -65,7 +65,8 @@ test('Premium approved brief actually selects provider reference workflow and ch
  assert.doesNotMatch(ui,/setCorrection/);
  const bridge=readFileSync('lib/realizo-creative/wallet-generation.js','utf8');
  assert.match(bridge,/\/api\/wallet\/quote/);
- assert.match(bridge,/window\.confirm/);
+ assert.match(bridge,/confirmRealizoChargeInline/);
+ assert.doesNotMatch(bridge,/window\.confirm/);
 });
 
 test('12-second UGC prioritizes a spoken buyer review over a five-shot silent montage',()=>{
