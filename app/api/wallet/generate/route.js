@@ -11,6 +11,36 @@ import {quoteLiveVideo,ensureOwnedMedia,userFacingQuoteError} from '@/lib/wallet
 
 export const dynamic = 'force-dynamic';
 
+function classifyRejectedGeneration(status, detail) {
+  const safe = typeof detail === 'object' && detail !== null ? detail : {};
+  // The upstream error may be arbitrary user content. Interpret known fields,
+  // but never return or log raw upstream response text.
+  const error=safe.error;
+  const payload= [
+    typeof error === 'string' ? error : '',
+    typeof error?.message === 'string' ? error.message : '',
+    typeof error?.code === 'string' ? error.code : '',
+    typeof safe.detail === 'string' ? safe.detail : '',
+    typeof safe.message === 'string' ? safe.message : ''
+  ].join(' ').toLowerCase().slice(0,1400);
+  if (status === 401 || status === 403) return 'generation_service_auth_unavailable';
+  if (status === 402) return 'generation_service_balance_unavailable';
+  if (status === 404) return 'generation_model_unavailable';
+  if (status === 429) return 'generation_service_busy';
+  if (/video_url|video reference|reference video|video input|video required/.test(payload))
+    return 'generation_requires_video_reference';
+  if (/image_url|images_list|image reference|unsupported image|reference image/.test(payload))
+    return 'generation_image_reference_invalid';
+  if (/duration|seconds|length/.test(payload)) return 'generation_duration_invalid';
+  if (/resolution|aspect_ratio|aspect ratio|size/.test(payload)) return 'generation_quality_invalid';
+  if (/quota|insufficient credit|insufficient balance/.test(payload))
+    return 'generation_service_balance_unavailable';
+  if (status === 413) return 'generation_payload_too_large';
+  if (status === 400 || status === 422) return 'generation_parameters_invalid';
+  return 'generation_service_unavailable';
+}
+
+
 function validInput(input) {
   return input && typeof input === 'object' && !Array.isArray(input) &&
     !Object.keys(input).some(key => /^(webhook|webhook_url|callback_url|api_key|x-api-key)$/i.test(key));
@@ -149,8 +179,10 @@ export async function POST(request) {
         body: JSON.stringify(pricedInput),
       });
       if (response.status >= 400 && response.status < 500) {
-        await updateJobStatus(env.WALLETS_DB, user.id, job.id, 'failed', null, 'upstream_rejected');
-        return Response.json({ job_id: job.id, status: 'failed', error: 'upstream_rejected' }, { status: 422 });
+        const detail=await response.json().catch(()=>({}));
+        const failure=classifyRejectedGeneration(response.status,detail);
+        await updateJobStatus(env.WALLETS_DB, user.id, job.id, 'failed', null, failure);
+        return Response.json({job_id:job.id,status:'failed',error:failure},{status:422});
       }
       if (!response.ok) throw new Error('upstream_ambiguous_response');
       const data = await response.json();
