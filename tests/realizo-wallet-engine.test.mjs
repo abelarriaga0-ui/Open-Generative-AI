@@ -37,7 +37,8 @@ test('original multi-model picker remains available while paid requests require 
 test('dynamic quote must be accepted by user before creating an expense',()=>{
  const bridge=readFileSync('lib/realizo-creative/wallet-generation.js','utf8');
  assert.match(bridge,/\/api\/wallet\/quote/);
- assert.match(bridge,/window\.confirm/);
+ assert.match(bridge,/confirmRealizoChargeInline/);
+ assert.doesNotMatch(bridge,/window\.confirm/);
  assert.match(bridge,/max_price_cents:quote\.price_cents/);
  assert.doesNotMatch(bridge,/Number\(inputs\.duration\)!==5/);
  assert.doesNotMatch(bridge,/MUAPI_API_KEY/);
