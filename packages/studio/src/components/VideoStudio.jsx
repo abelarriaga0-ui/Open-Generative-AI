@@ -102,6 +102,7 @@ import { resolveCopy } from "../i18nUtils";
 import {buildCommercialDirectorPackage} from "../../../../lib/realizo-creative/sales-director.js";
 import RealizoSubtitleEditor from "./RealizoSubtitleEditor.jsx";
 import {scriptFromPrompt} from "../../../../lib/realizo-creative/subtitle-timeline.js";
+import {downloadRealizoVideo} from "../../../../lib/realizo-creative/download-video.js";
 
 async function downloadFile(url, filename) {
   try {
@@ -2686,7 +2687,9 @@ export default function VideoStudio({
                       title={copy.gallery.download}
                       onClick={(e) => {
                         e.stopPropagation();
-                        downloadFile(entry.url, `video-${entry.id || idx}.mp4`);
+                        (realizoBrand
+                          ? downloadRealizoVideo(String(entry.id)).catch(error=>toast.error(error.message))
+                          : downloadFile(entry.url, `video-${entry.id || idx}.mp4`));
                       }}
                       className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10"
                     >
@@ -2738,7 +2741,9 @@ export default function VideoStudio({
                         kind: "download",
                         label: copy.gallery.download,
                         onSelect: () =>
-                          downloadFile(entry.url, `video-${entry.id || idx}.mp4`),
+                          (realizoBrand
+                            ? downloadRealizoVideo(String(entry.id)).catch(error=>toast.error(error.message))
+                            : downloadFile(entry.url, `video-${entry.id || idx}.mp4`)),
                       },
                       isSeedance2 && {
                         kind: "extend",

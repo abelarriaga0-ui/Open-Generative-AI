@@ -1,22 +1,23 @@
 'use client';
 import {useRef,useState} from 'react';
 import {AD_TEMPLATES} from '@/lib/realizo-creative/ad-templates';
-import {TEMPLATE_PREVIEW_SRC,TEMPLATE_PREVIEW_PROVIDER_SRC} from '@/lib/realizo-creative/template-video-input';
+import {TEMPLATE_PREVIEW_SRC} from '@/lib/realizo-creative/template-video-input';
 
 export default function RealizoTemplateLibrary({onChoose,featured=false}){
  const preview=useRef(null);
  const [open,setOpen]=useState(false);
- const [source,setSource]=useState(TEMPLATE_PREVIEW_SRC);
+ const source=TEMPLATE_PREVIEW_SRC;
+ const full=useRef(null);
+ const [paused,setPaused]=useState(false);
  const [failed,setFailed]=useState(false);
  const [playing,setPlaying]=useState(false);
  const item=AD_TEMPLATES[0];
  const enter=()=>{if(preview.current&&!failed){preview.current.muted=true;preview.current.currentTime=0;
   preview.current.play().then(()=>setPlaying(true)).catch(()=>setPlaying(false));}};
  const leave=()=>{if(preview.current){preview.current.pause();preview.current.currentTime=0;}setPlaying(false);};
- function error(){
-  if(source!==TEMPLATE_PREVIEW_PROVIDER_SRC){setSource(TEMPLATE_PREVIEW_PROVIDER_SRC);return;}
-  setFailed(true);setPlaying(false);
- }
+ function error(){setFailed(true);setPlaying(false);}
+ const blockSave=e=>e.preventDefault();
+ const toggle=()=>{if(!full.current)return;if(full.current.paused){full.current.play().then(()=>setPaused(false)).catch(()=>{});}else{full.current.pause();setPaused(true);}};
  return <section className={'realizo-v11-library'+(featured?' realizo-v11-featured':'')} aria-label="Plantillas publicitarias">
    {!featured&&<div className="realizo-v11-lib-head">
     <div><span className="realizo-v11-eyebrow">PLANTILLAS REALES</span>
@@ -27,16 +28,18 @@ export default function RealizoTemplateLibrary({onChoose,featured=false}){
    {!featured&&<div className="realizo-template-filter"><span>Todos</span><span>UGC</span></div>}
    <div className="realizo-v11-cards">
     <article className="realizo-v11-card realizo-template-preview-card"
-      onMouseEnter={enter} onMouseLeave={leave} onFocus={enter} onBlur={leave}>
+      onMouseEnter={enter} onMouseLeave={leave} onFocus={enter} onBlur={leave}
+      onContextMenu={blockSave}>
       <div className="realizo-v11-image-link realizo-template-video-frame">
        <div className="realizo-v11-card-photo realizo-v11-photo-0" aria-hidden="true"/>
        {!failed&&<video ref={preview} src={source} poster="/assets/realizo/templates/ugc-master-30s.jpg"
          className={'realizo-template-preview-video'+(playing?' is-playing':'')}
-         muted loop playsInline preload="metadata" onError={error}/>}
+         muted loop playsInline preload="metadata" controlsList="nodownload noremoteplayback noplaybackrate"
+         disablePictureInPicture onContextMenu={blockSave} onError={error}/>}
        <div className="realizo-v11-photo-fade"/>
        <span className="realizo-v11-duration">0:30</span>
        <button type="button" className="realizo-v11-play" aria-label="Ver el video completo con audio"
-         onClick={()=>{leave();setOpen(true)}}>▶</button>
+         onClick={()=>{leave();setOpen(true);setPaused(false)}}>▶</button>
        <div className="realizo-v11-card-overlay">
         <h3>{item.name}</h3>
         <p>El anuncio original de NOIL + GODA.</p>
@@ -53,13 +56,20 @@ export default function RealizoTemplateLibrary({onChoose,featured=false}){
     </article>
    </div>
    {open&&<div className="realizo-template-modal" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setOpen(false)}}>
-    <div role="dialog" aria-modal="true" aria-label="Video original de la plantilla">
+    <div role="dialog" aria-modal="true" aria-label="Video original de la plantilla" onContextMenu={blockSave}>
       <div className="realizo-template-modal-top">
        <strong>UGC Vendedor · Video original</strong>
        <button type="button" aria-label="Cerrar vista previa" onClick={()=>setOpen(false)}>✕</button>
       </div>
-      {failed?<p>El video original no está disponible en este momento.</p>:
-       <video src={source} controls autoPlay playsInline preload="metadata" onError={error}/>}
+      {failed?<p>La vista previa no está disponible.</p>:
+       <div className="realizo-template-safe-player">
+        <video ref={full} src={source} autoPlay playsInline preload="metadata"
+         controlsList="nodownload noremoteplayback noplaybackrate" disablePictureInPicture
+         onContextMenu={blockSave} onError={error}/>
+        <div className="realizo-template-preview-mark" aria-hidden="true">realizo · vista previa</div>
+        <button type="button" className="realizo-template-play-toggle"
+         aria-label={paused?"Reproducir":"Pausar"} onClick={toggle}>{paused?"▶ Reproducir":"Ⅱ Pausar"}</button>
+       </div>}
       <button type="button" className="realizo-v11-use" onClick={()=>{setOpen(false);onChoose(item.id)}}>
        Usar esta plantilla →
       </button>

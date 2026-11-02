@@ -4,6 +4,7 @@ import {useRef,useState} from 'react';
 import {optimizeImage} from '@/lib/realizo-creative/optimize-image';
 import {extractGeneratedVideoUrl} from '@/lib/realizo-creative/wallet-generation';
 import {TEMPLATE_MODEL_ID} from '@/lib/realizo-creative/template-video-input';
+import {downloadRealizoVideo} from '@/lib/realizo-creative/download-video';
 
 const money=c=>new Intl.NumberFormat('es-EC',{style:'currency',currency:'USD'}).format(Number(c||0)/100);
 const inputClass='realizo-template-field';
@@ -40,6 +41,7 @@ export default function RealizoTemplateCreator({onBack,onWalletRefresh,onViewVid
  const [phase,setPhase]=useState('idle');
  const [error,setError]=useState('');
  const [generated,setGenerated]=useState(null);
+ const [downloading,setDownloading]=useState(false);
  const [jobId,setJobId]=useState(null);
  const fileInput=useRef(null),key=useRef(null);
  const busy=['uploading','preparing','quoting','generating'].includes(phase);
@@ -185,8 +187,14 @@ export default function RealizoTemplateCreator({onBack,onWalletRefresh,onViewVid
        </div>}
        {error&&<p role="alert" className="realizo-template-error">{error}</p>}
        {generated&&<div className="realizo-template-result">
-         <h3>Tu video está listo</h3><video src={generated} controls playsInline preload="metadata"/>
-         <a href={generated} download target="_blank" rel="noreferrer">Ver o guardar video ↗</a>
+         <h3>Tu video está listo</h3>
+         <video src={generated} controls playsInline preload="metadata" disablePictureInPicture
+          controlsList="nodownload noremoteplayback noplaybackrate" onContextMenu={e=>e.preventDefault()}/>
+         <button type="button" disabled={downloading} onClick={async()=>{
+           setDownloading(true);setError('');
+           try{await downloadRealizoVideo(jobId);}catch(e){setError(e.message)}
+           finally{setDownloading(false)}
+         }}>{downloading?'Preparando descarga…':'↓ Descargar con Realizo'}</button>
          <button type="button" onClick={onViewVideos}>Ir a Mis videos</button>
        </div>}
      </div>
