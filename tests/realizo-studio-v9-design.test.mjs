@@ -13,23 +13,22 @@ const wallet=readFileSync('app/wallet/page.jsx','utf8');
 test('REALIZO native Studio has working sections and an accessible template-style view',()=>{
  assert.match(root,/nav\('home','Inicio'/);
  assert.match(root,/nav\('create','Crear video'/);
- assert.match(root,/nav\('templates','Estilos e ideas'/);
+ assert.match(root,/nav\('templates','Plantillas'/);
  assert.match(root,/nav\('videos','Mis videos'/);
  assert.match(root,/page==='templates'/);
- assert.match(root,/<RealizoTemplateLibrary onChoose={chooseVisualFormat}\/>/);
- assert.match(root,/setFormatPreset\(format\);setCreatorMode\('premium'\);setPage\('create'\)/);
+ assert.match(root,/<RealizoTemplateLibrary onChoose={chooseAdTemplate}\/>/);
+ assert.match(root,/setFormatPreset\(format\);setTemplateId\(null\);setCreatorMode\('premium'\);setPage\('create'\)/);
  assert.match(root,/aria-current={page===id\?'page':undefined}/);
  assert.match(root,/page==='create'/);
  assert.match(root,/page==='videos'/);
  assert.match(root,/href="\/wallet"/);
 });
-test('visual styles illustrate ideas, never claim to be pre-generated fixed motion templates',()=>{
- assert.equal((templates.match(/id:'(?:ugc|cine|premium|demo|cinematic)-/g)||[]).length,8);
- assert.match(templates,/\['Todos','UGC','Cine','Premium','Demo'\]/);
- assert.match(templates,/onClick={\(\)=>onChoose\(look.style\)}/);
- assert.match(templates,/Vistas ilustrativas del estilo/);
- assert.match(templates,/aria-pressed={filter===f}/);
- assert.doesNotMatch(templates,/fetch\(|\/api\/wallet|generateWithRealizoWallet/);
+test('functional template cards are navigable and style-specific',()=>{
+ assert.match(templates,/AD_TEMPLATES/);
+ assert.match(templates,/onChoose\(item.id\)/);
+ assert.match(templates,/aria-pressed=\{filter===value\}/);
+ assert.match(templates,/Las fotos son vistas de estilo/);
+ assert.doesNotMatch(templates,/\/api\/wallet|generateWithRealizoWallet/);
 });
 test('redesign is scoped and loaded after prior theme, preserving original generation contracts',()=>{
  assert.ok(layout.indexOf("import './realizo-visual.css'")<layout.indexOf("import './realizo-redesign-v9.css'"));
