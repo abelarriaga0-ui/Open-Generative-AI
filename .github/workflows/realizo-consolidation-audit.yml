@@ -45,7 +45,7 @@ jobs:
           export PATH="$RUNNER_TEMP/wrangler/node_modules/.bin:$PATH"
           for config in wrangler.auth-sandbox.jsonc wrangler.production.jsonc; do
             echo "DATABASE_INVENTORY config=$config"
-            wrangler d1 execute WALLETS_DB --config "$config" --remote --command "SELECT 'accounts' AS kind,COUNT(*) AS n FROM realizo_accounts UNION ALL SELECT 'identities',COUNT(*) FROM realizo_identities UNION ALL SELECT 'wallet_users',COUNT(*) FROM wallet_users UNION ALL SELECT 'wallets',COUNT(*) FROM wallets UNION ALL SELECT 'generation_jobs',COUNT(*) FROM generation_jobs UNION ALL SELECT 'paypal_orders',COUNT(*) FROM paypal_topup_orders UNION ALL SELECT 'media_assets',COUNT(*) FROM realizo_media_assets UNION ALL SELECT 'ai_projects',COUNT(*) FROM realizo_ai_projects;" || echo "COUNT_QUERY_FAILED config=$config"
+            wrangler d1 execute WALLETS_DB --config "$config" --remote --command "SELECT (SELECT COUNT(*) FROM realizo_accounts) AS accounts, (SELECT COUNT(*) FROM realizo_identities) AS identities, (SELECT COUNT(*) FROM wallet_users) AS wallet_users, (SELECT COUNT(*) FROM wallets) AS wallets, (SELECT COUNT(*) FROM generation_jobs) AS generation_jobs, (SELECT COUNT(*) FROM paypal_topup_orders) AS paypal_orders, (SELECT COUNT(*) FROM realizo_media_assets) AS media_assets, (SELECT COUNT(*) FROM realizo_ai_projects) AS ai_projects;" || echo "COUNT_QUERY_FAILED config=$config"
           done
       - name: Check public HTTP routes without cookies
         run: |
