@@ -1,0 +1,55 @@
+name: Realizo - Initialize production wallet schema
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/realizo-production-wallet-schema.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: realizo-production-wallet-schema
+  cancel-in-progress: false
+
+jobs:
+  migrate-production-wallet:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout wallet schema source
+        uses: actions/checkout@v4
+        with:
+          ref: feature/wallet-compartida-muapi
+
+      - name: Validate production binding and source files
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const cfg = JSON.parse(fs.readFileSync('wrangler.jsonc', 'utf8'));
+          if (cfg.name !== 'open-generative-ai') throw new Error('Unexpected worker');
+          const db = cfg.d1_databases?.find(b => b.binding === 'WALLETS_DB');
+          if (!db || db.database_name !== 'realizo-wallets' || db.database_id !== '49a32292-62f7-4165-bc2f-3a1a2bd97c28')
+            throw new Error('Production D1 binding mismatch');
+          for (const f of ['migrations/0001_wallet.sql', 'migrations/0002_paypal.sql'])
+            if (!fs.existsSync(f)) throw new Error('Missing migration '+f);
+          console.log('Confirmed production DB, not sandbox.');
+          NODE
+
+      - name: Install Wrangler
+        run: |
+          npm install --prefix "$RUNNER_TEMP/realizo-wrangler" --no-save --no-audit --no-fund wrangler@4.151.3
+          echo "$RUNNER_TEMP/realizo-wrangler/node_modules/.bin" >> "$GITHUB_PATH"
+
+      - name: Apply wallet and PayPal schema to production D1
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          wrangler d1 migrations apply WALLETS_DB --config wrangler.jsonc --remote
+          wrangler d1 execute WALLETS_DB --config wrangler.jsonc --remote --command "SELECT COUNT(*) AS total FROM sqlite_master WHERE type='table' AND name IN ('wallet_users','wallets','model_prices','generation_jobs','verified_deposits','wallet_ledger','paypal_topup_orders');"
+          echo 'Production schema operation complete. PayPal Live is not yet enabled.'
