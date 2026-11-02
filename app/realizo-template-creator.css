@@ -57,3 +57,11 @@
 .realizo-template-result a,.realizo-template-result button{color:#ffc176;font-weight:800}
 .realizo-template-note{margin:15px 0;color:#a497a5;font-size:12px;line-height:1.5}
 @media(max-width:760px){.realizo-template-creator-grid{grid-template-columns:1fr}.realizo-template-panel{padding:17px;border-radius:18px}.realizo-template-two{grid-template-columns:1fr}.realizo-template-preview-card{max-width:none}.realizo-template-video-frame{min-height:330px}}
+
+/* Preview is a branded, low-resolution player without native download UI. */
+.realizo-template-safe-player{position:relative;overflow:hidden;background:#050505;border-radius:14px}
+.realizo-template-safe-player video{width:100%;height:min(70vh,690px);object-fit:contain;display:block}
+.realizo-template-preview-mark{position:absolute;left:50%;top:15px;transform:translateX(-50%);font-size:11px;color:#fff;white-space:nowrap;pointer-events:none;background:#0008;border:1px solid #ffffff4d;border-radius:100px;padding:6px 13px;font-weight:800;letter-spacing:.05em}
+.realizo-template-play-toggle{position:absolute;bottom:15px;left:50%;transform:translateX(-50%);background:#090809dd;color:#fff;border:1px solid #ffffff77;border-radius:100px;padding:9px 17px;font-weight:800;font-size:12px}
+.realizo-app video::-webkit-media-controls-download-button{display:none!important}
+.realizo-app video::-webkit-media-controls-picture-in-picture-button{display:none!important}
