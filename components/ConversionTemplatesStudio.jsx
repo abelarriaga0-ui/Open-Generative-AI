@@ -30,13 +30,15 @@ export default function ConversionTemplatesStudio({ onGenerationStart, onGenerat
   const [file, setFile] = useState(null);
   const [localPreview, setLocalPreview] = useState(null);
   const [confirmed, setConfirmed] = useState(false);
+  const [changeDescription, setChangeDescription] = useState('');
+  const [analysisSummary, setAnalysisSummary] = useState(null);
   const [phase, setPhase] = useState('idle');
   const [error, setError] = useState('');
   const [resultUrl, setResultUrl] = useState('');
   const [jobId, setJobId] = useState('');
   const [referenceMissing, setReferenceMissing] = useState(false);
   const fileRef = useRef(null);
-  const isBusy = phase === 'uploading' || phase === 'generating';
+  const isBusy = phase === 'uploading' || phase === 'analyzing' || phase === 'generating' || phase === 'pending';
   const listed = templates.filter((item) => item.category === category);
 
   useEffect(() => {
@@ -58,6 +60,7 @@ export default function ConversionTemplatesStudio({ onGenerationStart, onGenerat
   function chooseFile(next) {
     setError('');
     setResultUrl('');
+    setAnalysisSummary(null);
     setConfirmed(false);
     if (!next) return setFile(null);
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(next.type) || next.size > 10 * 1024 * 1024) {
@@ -67,11 +70,36 @@ export default function ConversionTemplatesStudio({ onGenerationStart, onGenerat
     setFile(next);
   }
 
+  async function pollCompletedJob(id) {
+    for (let attempt = 0; attempt < 90; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      const res = await fetch('/api/wallet/jobs/' + encodeURIComponent(id), { cache: 'no-store' });
+      const job = await res.json();
+      if (!res.ok) throw new Error(job.error || 'No fue posible consultar el estado.');
+      if (job.status === 'completed') return job;
+      if (job.status === 'failed') throw new Error('La solicitud falló. Se aplica la política de liberación del saldo.');
+      if (job.status === 'unknown') {
+        const err = new Error('Solicitud pendiente de conciliación. No solicites otra generación para evitar doble cobro.');
+        err.pending = true;
+        throw err;
+      }
+    }
+    const err = new Error('La solicitud sigue en proceso. Conserva el identificador para consultar el estado.');
+    err.pending = true;
+    throw err;
+  }
+
   async function generate() {
     if (!selected || !file || !confirmed || isBusy || !selected.available) return;
+    const description = changeDescription.trim();
+    if (description && typeof selected.analysis_price_cents !== 'number') {
+      setError('El analizador Gemini todavía no tiene precio configurado.');
+      return;
+    }
     setError('');
     setResultUrl('');
     setJobId('');
+    setAnalysisSummary(null);
     onGenerationStart?.();
     try {
       setPhase('uploading');
@@ -80,8 +108,39 @@ export default function ConversionTemplatesStudio({ onGenerationStart, onGenerat
       const up = await fetch('/api/conversion-templates/upload', { method: 'POST', body: multipart });
       const uploaded = await up.json();
       if (!up.ok || !uploaded.image_url) throw new Error(uploaded.error || 'Error al subir el producto.');
+      let analysisId = null;
+      if (description) {
+        setPhase('analyzing');
+        const analysisRequest = await fetch('/api/conversion-templates/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            template_id: selected.id,
+            description,
+            idempotency_key: crypto.randomUUID().replaceAll('-', '')
+          })
+        });
+        const submission = await analysisRequest.json();
+        if (!analysisRequest.ok) throw new Error(submission.error || 'No se pudo analizar el cambio.');
+        if (!submission.job_id) throw new Error('El análisis no devolvió un identificador.');
+        analysisId = submission.job_id;
+        setJobId(analysisId);
+        if (submission.status === 'unknown') {
+          const error = new Error('Análisis en conciliación. No repitas la solicitud.');
+          error.pending = true;
+          throw error;
+        }
+        await pollCompletedJob(analysisId);
+        const detailResponse = await fetch('/api/conversion-templates/analysis/' +
+          encodeURIComponent(analysisId) + '?template_id=' + encodeURIComponent(selected.id), { cache: 'no-store' });
+        const analyzed = await detailResponse.json();
+        if (!detailResponse.ok) throw new Error(analyzed.error || 'El análisis no pudo validarse.');
+        setAnalysisSummary(analyzed);
+        if (!analyzed.changes?.length && analyzed.rejected?.length) {
+          throw new Error('Los cambios solicitados no están permitidos por esta plantilla. Ajusta tu solicitud para generar.');
+        }
+      }
       setPhase('generating');
-      const nonce = crypto.randomUUID().replaceAll('-', '');
       const submission = await fetch('/api/conversion-templates/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -89,7 +148,8 @@ export default function ConversionTemplatesStudio({ onGenerationStart, onGenerat
           template_id: selected.id,
           product_url: uploaded.image_url,
           claims_confirmed: true,
-          idempotency_key: nonce
+          analysis_job_id: analysisId,
+          idempotency_key: crypto.randomUUID().replaceAll('-', '')
         })
       });
       const data = await submission.json();
@@ -97,30 +157,19 @@ export default function ConversionTemplatesStudio({ onGenerationStart, onGenerat
       if (!data.job_id) throw new Error('No se recibió el identificador de generación.');
       setJobId(data.job_id);
       if (data.status === 'unknown') {
-        setPhase('pending');
-        throw new Error('Solicitud en conciliación. No se volvió a cobrar.');
+        const error = new Error('Generación en conciliación. No vuelvas a pagar.');
+        error.pending = true;
+        throw error;
       }
-      for (let attempt = 0; attempt < 90; attempt += 1) {
-        await new Promise((resolve) => setTimeout(resolve, 3000));
-        const poll = await fetch('/api/wallet/jobs/' + encodeURIComponent(data.job_id), { cache: 'no-store' });
-        const state = await poll.json();
-        if (!poll.ok) throw new Error(state.error || 'No fue posible comprobar el resultado.');
-        if (state.status === 'completed') {
-          const url = getOutputUrl(state);
-          if (!url) throw new Error('La generación terminó sin un archivo descargable.');
-          setResultUrl(url);
-          setPhase('completed');
-          onGenerationComplete?.({ url });
-          return;
-        }
-        if (state.status === 'failed') throw new Error('El proveedor no pudo completar la imagen; se aplica la política de devolución.');
-        if (state.status === 'unknown') throw new Error('Solicitud pendiente de conciliación. Guarda el identificador.');
-      }
-      setPhase('pending');
-      throw new Error('La generación continúa; guarda el identificador para revisar el estado.');
+      const completed = await pollCompletedJob(data.job_id);
+      const url = getOutputUrl(completed);
+      if (!url) throw new Error('El proveedor no devolvió un archivo descargable.');
+      setResultUrl(url);
+      setPhase('completed');
+      onGenerationComplete?.({ url });
     } catch (err) {
       setError(err.message || 'No se pudo generar la imagen.');
-      if (phase !== 'pending') setPhase('error');
+      setPhase(err.pending ? 'pending' : 'error');
       onGenerationError?.(err.message);
     } finally {
       onGenerationEnd?.();
@@ -203,14 +252,37 @@ export default function ConversionTemplatesStudio({ onGenerationStart, onGenerat
                   <span className="text-xs text-white/45">JPG, PNG o WebP · Máximo 10 MB</span>
                 </button>
               </div>
+              <label htmlFor="realizo-optional-changes" className="mb-2 block text-sm font-semibold">¿Quieres cambiar algún texto? <span className="font-normal text-white/50">(Opcional)</span></label>
+              <textarea id="realizo-optional-changes" rows={3} maxLength={1200} value={changeDescription}
+                onChange={(event) => { setChangeDescription(event.target.value); setAnalysisSummary(null); }}
+                placeholder="Ej.: Cambia Sabor Vainilla por Sabor Chocolate. Mantén todo lo demás igual."
+                className="mb-2 w-full resize-none rounded-xl border border-white/15 bg-black/30 p-3 text-sm text-white outline-none focus:border-teal-300" />
+              <p className="mb-5 text-xs text-white/50">Gemini interpretará tu petición sin modificar el diseño. Solo se admiten textos secundarios del anuncio.</p>
               <label className="mb-6 flex items-start gap-3 text-xs text-white/65">
                 <input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)}
                   className="mt-0.5 accent-teal-300" />
                 <span>Confirmo que mi producto cumple los beneficios nutricionales escritos en esta plantilla. Solo cambiará el envase.</span>
               </label>
-              <div className="mb-4 flex items-center justify-between border-t border-white/10 pt-4 text-sm">
-                <span className="text-white/60">Costo de generación</span>
-                <strong className="text-lg text-teal-300">{money(selected.price_cents)}</strong>
+              <div className="mb-4 space-y-2 border-t border-white/10 pt-4 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-white/60">Imagen 4K · Nano Banana 2.1</span>
+                  <span>{money(selected.price_cents)}</span>
+                </div>
+                {changeDescription.trim() && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-white/60">Análisis de cambios · Gemini</span>
+                    <span>{money(selected.analysis_price_cents)}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between border-t border-white/10 pt-3 font-bold">
+                  <span>Total por solicitud</span>
+                  <strong className="text-lg text-teal-300">
+                    {money(typeof selected.price_cents === 'number' &&
+                      (!changeDescription.trim() || typeof selected.analysis_price_cents === 'number')
+                      ? selected.price_cents + (changeDescription.trim() ? selected.analysis_price_cents : 0)
+                      : null)}
+                  </strong>
+                </div>
               </div>
               {!selected.available && (
                 <p className="mb-4 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-200">
@@ -218,10 +290,21 @@ export default function ConversionTemplatesStudio({ onGenerationStart, onGenerat
                 </p>
               )}
               <button type="button" onClick={generate}
-                disabled={!selected.available || !confirmed || !file || isBusy}
+                disabled={!selected.available || !confirmed || !file || isBusy || (Boolean(changeDescription.trim()) && typeof selected.analysis_price_cents !== 'number')}
                 className="w-full rounded-xl bg-teal-300 px-5 py-3 font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-40">
-                {isBusy ? (phase === 'uploading' ? 'Subiendo producto…' : 'Generando imagen…') : 'Generar imagen'}
+                {isBusy ? (phase === 'uploading' ? 'Subiendo producto…' : phase === 'analyzing' ? 'Gemini está analizando…' : phase === 'pending' ? 'Pendiente de conciliación' : 'Generando imagen…') : 'Generar imagen'}
               </button>
+              {analysisSummary && (
+                <div className="mt-3 rounded-lg border border-white/10 bg-white/5 p-3 text-xs text-white/70">
+                  <p className="font-semibold">Cambios aprobados: {analysisSummary.changes?.length || 0}</p>
+                  {(analysisSummary.changes || []).map((change) => (
+                    <p key={change.field}>{change.original} → {change.text}</p>
+                  ))}
+                  {(analysisSummary.rejected || []).map((message, index) => (
+                    <p key={index} className="text-amber-300">No aplicado: {message}</p>
+                  ))}
+                </div>
+              )}
               {error && <p role="alert" className="mt-3 text-sm text-rose-300">{error}</p>}
               {jobId && <p className="mt-2 break-all text-xs text-white/35">Solicitud: {jobId}</p>}
               {resultUrl && <div className="mt-5 space-y-3">
