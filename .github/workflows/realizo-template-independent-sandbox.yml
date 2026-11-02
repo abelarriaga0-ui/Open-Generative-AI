@@ -1,0 +1,80 @@
+name: Realizo - publish independent template studio to Sandbox
+on:
+  push:
+    branches: [feature/realizo-independent-template-creator-v1]
+    paths:
+      - '.github/workflows/realizo-template-independent-sandbox.yml'
+      - 'components/RealizoTemplateCreator.jsx'
+      - 'components/RealizoTemplateLibrary.jsx'
+      - 'components/RealizoStudio.jsx'
+      - 'app/api/realizo/template/**'
+      - 'lib/realizo-creative/template-video-input.js'
+      - 'app/realizo-template-creator.css'
+      - 'app/layout.js'
+      - 'public/assets/realizo/templates/ugc-master-30s.mp4'
+      - 'public/assets/realizo/templates/ugc-master-30s.jpg'
+      - 'tests/realizo-template-independent-flow.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: realizo-independent-template-sandbox
+  cancel-in-progress: true
+jobs:
+  deploy-template:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/feature/realizo-independent-template-creator-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      NEXT_TELEMETRY_DISABLED: '1'
+      REALIZO_ENV: sandbox
+      REALIZO_AUTH_PROVIDER: native
+      PAYPAL_MODE: sandbox
+    steps:
+      - name: Checkout isolated branch and real video asset
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Ensure no production access and original MP4 is present
+        run: |
+          node scripts/check-realizo-auth-sandbox.mjs
+          npm run wallet:preflight:sandbox
+          test -s public/assets/realizo/templates/ugc-master-30s.mp4
+          test -s public/assets/realizo/templates/ugc-master-30s.jpg
+      - name: Build complete Cloudflare app (Sandbox only)
+        run: npm run cloudflare:build:realizo-auth-sandbox
+      - name: Test wallet, template isolation, Muapi prompt, paid request boundaries
+        run: |
+          npm run test:wallet
+          node --test tests/realizo-ad-templates-v11.test.mjs tests/realizo-muapi-master-ugc30.test.mjs tests/realizo-template-independent-flow.test.mjs tests/realizo-premium-studio.test.mjs
+          test -s .open-next/worker.js
+      - name: Deploy ONLY existing realizo-auth-sandbox Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          node scripts/check-realizo-auth-sandbox.mjs
+          npx --no-install opennextjs-cloudflare deploy --config wrangler.auth-sandbox.jsonc
+      - name: Check template video accessible and private wallet still protected
+        run: |
+          node --input-type=module <<'JS'
+          const base='https://realizo-auth-sandbox.abelarriaga0.workers.dev';
+          const view=await fetch(base+'/assets/realizo/templates/ugc-master-30s.mp4',{
+            method:'HEAD',signal:AbortSignal.timeout(25000)});
+          if(!view.ok)throw Error('Preview MP4 not accessible: '+view.status);
+          if(!/video\/mp4/i.test(view.headers.get('content-type')||''))
+            throw Error('Preview returned wrong MIME: '+view.headers.get('content-type'));
+          const wallet=await fetch(base+'/api/wallet',{signal:AbortSignal.timeout(25000)});
+          if(wallet.status!==401)throw Error('Wallet must stay private');
+          console.log('PASS: original Muapi video accessible, wallet protected, no paid model invoked.');
+          JS
