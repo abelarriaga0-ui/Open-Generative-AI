@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,existsSync,statSync} from 'node:fs';
-import {extractOwnedDownloadUrl} from '../app/api/realizo/jobs/[id]/download/route.js';
+import {extractOwnedDownloadUrl} from '../lib/realizo-creative/download-policy.js';
 import {TEMPLATE_PREVIEW_SRC} from '../lib/realizo-creative/template-video-input.js';
 const read=p=>readFileSync(p,'utf8');
 test('preview never offers native video download controls or external provider fallback',()=>{
