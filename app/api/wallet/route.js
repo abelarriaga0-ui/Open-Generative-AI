@@ -16,7 +16,7 @@ export async function GET(request) {
       getWallet(env.WALLETS_DB, user.id),
       getWalletActivity(env.WALLETS_DB, user.id),
       getActiveModels(env.WALLETS_DB),
-      env.WALLETS_DB.prepare('SELECT COUNT(*) AS total FROM verified_deposits WHERE user_id=?').bind(user.id).first(),
+      env.WALLETS_DB.prepare("SELECT COUNT(*) AS total FROM verified_deposits WHERE user_id=? AND provider_environment='live'").bind(user.id).first(),
       env.REALIZO_ENV==='sandbox'?getPilotSlotsRemaining(env,user):Promise.resolve(0),
     ]);
     return Response.json({
@@ -33,10 +33,13 @@ export async function GET(request) {
         (env.REALIZO_ENV!=='sandbox' || pilotSlots>0),
       pilot_mode: env.REALIZO_ENV==='sandbox',
       pilot_cost_cents: env.REALIZO_ENV==='sandbox'&&isPilotAccount(env,user)?PILOT_PRICE_CENTS:null,
-      checkout_enabled: (env.PAYPAL_MODE || 'sandbox') === 'sandbox' &&
+      checkout_enabled: env.REALIZO_ENV==='production'&&
+        env.PAYPAL_MODE==='live'&&env.REALIZO_LIVE_PAYMENTS_ENABLED==='true'&&
         Boolean(env.PAYPAL_CLIENT_ID && env.PAYPAL_CLIENT_SECRET && env.PAYPAL_WEBHOOK_ID),
       environment: env.REALIZO_ENV || 'unconfigured',
-      message: 'Entorno de pruebas: las recargas Sandbox no representan dinero real.'
+      message: env.PAYPAL_MODE==='live'
+        ? 'Recargas con PayPal Live: se acreditan únicamente tras una captura real validada.'
+        : 'Cobros no habilitados. Los saldos de prueba no financian generaciones.'
     }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     return jsonError(error);

@@ -39,11 +39,12 @@ test('auto-reload setup checkbox defaults selected and stays editable without cr
  assert.match(wallet,/autorizar por separado un método de pago/);
  assert.doesNotMatch(wallet,/\/api\/wallet\/auto-topup\/charge/);
 });
-test('checkout stays locked to Sandbox; no accidental live PayPal calls',()=>{
+test('Sandbox stays isolated; Live requires production credentials and explicit release',()=>{
  const paypal=read('lib/wallet/paypal.js');
  const cfg=JSON.parse(read('wrangler.auth-sandbox.jsonc'));
  assert.equal(cfg.vars.PAYPAL_MODE,'sandbox');
- assert.match(paypal,/if \(mode === 'live'\) throw new WalletSetupError/);
+ assert.match(paypal,/REALIZO_LIVE_PAYMENTS_ENABLED/);
+ assert.match(paypal,/https:\/\/api-m\.paypal\.com/);
 });
 
 test('Sandbox payments and customer wallet clearly disclose that no real merchant money is transferred',()=>{
