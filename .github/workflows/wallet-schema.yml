@@ -76,7 +76,7 @@ jobs:
         run: |
           node scripts/check-realizo-auth-sandbox.mjs
           npm run wallet:preflight:sandbox
-          node --test tests/realizo-inline-charge-white-label.test.mjs tests/realizo-real-cost-dynamic-quote.test.mjs tests/realizo-premium-cast-director.test.mjs
+          node --test tests/realizo-inline-charge-white-label.test.mjs tests/realizo-real-cost-dynamic-quote.test.mjs tests/realizo-premium-cast-director.test.mjs tests/realizo-gemini-reference-contract.test.mjs
       - name: Prepare cast option in Sandbox D1 only
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
