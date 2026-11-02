@@ -22,10 +22,19 @@ jobs:
         run: |
           node --input-type=module <<'JS'
           const base='https://realizo.abelarriaga0.workers.dev';
-          for (const path of ['/api/conversion-templates','/api/auth/features','/studio/images']) {
+          for (const path of ['/api/conversion-templates','/api/auth/features','/studio/images','/templates/explosion-premium-azul.webp']) {
             const r=await fetch(base+path,{redirect:'manual',signal:AbortSignal.timeout(15000)});
             const body=path.startsWith('/api/')?await r.text():'';
             console.log('ENDPOINT',path,'HTTP',r.status,'BODY',body.slice(0,1300));
+          }
+          const oauth=await fetch(base+'/api/auth/google/start',{redirect:'manual',signal:AbortSignal.timeout(15000)});
+          const target=oauth.headers.get('location')||'';
+          const ok=oauth.status===302 && target.startsWith('https://accounts.google.com/');
+          console.log('GOOGLE_OAUTH_START_VALID='+ok);
+          if(ok){
+            const google=await fetch(target,{redirect:'follow',signal:AbortSignal.timeout(18000)});
+            const content=(await google.text()).slice(0,150000);
+            console.log('GOOGLE_OAUTH_REDIRECT_MISMATCH='+(/redirect_uri_mismatch|redirect_uri is invalid|redirect_uri.*not authorized/i.test(content)));
           }
           JS
       - name: Consultar configuración D1 sin datos de clientes
