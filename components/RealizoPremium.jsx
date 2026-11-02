@@ -2,6 +2,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {optimizeImage} from '@/lib/realizo-creative/optimize-image';
 import {improveSalesScript,voiceBudget} from '@/lib/realizo-creative/sales-storyboard';
+import {getAdTemplate,templatePlan} from '@/lib/realizo-creative/ad-templates';
 
 const angles=[
  ['auto','Que la IA investigue y elija'],['problem','Problema → solución'],
@@ -55,10 +56,13 @@ const fmt=status=>({
  approved:'Concepto aprobado',failed:'Investigación no completada',
 })[status]||status;
 
-export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,onCreateNew,onWalletRefresh,initialStyle='ugc',initialProjectId=null}){
+export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,onCreateNew,onWalletRefresh,initialStyle='ugc',initialProjectId=null,initialTemplateId=null}){
  const [config,setConfig]=useState(null),[image,setImage]=useState(null);
+ const template=getAdTemplate(initialTemplateId);
+ const [templateActor,setTemplateActor]=useState('auto');
+ const [templateSetting,setTemplateSetting]=useState('auto');
  const [product,setProduct]=useState({product_name:'',description:'',audience:'',
-  angle:'auto',market:'EC',video_language:'es',cta:'',creative_style:initialStyle,video_model_id:'',video_duration_seconds:''});
+  angle:template?.angle||'auto',market:'EC',video_language:'es',cta:'',creative_style:template?.style||initialStyle,video_model_id:'',video_duration_seconds:''});
  const [project,setProject]=useState(null),[selection,setSelection]=useState(0);
  const [editedPrompt,setEditedPrompt]=useState('');
  const [editedSpeech,setEditedSpeech]=useState('');
@@ -79,7 +83,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
      const recommended=preferredVideoModel(v.video_options||[]);
      if(recommended)setProduct(prev=>prev.video_model_id?prev:{
       ...prev,video_model_id:recommended.id,
-      video_duration_seconds:preferredDuration(recommended,prev.video_duration_seconds),
+      video_duration_seconds:preferredDuration(recommended,template?.duration||prev.video_duration_seconds),
      });
      // Fresh creation is the default. Only restore a previous investigation
      // after the owner explicitly selects it from "Mis videos".
@@ -192,7 +196,9 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
   try{
    const r=await fetch('/api/realizo/ai-premium',{
     method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({...product,primary_asset_id:image.id,request_key:keyRef.current,
+    body:JSON.stringify({...product,template_id:template?.id||null,
+      template_actor:templateActor,template_setting:templateSetting,
+      primary_asset_id:image.id,request_key:keyRef.current,
       max_price_cents:price,pricing_version:config.pricing_version}),
    });
    const json=await r.json().catch(()=>({}));
@@ -281,6 +287,23 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
     <span className={project?.status==='approved'?'done':''}><i>03</i> Revisión y generación</span>
    </div>
   {error&&<div role="alert" className="rounded-2xl border border-[#EEB9AB] bg-[#FFF0E9] px-5 py-3 text-sm text-[#914F40]">{error}</div>}
+  {template&&!project&&<div className="realizo-v11-template-brief">
+   <div><span>CREACIÓN DESDE PLANTILLA</span><h3>{template.name}</h3>
+    <p>{template.description} Se mantienen cámara, estructura de venta, transiciones, efectos y audio.</p></div>
+   <div className="realizo-v11-template-beats">{templatePlan(template,Number(product.video_duration_seconds)||template.duration).map(b=>
+    <span key={b.key}><b>{b.start}–{b.end}s</b> {b.label}</span>)}</div>
+   <div className="realizo-v11-template-options">
+    <label>Personaje
+     <select value={templateActor} onChange={e=>setTemplateActor(e.target.value)}>
+      <option value="auto">La IA decide</option><option value="hombre">Hombre</option><option value="mujer">Mujer</option>
+     </select>
+    </label>
+    <label>Escenario
+     <input value={templateSetting==='auto'?'':templateSetting} onChange={e=>setTemplateSetting(e.target.value||'auto')}
+      maxLength={120} placeholder="La IA decide o escribe un escenario"/>
+    </label>
+   </div>
+  </div>}
   {!project&&<div className="grid lg:grid-cols-[.9fr_1.1fr] gap-5">
    <section className={card+' space-y-4'}>
     <h3 className="text-xl font-extrabold">1. Tu producto</h3>
@@ -329,7 +352,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
       <p className="text-sm font-bold">Formato publicitario</p>
       <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
        {creativeStyles.map(([id,icon,label])=><button type="button" key={id}
-        aria-pressed={product.creative_style===id} onClick={()=>change('creative_style',id)}
+        aria-pressed={product.creative_style===id} disabled={Boolean(template)} onClick={()=>change('creative_style',id)}
         className={'rounded-xl border-2 px-2 py-3 text-center transition '+(
          product.creative_style===id?'border-[#7650C6] bg-white shadow-sm':
           'border-[#E7DEEC] bg-white/60 hover:bg-white')}>
@@ -409,6 +432,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
      <input className={field+' mt-2'} maxLength={120} value={product.cta}
       onChange={e=>change('cta',e.target.value)} placeholder="Ej. Paga al recibir"/>
     </label>
+    {template&&<p className="text-xs text-[#C7A28A]">Estilo de la plantilla bloqueado. Puedes cambiar motor y duración según compatibilidad.</p>}
     <p className="text-xs text-[#755F88] rounded-xl bg-[#F8F3FC] p-3">
      Precio fijo: <strong>USD {((config?.customer_charge_cents||0)/100).toFixed(2)}</strong> por investigar y crear 3 conceptos. El video se cobra aparte.
     </p>
