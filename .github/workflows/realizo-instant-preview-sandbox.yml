@@ -87,3 +87,5 @@ jobs:
           if(wallet.status!==401)throw Error('Wallet no longer private');
           console.log('PASS: progressive full and hover media online; private wallet; zero paid generations.');
           JS
+
+# Regression test newline syntax corrected; rerun deployment.
