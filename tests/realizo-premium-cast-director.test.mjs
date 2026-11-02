@@ -18,27 +18,27 @@ test('only-product film never requests human actor, presenter or spoken monologu
  const film=buildCommercialDirectorPackage({...base,castMode:'product_only'});
  assert.equal(film.shot_count,5);
  assert.equal(film.cast_mode,'product_only');
- assert.match(film.prompt,/CAST CONTRACT: PRODUCT ONLY/);
- assert.match(film.prompt,/No people/);
+ assert.match(film.prompt,/ABSOLUTE PRODUCT-ONLY CAST LOCK/);
+ assert.match(film.prompt,/ZERO HUMAN PIXELS/);
  assert.match(film.prompt,/music/i);
  assert.doesNotMatch(film.prompt,/UGC TALKING-HEAD SCHEDULE/);
  assert.doesNotMatch(film.prompt,/APPROVED CREATIVE DIRECTION/);
  assert.doesNotMatch(film.prompt,/RESEARCHED SHOT IDEAS/);
  assert.doesNotMatch(film.prompt,/EXACT sales dialogue/);
- assert.match(film.prompt,/REFERENCE IMAGE/);
+ assert.match(film.prompt,/REFERENCE PRODUCT PHOTOGRAPH/);
 });
 test('with-people premium film has cinematic acting, not a selfie review',()=>{
  const film=buildCommercialDirectorPackage({...base,castMode:'with_people'});
  assert.equal(film.cast_mode,'with_people');
- assert.match(film.prompt,/CAST CONTRACT: PRODUCT WITH PEOPLE/);
- assert.match(film.prompt,/NEVER speak to the lens/);
- assert.match(film.prompt,/FASHION\/BEAUTY FILM STORYBOARD/);
+ assert.match(film.prompt,/CAST: Professionally styled adult models/);
+ assert.match(film.prompt,/no selfie, smartphone footage, testimonial/);
+ assert.match(film.prompt,/LUXURY BRAND FILM TIMELINE/);
  assert.doesNotMatch(film.prompt,/UGC TALKING-HEAD SCHEDULE/);
 });
 test('one-shot means one continuous cinematographic take',()=>{
  const film=buildCommercialDirectorPackage({...base,castMode:'product_only',shotPreference:'single'});
  assert.equal(film.shot_count,1);
- assert.match(film.prompt,/ONE CONTINUOUS CINEMATIC SHOT/);
+ assert.match(film.prompt,/SINGLE UNBROKEN SHOT/);
 });
 test('UGC keeps its independently selected talking-head contract',()=>{
  const ugc=buildCommercialDirectorPackage({...base,style:'ugc',castMode:'product_only'});
