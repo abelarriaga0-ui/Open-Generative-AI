@@ -59,5 +59,5 @@ test('template adaptation requires logged-in user and owned image',()=>{
  assert.match(route,/enforceSameOrigin/);
  assert.match(route,/isOwnedSignedProductImage/);
  assert.match(route,/realizo_template_product_adaptation_v1/);
- assert.match(route,/max_output_tokens:1500/);
+ assert.match(route,/max_output_tokens:3000/);
 });
