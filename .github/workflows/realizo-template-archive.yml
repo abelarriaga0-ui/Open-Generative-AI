@@ -1,0 +1,42 @@
+name: Realizo - preserve original Muapi template preview
+on:
+  push:
+    branches: [feature/realizo-independent-template-creator-v1]
+    paths: ['.github/workflows/realizo-template-archive.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  archive-original-video:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/feature/realizo-independent-template-creator-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Fetch the ORIGINAL user-owned Muapi output for long-term preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p public/assets/realizo/templates
+          curl -fLsS --retry 3 --connect-timeout 15 --max-time 140 \
+            'https://cdn.muapi.ai/outputs/generated/21797787-63de-48e3-b895-06396b1e55a9_07f12652.mp4' \
+            -o public/assets/realizo/templates/ugc-master-30s.mp4
+          SIZE=$(stat -c%s public/assets/realizo/templates/ugc-master-30s.mp4)
+          test "$SIZE" -gt 300000
+          test "$SIZE" -lt 90000000
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg >/dev/null
+          ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1 public/assets/realizo/templates/ugc-master-30s.mp4
+          ffmpeg -hide_banner -loglevel error -y -ss 0.65 -i public/assets/realizo/templates/ugc-master-30s.mp4 \
+            -frames:v 1 -q:v 3 public/assets/realizo/templates/ugc-master-30s.jpg
+      - name: Store permanent original video in feature repo as static asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/assets/realizo/templates/ugc-master-30s.mp4 public/assets/realizo/templates/ugc-master-30s.jpg
+          git diff --cached --quiet && exit 0
+          git commit -m 'assets(realizo): permanently archive original 30s Muapi template video'
+          git push origin HEAD:feature/realizo-independent-template-creator-v1

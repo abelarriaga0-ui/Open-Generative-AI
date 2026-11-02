@@ -1,0 +1,18 @@
+name: Realizo independent templates - fast contract tests
+on:
+  push:
+    branches: [feature/realizo-independent-template-creator-v1]
+    paths: ['.github/workflows/realizo-template-fast-tests.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  template-contract:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node --test tests/realizo-template-independent-flow.test.mjs tests/realizo-muapi-master-ugc30.test.mjs
