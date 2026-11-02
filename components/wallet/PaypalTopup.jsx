@@ -61,7 +61,7 @@ export default function PaypalTopup({ minCents, firstTopup, onPaid, theme = 'dar
       const src = 'https://www.paypal.com/sdk/js?client-id=' +
         encodeURIComponent(config.client_id) + '&currency=USD&intent=capture&components=buttons,card-fields';
       const existing = document.querySelector('script[data-realizo-paypal="true"]');
-      if (existing && existing.src !== src) existing.remove();
+      if (existing && (existing.src !== src || !window.paypal)) existing.remove();
       if (!window.paypal) {
         const script = document.createElement('script');
         script.setAttribute('data-realizo-paypal', 'true');
@@ -104,10 +104,10 @@ export default function PaypalTopup({ minCents, firstTopup, onPaid, theme = 'dar
         if(cardFields.isEligible()){
           cardsRef.current=cardFields;
           await Promise.all([
-            cardFields.NameField().render(nameRef.current),
-            cardFields.NumberField().render(numberRef.current),
-            cardFields.ExpiryField().render(expiryRef.current),
-            cardFields.CVVField().render(cvvRef.current)
+            cardFields.NameField().render('#realizo-paypal-card-name'),
+            cardFields.NumberField().render('#realizo-paypal-card-number'),
+            cardFields.ExpiryField().render('#realizo-paypal-card-expiry'),
+            cardFields.CVVField().render('#realizo-paypal-card-cvv')
           ]);
           if(mounted)setCardAvailable(true);
         }else if(mounted)setCardAvailable(false);
@@ -165,11 +165,11 @@ export default function PaypalTopup({ minCents, firstTopup, onPaid, theme = 'dar
       <section aria-label="Pago con tarjeta en Realizo" className="space-y-3">
         {cardAvailable===true&&<p className="font-bold">Pagar con tarjeta dentro de Realizo</p>}
         <div className={cardAvailable===false?'hidden':'space-y-3'}>
-          <label className="block text-xs">Nombre de la tarjeta<div ref={nameRef} className="min-h-12 rounded-lg bg-white"/></label>
-          <label className="block text-xs">Número de tarjeta<div ref={numberRef} className="min-h-12 rounded-lg bg-white"/></label>
+          <label className="block text-xs">Nombre de la tarjeta<div id="realizo-paypal-card-name" ref={nameRef} className="min-h-12 rounded-lg bg-white"/></label>
+          <label className="block text-xs">Número de tarjeta<div id="realizo-paypal-card-number" ref={numberRef} className="min-h-12 rounded-lg bg-white"/></label>
           <div className="grid grid-cols-2 gap-2">
-            <label className="block text-xs">Vencimiento<div ref={expiryRef} className="min-h-12 rounded-lg bg-white"/></label>
-            <label className="block text-xs">CVV<div ref={cvvRef} className="min-h-12 rounded-lg bg-white"/></label>
+            <label className="block text-xs">Vencimiento<div id="realizo-paypal-card-expiry" ref={expiryRef} className="min-h-12 rounded-lg bg-white"/></label>
+            <label className="block text-xs">CVV<div id="realizo-paypal-card-cvv" ref={cvvRef} className="min-h-12 rounded-lg bg-white"/></label>
           </div>
           {cardAvailable===true&&<button type="button" onClick={async()=>{
             const message=validateAmount(amountRef.current,minCents);
