@@ -65,8 +65,7 @@ export default function RealizoTemplateLibrary({onChoose,featured=false}){
  return <section className={'realizo-v11-library'+(featured?' realizo-v11-featured':'')} aria-label="Plantillas publicitarias">
    {!featured&&<div className="realizo-v11-lib-head">
     <div><span className="realizo-v11-eyebrow">PLANTILLAS REALES</span>
-      <h2>Ve el video antes de elegirlo.</h2>
-      <p>Acerca el cursor para reproducirlo. Al elegirlo, solo adaptas el producto.</p>
+      <h2>Explora. Elige. Crea.</h2>
     </div><span className="realizo-v11-count">1 plantilla</span>
    </div>}
    {!featured&&<div className="realizo-template-filter"><span>Todos</span><span>UGC</span></div>}
@@ -86,13 +85,13 @@ export default function RealizoTemplateLibrary({onChoose,featured=false}){
        <button type="button" className="realizo-v11-play" aria-label="Ver el video completo con audio"
          onClick={show}>▶</button>
        <div className="realizo-v11-card-overlay">
-        <h3>{item.name}</h3><p>El anuncio original de NOIL + GODA.</p>
+        <h3>{item.name}</h3><p>UGC · 30 segundos</p>
         <span className="realizo-v11-tag">✦ Plantilla maestra</span>
        </div>
       </div>
       {!featured&&<div className="realizo-v11-card-extra">
         <span>UGC · 30 segundos</span>
-        <p>El mismo guion y montaje, adaptados únicamente a tu producto.</p>
+        
       </div>}
       <button type="button" className="realizo-v11-use" onClick={()=>onChoose(item.id)}>Usar plantilla <span aria-hidden="true">→</span></button>
     </article>
@@ -127,6 +126,6 @@ export default function RealizoTemplateLibrary({onChoose,featured=false}){
       <button type="button" className="realizo-v11-use" onClick={()=>{close();onChoose(item.id)}}>Usar esta plantilla →</button>
     </div>
    </div>}
-   {!featured&&<p className="realizo-v11-disclaimer">Es el anuncio original, no un video de ejemplo inventado. Muapi puede variar visualmente la nueva generación aunque conserve el prompt.</p>}
+
  </section>;
 }

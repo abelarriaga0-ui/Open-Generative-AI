@@ -9,6 +9,7 @@ import RealizoPremium from '@/components/RealizoPremium';
 import RealizoVisualGallery from '@/components/RealizoVisualGallery';
 import RealizoTemplateLibrary from '@/components/RealizoTemplateLibrary';
 import RealizoTemplateCreator from '@/components/RealizoTemplateCreator';
+import RealizoMotionHome from '@/components/RealizoMotionHome';
 import {getAdTemplate} from '@/lib/realizo-creative/ad-templates';
 
 function Mark() {
@@ -218,48 +219,13 @@ export default function RealizoStudio({accountId,guest=false}){
       <strong>{page==='home'?'Inicio':page==='create'?'Crear anuncio':page==='templates'?(templateId?'Usar plantilla':'Plantillas'):'Mis videos'}</strong>
       <span className="realizo-contextbar-right">REALIZO AI STUDIO</span>
      </div>
-     {page==='home'&&<div className="realizo-home max-w-[1420px] mx-auto space-y-10">
-      <section className="realizo-v11-hero" aria-label="Crea anuncios con IA">
-       <div className="realizo-v11-hero-glow"/>
-       <div className="realizo-v11-hero-content">
-        <span className="realizo-v11-brow">REALIZO AI STUDIO</span>
-        <h1>Crea videos publicitarios <em>con IA</em></h1>
-        <p>Genera anuncios UGC, premium y cinematográficos listos para vender.</p>
-        <div className="realizo-v11-hero-actions">
-         <button type="button" className="realizo-v11-primary" onClick={startNewVideo}>✦ &nbsp; Crear video con IA</button>
-         <button type="button" className="realizo-v11-secondary" onClick={()=>setPage('templates')}>▦ &nbsp; Explorar plantillas</button>
-        </div>
-       </div>
-       <div className="realizo-v11-hero-stage" aria-hidden="true">
-        <div className="realizo-v11-hero-scene realizo-v11-hero-scene-a"/>
-        <div className="realizo-v11-hero-scene realizo-v11-hero-scene-b"/>
-        <div className="realizo-v11-hero-scene realizo-v11-hero-scene-c"/>
-        <div className="realizo-v11-hero-play">▶</div>
-       </div>
-      </section>
-      <div className="realizo-v11-benefits">
-       <div><span>ϟ</span><p><strong>Rápido y sencillo</strong><small>Del producto al anuncio con IA.</small></p></div>
-       <div><span>⬡</span><p><strong>Plantillas profesionales</strong><small>Dirección creativa reutilizable.</small></p></div>
-       <div><span>☆</span><p><strong>Diversos estilos</strong><small>UGC, premium, demo y más.</small></p></div>
-      </div>
-      <div className="realizo-v11-featured-head"><h2>Plantillas destacadas</h2>
-       <button type="button" onClick={()=>setPage('templates')}>Ver todas las plantillas →</button>
-      </div>
-      <RealizoTemplateLibrary featured onChoose={chooseAdTemplate}/>
-      <div className="realizo-v11-how"><strong>✦ &nbsp; ¿Cómo funciona?</strong>
-       <span><b>1</b> Elige una plantilla</span><i>→</i>
-       <span><b>2</b> Añade tu producto</span><i>→</i>
-       <span><b>3</b> Genera con IA</span>
-      </div>
-      <section className="realizo-quick-section">
-       <div className="realizo-section-heading"><div><p className="realizo-kicker">TU ESTUDIO, TUS REGLAS</p><h2>Elige cómo quieres crear<span>.</span></h2><p className="realizo-muted">Tres caminos, las mismas funciones que ya utilizas.</p></div></div>
-       <div className="realizo-quick-grid">
-        <button type="button" onClick={()=>chooseVisualFormat('ugc')} className="realizo-quick-card"><span className="realizo-quick-icon">✦</span><strong>La IA decide todo</strong><small>Investigación, ángulo y guiones publicitarios.</small><span>Comenzar ↗</span></button>
-        <button type="button" onClick={()=>chooseCreatorMode('automatic')} className="realizo-quick-card"><span className="realizo-quick-icon">◈</span><strong>Modo automático</strong><small>Prepara un brief sin costo de investigación IA.</small><span>Comenzar ↗</span></button>
-        <button type="button" onClick={()=>chooseCreatorMode('manual')} className="realizo-quick-card"><span className="realizo-quick-icon">⌘</span><strong>Modo manual</strong><small>Prompt, modelo, duración y controles avanzados.</small><span>Abrir editor ↗</span></button>
-       </div>
-      </section>
-     </div>}
+     {page==='home'&&<RealizoMotionHome
+        onCreate={startNewVideo}
+        onTemplates={()=>{setTemplateId(null);setPage('templates')}}
+        onUseTemplate={chooseAdTemplate}
+        onManual={()=>chooseCreatorMode('manual')}
+        onViewVideos={()=>setPage('videos')}
+      />}
      {page==='templates'&&<div className="realizo-templates-page max-w-[1420px] mx-auto">
        {templateId?
         <RealizoTemplateCreator key={templateId+'-'+createKey}
@@ -269,18 +235,17 @@ export default function RealizoStudio({accountId,guest=false}){
         <>
          <div className="realizo-page-intro">
           <p className="realizo-kicker">PLANTILLAS REALES</p>
-          <h1>Elige el video que <em>quieres replicar.</em></h1>
-          <p>Reproduce el anuncio antes de elegirlo. Solo cambia el producto y lo que indiques.</p>
+          <h1>Elige tu próxima <em>creación.</em></h1>
          </div>
          <RealizoTemplateLibrary onChoose={chooseAdTemplate}/>
         </>}
       </div>}
      {page==='create'&&<>
       <section className="realizo-page-heading max-w-[1230px] mx-auto mb-8">
-        <p className="uppercase tracking-[.19em] text-[#8A61B5] font-bold text-[11px]">CREATIVE WORKSPACE / NUEVO PROYECTO</p>
+        <p className="uppercase tracking-[.19em] text-[#B28059] font-bold text-[10px]">REALIZO STUDIO</p>
         <div className="flex flex-wrap items-center justify-between gap-5 mt-2">
-          <div><h1 className="text-[33px] sm:text-[42px] tracking-[-.045em] font-extrabold leading-tight">{editorOpen?'Editor de video':'Crea tu próximo anuncio'}<span className="text-[#EB8A87]">.</span></h1>
-          <p className="mt-2 text-[#8E8197] text-sm">{editorOpen?'Elige el modelo y configura tu generación.':'Del producto al anuncio, con un proceso visual y sencillo.'}</p></div>
+          <div><h1 className="text-[33px] sm:text-[42px] tracking-[-.045em] font-extrabold leading-tight">{editorOpen?'Editor':'Crear video'}<span className="text-[#EB8A87]">.</span></h1>
+</div>
           <button type="button" onClick={()=>{
             if(editorOpen && brief?.project_id){
               setResumeProjectId(brief.project_id);setCreatorMode('premium');
@@ -288,7 +253,7 @@ export default function RealizoStudio({accountId,guest=false}){
             }
             setEditorOpen(open=>!open);
           }} className="inline-flex gap-2 items-center text-[#6845AB] font-semibold text-sm bg-white rounded-full border border-[#E5D8E4] px-5 py-3 hover:bg-[#F1E9FC]">
-            <Icon name={editorOpen?'arrow':'sliders'} size={18}/>{editorOpen?'Volver al producto':'Editor avanzado'}
+            <Icon name={editorOpen?'arrow':'sliders'} size={18}/>{editorOpen?'Volver':'Avanzado'}
           </button>
         </div>
       </section>
@@ -301,9 +266,9 @@ export default function RealizoStudio({accountId,guest=false}){
         </div>}
         <div className="realizo-modes flex flex-wrap gap-3 rounded-[22px] p-3" aria-label="Modalidad de creación">
           {[
-            ['premium','✦ Crear con IA · Recomendado'],
-            ['automatic','Sin investigación IA'],
-            ['manual','Manual · tu prompt']
+            ['premium','✦ Con IA'],
+            ['automatic','Automático'],
+            ['manual','Manual']
           ].map(([id,label])=><button key={id} type="button"
             onClick={()=>chooseCreatorMode(id)}
             aria-pressed={creatorMode===id}
@@ -342,7 +307,7 @@ export default function RealizoStudio({accountId,guest=false}){
           <p className="text-[13px] text-[#7A5663] font-semibold">Para generar necesitas al menos {usd(pilotPrice||35)} en tu billetera.</p>
           <Link href="/wallet" className="font-bold text-[#6845AB] text-sm underline">Recargar créditos de prueba</Link>
         </div>}
-        {generationReady&&<p className="text-[13px] font-semibold text-[#6A4D9B]">Elige tu modelo, duración y resolución. Realizo te mostrará el precio exacto antes de confirmar cada video.</p>}
+
         {!pilotAvailable&&<p className="text-[12px] text-[#9A8B9B]">La generación se habilitará cuando tu cuenta esté lista para crear videos.</p>}
        </section>}
      </>}
