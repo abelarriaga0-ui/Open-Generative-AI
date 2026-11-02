@@ -1,24 +1,9 @@
 import {getWalletEnvironment,requireWalletUser,getGenerationJob,jsonError} from '@/lib/wallet/server';
 import {enforceSameOrigin} from '@/lib/wallet/access-auth';
+import {extractOwnedDownloadUrl} from '@/lib/realizo-creative/download-policy';
 
 export const dynamic='force-dynamic';
 const idPattern=/^[a-f0-9-]{36}$/i;
-const isTrustedProviderVideo=value=>{
-  try {
-    const u=new URL(value);
-    return u.protocol==='https:' && u.hostname==='cdn.muapi.ai' &&
-      /^\/outputs\/[a-zA-Z0-9/_-]+\.mp4$/.test(u.pathname) && !u.search && !u.hash;
-  }catch{return false;}
-};
-export function extractOwnedDownloadUrl(job){
-  if(job?.status!=='completed'||!job.result_json)return null;
-  try{
-    const data=JSON.parse(job.result_json);
-    const candidates=[data.url,data.output_url,data.output?.url,data.outputs?.[0]?.url,
-      data.outputs?.[0],data.output?.[0]];
-    return candidates.find(x=>typeof x==='string'&&isTrustedProviderVideo(x))||null;
-  }catch{return null;}
-}
 // Full file delivery is permitted only through Realizo's explicit download action.
 // A direct third-party download URL is not displayed by the player.
 export async function POST(request,{params}){
