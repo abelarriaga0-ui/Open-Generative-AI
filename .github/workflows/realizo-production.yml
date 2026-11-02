@@ -1,0 +1,132 @@
+name: Realizo Production - publicar desde main
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/realizo-production.yml"
+      - "app/api/conversion-templates/**"
+      - "components/ConversionTemplatesStudio.jsx"
+      - "components/RealizoStudio.jsx"
+      - "lib/conversion-templates/**"
+      - "wrangler.production.jsonc"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: realizo-production-release
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      NEXT_TELEMETRY_DISABLED: '1'
+      REALIZO_ENV: production
+      REALIZO_AUTH_PROVIDER: native
+      REALIZO_WALLET_ONLY: 'true'
+      CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      REALIZO_MUAPI_API_KEY: ${{ secrets.REALIZO_MUAPI_API_KEY }}
+      PAYPAL_LIVE_ID: ${{ secrets.REALIZO_PAYPAL_LIVE_CLIENT_ID }}
+      PAYPAL_LIVE_SECRET: ${{ secrets.REALIZO_PAYPAL_LIVE_CLIENT_SECRET }}
+      REALIZO_PAYPAL_LIVE_CLIENT_ID: ${{ secrets.REALIZO_PAYPAL_LIVE_CLIENT_ID }}
+      REALIZO_PAYPAL_LIVE_CLIENT_SECRET: ${{ secrets.REALIZO_PAYPAL_LIVE_CLIENT_SECRET }}
+      REALIZO_AUTH_PEPPER: ${{ secrets.REALIZO_AUTH_PEPPER }}
+      RESEND_KEY: ${{ secrets.REALIZO_RESEND_API_KEY }}
+      EMAIL_FROM: ${{ secrets.REALIZO_EMAIL_FROM }}
+      GOOGLE_ID: ${{ secrets.REALIZO_GOOGLE_OAUTH_CLIENT_ID }}
+      GOOGLE_SECRET: ${{ secrets.REALIZO_GOOGLE_OAUTH_CLIENT_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verificar claves reales antes de tocar producción
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "Falta CLOUDFLARE_API_TOKEN"; exit 1; }
+          test -n "$REALIZO_MUAPI_API_KEY" || { echo "Falta REALIZO_MUAPI_API_KEY"; exit 1; }
+          test -n "$PAYPAL_LIVE_ID" || { echo "Falta REALIZO_PAYPAL_LIVE_CLIENT_ID"; exit 1; }
+          test -n "$PAYPAL_LIVE_SECRET" || { echo "Falta REALIZO_PAYPAL_LIVE_CLIENT_SECRET"; exit 1; }
+          if [ -z "$RESEND_KEY" ] && [ -z "$GOOGLE_ID" ]; then
+            echo "Falta proveedor de autenticación de producción"; exit 1
+          fi
+          echo "Validación de presencia OK; no se publican claves."
+      - name: Instalar y compilar Worker Realizo
+        run: |
+          npm pkg set 'devDependencies.@tailwindcss/vite=4.3.3'
+          npm install --no-audit --no-fund --legacy-peer-deps
+          npm install --no-save --package-lock=false next@16.4.2 @opennextjs/cloudflare@1.20.12 wrangler@4.156.2
+          npm run build:packages
+          npx opennextjs-cloudflare build --config wrangler.production.jsonc
+          test -s .open-next/worker.js
+      - name: Preparar R2 y D1 real
+        run: |
+          set -euo pipefail
+          npx wrangler r2 bucket create realizo-media || npx wrangler r2 bucket list | grep -q realizo-media
+          npx wrangler d1 migrations apply WALLETS_DB --config wrangler.production.jsonc --remote
+      - name: Publicar primero con cobros desactivados
+        run: npx opennextjs-cloudflare deploy --config wrangler.production.jsonc
+      - name: Instalar secretos sin mostrarlos
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf %s "$REALIZO_MUAPI_API_KEY" | npx wrangler secret put MUAPI_API_KEY --name realizo
+          printf %s "$PAYPAL_LIVE_ID" | npx wrangler secret put PAYPAL_CLIENT_ID --name realizo
+          printf %s "$PAYPAL_LIVE_SECRET" | npx wrangler secret put PAYPAL_CLIENT_SECRET --name realizo
+          if [ -n "$RESEND_KEY" ] && [ -n "$EMAIL_FROM" ]; then
+            printf %s "$RESEND_KEY" | npx wrangler secret put RESEND_API_KEY --name realizo
+            printf %s "$EMAIL_FROM" | npx wrangler secret put REALIZO_EMAIL_FROM --name realizo
+          fi
+          if [ -n "$GOOGLE_ID" ] && [ -n "$GOOGLE_SECRET" ]; then
+            printf %s "$GOOGLE_ID" | npx wrangler secret put GOOGLE_OAUTH_CLIENT_ID --name realizo
+            printf %s "$GOOGLE_SECRET" | npx wrangler secret put GOOGLE_OAUTH_CLIENT_SECRET --name realizo
+          fi
+          if [ -n "$REALIZO_AUTH_PEPPER" ]; then
+            printf %s "$REALIZO_AUTH_PEPPER" | npx wrangler secret put REALIZO_AUTH_PEPPER --name realizo
+          elif ! npx wrangler secret list --name realizo | grep -q REALIZO_AUTH_PEPPER; then
+            node -e "process.stdout.write(require('node:crypto').randomBytes(48).toString('hex'))" |
+              npx wrangler secret put REALIZO_AUTH_PEPPER --name realizo
+          fi
+      - name: Registrar webhook PayPal Live
+        id: paypal
+        run: node scripts/register-realizo-live-webhook.mjs
+        env:
+          REALIZO_PAYPAL_LIVE_CLIENT_ID: ${{ secrets.REALIZO_PAYPAL_LIVE_CLIENT_ID }}
+          REALIZO_PAYPAL_LIVE_CLIENT_SECRET: ${{ secrets.REALIZO_PAYPAL_LIVE_CLIENT_SECRET }}
+      - name: Instalar firma del webhook en Worker
+        env:
+          WEBHOOK_ID: ${{ steps.paypal.outputs.webhook_id }}
+        run: |
+          test -n "$WEBHOOK_ID"
+          printf %s "$WEBHOOK_ID" | npx wrangler secret put PAYPAL_WEBHOOK_ID --name realizo
+      - name: Activar pagos reales y generación únicamente tras configurar todo
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          const file='wrangler.production.jsonc';
+          const config=JSON.parse(fs.readFileSync(file,'utf8'));
+          config.vars.REALIZO_LIVE_PAYMENTS_ENABLED='true';
+          config.vars.MUAPI_GENERATION_ENABLED='true';
+          fs.writeFileSync(file,JSON.stringify(config,null,2)+'\n');
+          JS
+          npx opennextjs-cloudflare deploy --config wrangler.production.jsonc
+      - name: Verificar sección real de imágenes y precios sin gastar
+        run: |
+          node --input-type=module <<'JS'
+          const base='https://realizo.abelarriaga0.workers.dev';
+          const r=await fetch(base+'/api/conversion-templates',{signal:AbortSignal.timeout(20000)});
+          const j=await r.json();
+          const t=j.templates?.find(x=>x.id==='explosion-premium-azul');
+          if(!r.ok||!t||!t.available||t.price_cents!==14||t.analysis_price_cents!==1)
+            throw Error('La plantilla no está operativa para generación');
+          const p=await fetch(base+'/studio/images',{redirect:'manual',signal:AbortSignal.timeout(20000)});
+          if(p.status!==200)throw Error('La sección de imágenes no está publicada: HTTP '+p.status);
+          console.log('REALIZO_PRODUCTION_READY=true');
+          JS
