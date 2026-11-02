@@ -109,7 +109,7 @@ export default function RealizoStudio({accountId,guest=false}){
    return ()=>{observer.disconnect();root.removeEventListener('contextmenu',preventMediaMenu)};
  },[]);
 
- const onWalletGenerate=useCallback(params=>generateWithRealizoWallet(params),[]);
+ const onWalletGenerate=useCallback((params,opts)=>generateWithRealizoWallet(params,opts),[]);
  useEffect(()=>{
    if(guest||page!=='videos')return;
    let cancelled=false;
