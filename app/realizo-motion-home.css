@@ -227,3 +227,22 @@
  .realizo-motion-float-label.float-bottom{left:3%}
  .realizo-motion-way-card{min-height:122px}
 }
+
+
+/* Keep the rest of the studio on the same visual scale. */
+.realizo-app .realizo-brand{font-size:21px!important}
+.realizo-app .realizo-brand svg{width:32px;height:32px}
+.realizo-app .realizo-v11-topnav button{font-size:12px!important;padding-inline:14px}
+.realizo-app .realizo-balance{font-size:12px!important;padding:8px 13px}
+.realizo-app .realizo-page-intro h1{font-size:clamp(30px,2.6vw,42px)!important}
+.realizo-app .realizo-page-heading h1{font-size:clamp(29px,2.6vw,39px)!important}
+.realizo-app .realizo-template-creator-head h1{font-size:clamp(29px,2.7vw,40px)!important}
+.realizo-app .realizo-v11-lib-head h2{font-size:clamp(27px,2.5vw,38px)}
+.realizo-app .realizo-v11-card-overlay h3{font-size:clamp(14px,1.15vw,18px)}
+.realizo-app .realizo-template-creator-grid{gap:18px}
+.realizo-app .realizo-template-creator-head{margin-bottom:17px}
+@media(max-width:750px){
+ .realizo-app .realizo-brand{font-size:20px!important}
+ .realizo-app .realizo-brand svg{width:31px;height:31px}
+ .realizo-app .realizo-page-intro h1,.realizo-app .realizo-page-heading h1{font-size:30px!important}
+}
