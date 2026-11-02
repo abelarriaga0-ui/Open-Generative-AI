@@ -21,10 +21,10 @@
     "REALIZO_AUTH_PROVIDER": "native",
     "REALIZO_AUTH_ORIGIN": "https://realizo-auth-sandbox.abelarriaga0.workers.dev",
     "PAYPAL_MODE": "sandbox",
-    "MUAPI_GENERATION_ENABLED": "true",
-    "REALIZO_MUAPI_PILOT": "true",
+    "MUAPI_GENERATION_ENABLED": "false",
+    "REALIZO_MUAPI_PILOT": "false",
     "REALIZO_MULTI_MODEL_SANDBOX": "true",
-    "REALIZO_AI_PREMIUM_ENABLED": "true",
+    "REALIZO_AI_PREMIUM_ENABLED": "false",
     "OPENAI_PREMIUM_MODEL": "gpt-6-luna",
     "REALIZO_AI_PREMIUM_PUBLIC_ENABLED": "false"
   },
