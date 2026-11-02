@@ -154,7 +154,7 @@ export default function RealizoStudio({accountId,guest=false}){
      </Link>
      <nav className="realizo-v11-topnav" aria-label="Navegación principal">
        <button type="button" aria-current={page==='home'?'page':undefined} onClick={()=>setPage('home')}>Inicio</button>
-       <button type="button" aria-current={page==='templates'?'page':undefined} onClick={()=>setPage('templates')}>Plantillas</button>
+       <button type="button" aria-current={page==='templates'?'page':undefined} onClick={()=>{setTemplateId(null);setPage('templates')}}>Plantillas</button>
        <button type="button" onClick={startNewVideo}>Crear video</button>
        <button type="button" onClick={()=>setPage('videos')}>Mis videos</button>
       </nav>
@@ -176,7 +176,7 @@ export default function RealizoStudio({accountId,guest=false}){
       <nav aria-label="Menú de Realizo" className="space-y-2">
        {nav('home','Inicio','video')}
        {nav('create','Crear video','video',startNewVideo)}
-       {nav('templates','Plantillas','sliders')}
+       {nav('templates','Plantillas','sliders',()=>setTemplateId(null))}
        {nav('videos','Mis videos','folder')}
        <Link href={guest?loginUrl:'/wallet'} className={navBase+' text-[#756782] hover:bg-[#F7F0F7]'}><Icon name="wallet"/>Mis créditos{guest?<Icon name="chevron" size={14}/>:<Icon name="chevron" size={14}/>}</Link>
       </nav>
