@@ -13,6 +13,7 @@ on:
       - "components/RealizoPremium.jsx"
       - "components/wallet/PaypalTopup.jsx"
       - "tests/realizo-paypal-inline-checkout.test.mjs"
+      - "tests/realizo-paypal-live-preflight.test.mjs"
       - "components/RealizoStudio.jsx"
       - "tests/realizo-video-download-boundary.test.mjs"
       - "tests/realizo-owned-download-client.test.mjs"
@@ -56,7 +57,9 @@ jobs:
         with:
           node-version: "22"
       - name: Billeteras, Sandbox y sintaxis ESM (sin secretos ni servicios externos)
-        run: npm run test:wallet
+        run: |
+          npm run test:wallet
+          node --test tests/realizo-paypal-live-preflight.test.mjs tests/realizo-paypal-inline-checkout.test.mjs
 
   deploy-realizo-sandbox:
     needs: sqlite-invariants
