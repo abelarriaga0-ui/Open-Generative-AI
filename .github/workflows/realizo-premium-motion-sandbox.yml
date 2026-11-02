@@ -70,3 +70,5 @@ jobs:
           JS
 
 # Re-run after correcting UI callback assertion.
+
+# Final rerun: regressions test functionality, not removed explanatory copy.
