@@ -1,4 +1,4 @@
-name: Realizo Production - publicar desde main
+name: Realizo Production - imagenes independientes de PayPal
 on:
   push:
     branches: [main]
@@ -52,9 +52,6 @@ jobs:
           set -euo pipefail
           test -n "$CLOUDFLARE_API_TOKEN" || { echo "Falta CLOUDFLARE_API_TOKEN"; exit 1; }
           test -n "$REALIZO_MUAPI_API_KEY" || { echo "Falta REALIZO_MUAPI_API_KEY"; exit 1; }
-          if [ -z "$PAYPAL_LIVE_ID" ] || [ -z "$PAYPAL_LIVE_SECRET" ]; then
-            echo "PayPal Live pendiente: publicar UI sin pagos ni generación, sin utilizar Sandbox."
-          fi
           if [ -z "$RESEND_KEY" ] && [ -z "$GOOGLE_ID" ]; then
             echo "Falta proveedor de autenticación de producción"; exit 1
           fi
@@ -67,22 +64,18 @@ jobs:
           npm run build:packages
           npx opennextjs-cloudflare build --config wrangler.production.jsonc
           test -s .open-next/worker.js
-      - name: Preparar R2 y D1 real
+      - name: Aplicar esquema D1 independiente de PayPal
         run: |
           set -euo pipefail
-          npx wrangler r2 bucket create realizo-media || npx wrangler r2 bucket list | grep -q realizo-media
+          echo 'No administrar buckets R2: reutilizar solamente bindings existentes.'
           npx wrangler d1 migrations apply WALLETS_DB --config wrangler.production.jsonc --remote
-      - name: Publicar primero con cobros desactivados
+      - name: Publicar imágenes con reserva de billetera; PayPal y videos permanecen desactivados
         run: npx opennextjs-cloudflare deploy --config wrangler.production.jsonc
       - name: Instalar secretos sin mostrarlos
         shell: bash
         run: |
           set -euo pipefail
           printf %s "$REALIZO_MUAPI_API_KEY" | npx wrangler secret put MUAPI_API_KEY --name realizo
-          if [ -n "$PAYPAL_LIVE_ID" ] && [ -n "$PAYPAL_LIVE_SECRET" ]; then
-            printf %s "$PAYPAL_LIVE_ID" | npx wrangler secret put PAYPAL_CLIENT_ID --name realizo
-            printf %s "$PAYPAL_LIVE_SECRET" | npx wrangler secret put PAYPAL_CLIENT_SECRET --name realizo
-          fi
           if [ -n "$RESEND_KEY" ] && [ -n "$EMAIL_FROM" ]; then
             printf %s "$RESEND_KEY" | npx wrangler secret put RESEND_API_KEY --name realizo
             printf %s "$EMAIL_FROM" | npx wrangler secret put REALIZO_EMAIL_FROM --name realizo
@@ -97,32 +90,6 @@ jobs:
             node -e "process.stdout.write(require('node:crypto').randomBytes(48).toString('hex'))" |
               npx wrangler secret put REALIZO_AUTH_PEPPER --name realizo
           fi
-      - name: Registrar webhook PayPal Live
-        if: env.PAYPAL_LIVE_ID != '' && env.PAYPAL_LIVE_SECRET != ''
-        id: paypal
-        run: node scripts/register-realizo-live-webhook.mjs
-        env:
-          REALIZO_PAYPAL_LIVE_CLIENT_ID: ${{ secrets.REALIZO_PAYPAL_LIVE_CLIENT_ID }}
-          REALIZO_PAYPAL_LIVE_CLIENT_SECRET: ${{ secrets.REALIZO_PAYPAL_LIVE_CLIENT_SECRET }}
-      - name: Instalar firma del webhook en Worker
-        if: env.PAYPAL_LIVE_ID != '' && env.PAYPAL_LIVE_SECRET != ''
-        env:
-          WEBHOOK_ID: ${{ steps.paypal.outputs.webhook_id }}
-        run: |
-          test -n "$WEBHOOK_ID"
-          printf %s "$WEBHOOK_ID" | npx wrangler secret put PAYPAL_WEBHOOK_ID --name realizo
-      - name: Activar pagos reales y generación únicamente tras configurar todo
-        if: env.PAYPAL_LIVE_ID != '' && env.PAYPAL_LIVE_SECRET != ''
-        run: |
-          node --input-type=module <<'JS'
-          import fs from 'node:fs';
-          const file='wrangler.production.jsonc';
-          const config=JSON.parse(fs.readFileSync(file,'utf8'));
-          config.vars.REALIZO_LIVE_PAYMENTS_ENABLED='true';
-          config.vars.MUAPI_GENERATION_ENABLED='true';
-          fs.writeFileSync(file,JSON.stringify(config,null,2)+'\n');
-          JS
-          npx opennextjs-cloudflare deploy --config wrangler.production.jsonc
       - name: Verificar sección real de imágenes y precios sin gastar
         run: |
           node --input-type=module <<'JS'
@@ -130,10 +97,10 @@ jobs:
           const r=await fetch(base+'/api/conversion-templates',{signal:AbortSignal.timeout(20000)});
           const j=await r.json();
           const t=j.templates?.find(x=>x.id==='explosion-premium-azul');
-          if(!r.ok||!t||t.price_cents!==14||t.analysis_price_cents!==1)
-            throw Error('La plantilla o sus precios no están publicados');
+          if(!r.ok||!t||!t.available||t.price_cents!==14||t.analysis_price_cents!==1)
+            throw Error('La plantilla no está habilitada en producción');
           console.log('IMAGEN_GENERACION_ACTIVA='+Boolean(t.available));
           const p=await fetch(base+'/studio/images',{redirect:'manual',signal:AbortSignal.timeout(20000)});
           if(p.status!==200)throw Error('La sección de imágenes no está publicada: HTTP '+p.status);
-          console.log('REALIZO_PRODUCTION_UI_PUBLISHED=true');
+          console.log('REALIZO_PRODUCTION_IMAGES_ENABLED_WITHOUT_PAYPAL=true');
           JS
