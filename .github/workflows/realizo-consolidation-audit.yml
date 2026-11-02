@@ -1,0 +1,61 @@
+name: Realizo consolidation - safe read-only inventory
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/realizo-consolidation-audit.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify Cloudflare access and list worker identifiers only
+        run: |
+          node --input-type=module <<'JS'
+          const acct=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const tok=process.env.CLOUDFLARE_API_TOKEN;
+          if(!tok)throw new Error('Cloudflare token missing');
+          const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+acct+'/workers/scripts',{
+            headers:{Authorization:'Bearer '+tok},signal:AbortSignal.timeout(20000)});
+          if(!r.ok)throw new Error('Worker list unavailable HTTP '+r.status);
+          const j=await r.json();
+          console.log('WORKERS=',JSON.stringify((j.result||[]).map(x=>x.id).filter(x=>/realizo|open-generative-ai/.test(x))));
+          for(const worker of ['realizo-auth-sandbox','realizo-sandbox','open-generative-ai','realizo']){
+            const s=await fetch('https://api.cloudflare.com/client/v4/accounts/'+acct+'/workers/scripts/'+worker+'/secrets',{
+              headers:{Authorization:'Bearer '+tok},signal:AbortSignal.timeout(20000)});
+            const o=await s.json().catch(()=>({}));
+            const safe=(o.result||[]).map(z=>z.name).filter(n=>/^(PAYPAL_|REALIZO_|GOOGLE_|RESEND_|MUAPI_|OPENAI_|CF_ACCESS_)/.test(n));
+            console.log('SECRET_NAMES '+worker+' status='+s.status+' '+JSON.stringify(safe));
+          }
+          JS
+      - name: Show only non-sensitive counts and payment modes from both D1 databases
+        run: |
+          set -euo pipefail
+          npm install --prefix "$RUNNER_TEMP/wrangler" --no-save --no-audit --no-fund wrangler@4.156.2
+          export PATH="$RUNNER_TEMP/wrangler/node_modules/.bin:$PATH"
+          for config in wrangler.auth-sandbox.jsonc wrangler.production.jsonc; do
+            echo "DATABASE_INVENTORY config=$config"
+            wrangler d1 execute WALLETS_DB --config "$config" --remote --command "SELECT 'accounts' AS kind,COUNT(*) AS n FROM realizo_accounts UNION ALL SELECT 'identities',COUNT(*) FROM realizo_identities UNION ALL SELECT 'wallet_users',COUNT(*) FROM wallet_users UNION ALL SELECT 'wallets',COUNT(*) FROM wallets UNION ALL SELECT 'generation_jobs',COUNT(*) FROM generation_jobs UNION ALL SELECT 'paypal_orders',COUNT(*) FROM paypal_topup_orders UNION ALL SELECT 'media_assets',COUNT(*) FROM realizo_media_assets UNION ALL SELECT 'ai_projects',COUNT(*) FROM realizo_ai_projects;" || echo "COUNT_QUERY_FAILED config=$config"
+          done
+      - name: Check public HTTP routes without cookies
+        run: |
+          node --input-type=module <<'JS'
+          for(const worker of ['realizo-auth-sandbox','realizo','open-generative-ai']){
+           const origin='https://'+worker+'.abelarriaga0.workers.dev';
+           for(const path of ['/studio','/api/auth/features','/api/wallet/paypal/config','/api/conversion-templates']){
+             try{const r=await fetch(origin+path,{redirect:'manual',signal:AbortSignal.timeout(12000)});
+               console.log('PUBLIC_HTTP '+worker+' '+path+' '+r.status+' '+(r.headers.get('location')||'').slice(0,80));}
+             catch(e){console.log('PUBLIC_HTTP '+worker+' '+path+' FETCH_FAILED');}
+           }
+          }
+          JS
