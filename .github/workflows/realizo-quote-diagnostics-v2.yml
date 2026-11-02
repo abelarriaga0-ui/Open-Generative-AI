@@ -87,3 +87,20 @@ jobs:
               currency:content?.currency,valid_price:Number.isFinite(Number(content?.cost))&&Number(content?.cost)>0}));
           }
           JS
+
+      - name: Probe video-required and image-reference providers for existing 7 second project
+        run: |
+          node --input-type=module <<'JS'
+          async function request(model,body) {
+            const url='https://api.muapi.ai/api/v1/models/'+model+'/estimate-cost';
+            const r=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},
+              body:JSON.stringify(body),signal:AbortSignal.timeout(12000)});
+            const d=await r.json().catch(()=>({}));
+            console.log(model,JSON.stringify({status:r.status,cost:d.cost,currency:d.currency,
+             error:JSON.stringify(d.error||d.detail||'').slice(0,320)}));
+          }
+          await request('kling-o1-reference-to-video',{prompt:'Demo',video_url:'https://example.com/clip.mp4',duration:7});
+          await request('kling-o1-reference-to-video',{prompt:'Demo',video_url:'https://example.com/clip.mp4',duration:5});
+          await request('seedance-2.5-intl-omni-reference',{prompt:'Demo',images_list:['https://example.com/photo.jpg'],duration:7,aspect_ratio:'9:16',omni_reference_task_type:'reference'});
+          await request('seedance-2.5-intl-omni-reference',{prompt:'Demo',images_list:['https://example.com/photo.jpg'],duration:12,aspect_ratio:'9:16',omni_reference_task_type:'reference'});
+          JS
