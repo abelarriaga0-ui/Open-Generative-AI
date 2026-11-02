@@ -255,3 +255,21 @@
  .realizo-premium-progress span i{width:25px;height:25px}
  .realizo-brief-review{min-height:250px;padding:22px}
 }
+
+/* Creación: IA Premium como opción principal. Solo presentación del selector. */
+.realizo-modes button[data-primary-mode="true"]{
+ flex:1.55;
+ font-weight:850!important;
+ letter-spacing:-.015em;
+}
+.realizo-modes button[data-primary-mode="true"][aria-pressed="false"]{
+ color:#f2c195!important;
+ border:1px solid #8c5d3d!important;
+ background:linear-gradient(115deg,#34251e,#292225)!important;
+}
+.realizo-modes button[data-primary-mode="true"][aria-pressed="true"]{
+ box-shadow:0 8px 24px #f3a1572b,inset 0 0 0 1px #ffe0b367!important;
+}
+@media(max-width:767px){
+ .realizo-modes button[data-primary-mode="true"]{flex:1 1 100%}
+}
