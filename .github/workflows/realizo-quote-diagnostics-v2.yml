@@ -66,3 +66,24 @@ jobs:
           }
           console.log('bundle legacy error chunks',old,'updated error chunks',newer);
           JS
+
+      - name: Decode Muapi estimator error contract, all requests read-only
+        run: |
+          node --input-type=module <<'JS'
+          const id='kling-o1-reference-to-video',url='https://api.muapi.ai/api/v1/models/'+id+'/estimate-cost';
+          const base={prompt:'Simple product demonstration',duration:7,aspect_ratio:'9:16'};
+          const inputs=[
+            ['raw',base],
+            ['raw plus image', {...base,images_list:['https://example.com/product.jpg']}],
+            ['wrapped input',{input:base}],
+            ['wrapped inputs',{inputs:base}],
+            ['wrapped model inputs',{model:id,inputs:base}]
+          ];
+          for(const [name,input] of inputs){
+            const response=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(input),signal:AbortSignal.timeout(14000)}).catch(e=>({status:0,error:e.name}));
+            const content=typeof response.json==='function'?await response.json().catch(()=>({})):response;
+            console.log(name,JSON.stringify({status:response.status,
+              detail:JSON.stringify(content?.detail||content?.message||content?.error||'').slice(0,550),
+              currency:content?.currency,valid_price:Number.isFinite(Number(content?.cost))&&Number(content?.cost)>0}));
+          }
+          JS
