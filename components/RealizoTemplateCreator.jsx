@@ -18,7 +18,10 @@ const errorMap={
  unsupported_model:'Este modelo de Muapi no está disponible en este momento.',
  unsupported_model_endpoint:'Este modelo no tiene una ruta válida en Muapi.',
  model_pricing_unavailable:'Muapi no proporcionó un precio verificable. No se ha cobrado nada.',
- muapi_catalog_unavailable:'No se pudo consultar el precio en Muapi.',
+ muapi_catalog_unavailable:'Muapi no respondió a la cotización. No se descontaron créditos.',
+ muapi_pricing_contract_mismatch:'Muapi no pudo calcular el precio con estos parámetros. No se ha cobrado nada.',
+ provider_price_inputs_invalid:'La cotización de Muapi rechazó estos parámetros. No se ha cobrado nada.',
+ muapi_rate_limited:'Muapi está limitando las consultas. Inténtalo nuevamente.',
  insufficient_funds:'Saldo insuficiente. Recarga para continuar.',
  price_changed_confirm_again:'El precio cambió. Necesitas volver a confirmar el importe.'
 };
