@@ -44,7 +44,8 @@ export async function POST(request) {
         description: 'Créditos de generación Realizo (no transferibles)',
         amount: { currency_code: 'USD', value: usdFromCents(cents) },
       }],
-      payment_source: { paypal: { experience_context: { shipping_preference: 'NO_SHIPPING' } } },
+      // Do not force a PayPal Wallet payment source: secure CardFields must be
+      // able to attach a card to the order in the PayPal SDK when eligible.
     }, intentId);
     if (!ok || typeof data?.id !== 'string' || !/^[A-Z0-9]{10,25}$/.test(data.id)) {
       throw new Error('paypal_create_order_failed');
