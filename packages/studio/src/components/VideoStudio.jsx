@@ -2390,7 +2390,15 @@ export default function VideoStudio({
         if (!grouped && selectedQuality) i2vParams.quality = selectedQuality;
         if (showEffect && selectedEffect) i2vParams.name = selectedEffect;
 
-        res = onWalletGenerate && generationReady ? await onWalletGenerate(i2vParams) : await generateI2V(apiKey, i2vParams);
+        res = onWalletGenerate && generationReady
+          ? await onWalletGenerate(i2vParams,{
+             creativeContext:preparedBrief?.project_id?{
+              project_id:preparedBrief.project_id,
+              cast_mode:preparedBrief.cast_mode,
+              creative_style:preparedBrief.creative_style,
+             }:null
+            })
+          : await generateI2V(apiKey, i2vParams);
         if (!res?.url) throw new Error(copy.errors.noVideoUrlReturned);
 
         const genId = res.request_id || res.id || Date.now().toString();
