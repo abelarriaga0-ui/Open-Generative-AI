@@ -23,6 +23,9 @@ test('all generated videos use owner-only download button, not provider download
  assert.match(history,/MutationObserver\(protect\)/);
  assert.doesNotMatch(history,/href=\{job\.video_url\}/);
  assert.doesNotMatch(creator,/href=\{generated\}/);
+ const editor=read('packages/studio/src/components/VideoStudio.jsx');
+ assert.match(editor,/downloadRealizoVideo\(String\(entry\.id\)\)/);
+ assert.match(editor,/realizoBrand/);
 });
 test('completed video download endpoint requires session ownership and POST',()=>{
  const route=read('app/api/realizo/jobs/[id]/download/route.js');
