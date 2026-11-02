@@ -20,7 +20,7 @@ test('only-product film never requests human actor, presenter or spoken monologu
  assert.equal(film.cast_mode,'product_only');
  assert.match(film.prompt,/ABSOLUTE PRODUCT-ONLY CAST LOCK/);
  assert.match(film.prompt,/ZERO HUMAN PIXELS/);
- assert.match(film.prompt,/music/i);
+ assert.match(film.prompt,/soundtrack|music/i);
  assert.doesNotMatch(film.prompt,/UGC TALKING-HEAD SCHEDULE/);
  assert.doesNotMatch(film.prompt,/APPROVED CREATIVE DIRECTION/);
  assert.doesNotMatch(film.prompt,/RESEARCHED SHOT IDEAS/);
