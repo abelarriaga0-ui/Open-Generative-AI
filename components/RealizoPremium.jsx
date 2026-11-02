@@ -237,6 +237,8 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
    const json=await r.json().catch(()=>({}));
    if(!r.ok)throw Error(json.error==='seller_claims_confirmation_required'?
     'Confirma que revisaste las afirmaciones de tu anuncio.':
+    json.error==='premium_audio_script_required'?'Para voz en off o diálogo, escribe primero el texto que se escuchará. Para solo música, selecciona «Sin voces».':
+    json.error==='premium_audio_cast_conflict'?'El diálogo entre actores requiere «Con personas». Selecciona voz en off o sin voces.':
     json.error==='ugc_speech_timing_invalid'?
     'Ajusta el diálogo UGC para que encaje en los segundos elegidos. No se cobrará otra investigación.':
     json.error==='review_product_responsibility'?
