@@ -2258,6 +2258,7 @@ export default function VideoStudio({
         style:preparedBrief.creative_style,
         shotPreference:preparedBrief.shot_preference,
         castMode:preparedBrief.cast_mode||'with_people',
+        audioMode:preparedBrief.audio_mode||'no_voice',
         productGeometry:preparedBrief.product_visual_geometry||null,
         imageProvided:true,
       }):null;
@@ -2395,6 +2396,7 @@ export default function VideoStudio({
              creativeContext:preparedBrief?.project_id?{
               project_id:preparedBrief.project_id,
               cast_mode:preparedBrief.cast_mode,
+              audio_mode:preparedBrief.audio_mode||'no_voice',
               creative_style:preparedBrief.creative_style,
              }:null
             })
@@ -2409,7 +2411,7 @@ export default function VideoStudio({
           id: genId,
           url: res.url,
           prompt: trimmedPrompt,
-          spoken_script:preparedBrief?.spoken_script||scriptFromPrompt(trimmedPrompt),
+          spoken_script:preparedBrief?.audio_mode==='no_voice'&&['premium','cinematic'].includes(preparedBrief?.creative_style)?'':(preparedBrief?.spoken_script||scriptFromPrompt(trimmedPrompt)),
           model: selectedModel,
           ...(!grouped ? {
             ...(aspectRatios.length > 0 ? { aspect_ratio: selectedAr } : {}),
