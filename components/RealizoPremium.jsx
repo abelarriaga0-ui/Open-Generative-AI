@@ -259,6 +259,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
  const availableModes=Object.keys(videoModes).filter(role=>familyModels.some(m=>m.image_role===role));
  const variantsForMode=familyModels.filter(m=>m.image_role===selectedModel?.image_role);
  const chooseVideoModel=next=>{
+  if(template)return; // master model cannot be changed
    if(!next)return;
    setProduct(prev=>({
     ...prev,video_model_id:next.id,
@@ -341,13 +342,13 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
        </select>
      </label>
      <label className="block text-sm font-bold">Ángulo de venta
-       <select className={field+' mt-2'} value={product.angle} onChange={e=>change('angle',e.target.value)}>
+       <select className={field+' mt-2'} disabled={Boolean(template)} value={product.angle} onChange={e=>change('angle',e.target.value)}>
         {angles.map(([v,n])=><option key={v} value={v}>{n}</option>)}
        </select>
      </label>
     </div>
     <label className="block text-sm font-bold">Idioma de voz y video
-     <select className={field+' mt-2'} value={product.video_language} onChange={e=>change('video_language',e.target.value)}>
+     <select className={field+' mt-2'} disabled={Boolean(template)} value={product.video_language} onChange={e=>change('video_language',e.target.value)}>
       {languages.map(([code,name])=><option key={code} value={code}>{name}</option>)}
      </select>
     </label>
@@ -372,14 +373,14 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
 
      <div className="grid sm:grid-cols-2 gap-3">
       <label className="block text-sm font-bold">Proveedor
-       <select className={field+' mt-2'} value={selectedProvider}
+       <select className={field+' mt-2'} disabled={Boolean(template)} value={selectedProvider}
         onChange={e=>chooseVideoModel(preferredVideoModel(
          videoOptions.filter(m=>m.provider===e.target.value)))}>
         {providerOptions.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}
        </select>
       </label>
       <label className="block text-sm font-bold">Modelo y versión
-       <select className={field+' mt-2'} value={selectedFamily}
+       <select className={field+' mt-2'} disabled={Boolean(template)} value={selectedFamily}
         onChange={e=>chooseVideoModel(preferredVideoModel(
          providerModels.filter(m=>m.family_id===e.target.value)))}>
         {familyOptions.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}
@@ -391,7 +392,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
       <div className="grid sm:grid-cols-3 gap-2">
        {availableModes.map(mode=>{
         const [emoji,label,description]=videoModes[mode];
-        return <button key={mode} type="button" onClick={()=>chooseVideoModel(preferredVideoModel(
+        return <button key={mode} type="button" disabled={Boolean(template)} onClick={()=>chooseVideoModel(preferredVideoModel(
           familyModels.filter(m=>m.image_role===mode)))}
           aria-pressed={selectedModel?.image_role===mode}
           className={'rounded-xl border-2 p-3 text-left transition '+(
@@ -409,7 +410,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
        Opciones avanzadas del motor · {variantsForMode.length} variantes
       </summary>
       <label className="block text-xs font-bold mt-3">Variante específica
-       <select className={field+' mt-2 text-sm'} value={product.video_model_id}
+       <select className={field+' mt-2 text-sm'} disabled={Boolean(template)} value={product.video_model_id}
         onChange={e=>chooseVideoModel(variantsForMode.find(m=>m.id===e.target.value))}>
         {variantsForMode.map(model=><option key={model.id} value={model.id}>
          {model.variant_label||model.name}
@@ -419,7 +420,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
      </details>}
      {selectedModel&&<>
       <label className="block text-sm font-bold">Duración disponible
-       <select className={field+' mt-2'} value={product.video_duration_seconds}
+       <select className={field+' mt-2'} disabled={Boolean(template)} value={product.video_duration_seconds}
         onChange={e=>change('video_duration_seconds',Number(e.target.value))}>
         {availableDurations.map(n=><option key={n} value={n}>{n} segundos</option>)}
        </select>
