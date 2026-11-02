@@ -6,9 +6,10 @@ import {TEMPLATE_HOVER_SRC,TEMPLATE_POSTER_SRC} from '@/lib/realizo-creative/tem
 const access=[
  {n:'01',title:'Plantillas',meta:'Elige. Adapta. Crea.',icon:'▦',type:'template'},
  {n:'02',title:'Crear con IA',meta:'Tu producto, una idea nueva.',icon:'✳',type:'ai'},
- {n:'03',title:'Modo libre',meta:'Tú decides cada detalle.',icon:'⌘',type:'manual'}
+ {n:'03',title:'Imágenes que venden',meta:'Mismo diseño, tu producto.',icon:'✦',type:'images'},
+ {n:'04',title:'Modo libre',meta:'Tú decides cada detalle.',icon:'⌘',type:'manual'}
 ];
-export default function RealizoMotionHome({onCreate,onTemplates,onUseTemplate,onAutomatic,onManual,onViewVideos}){
+export default function RealizoMotionHome({onCreate,onTemplates,onUseTemplate,onAutomatic,onManual,onViewVideos,onImages}){
  const host=useRef(null);
  const video=useRef(null);
  useEffect(()=>{
@@ -36,7 +37,7 @@ export default function RealizoMotionHome({onCreate,onTemplates,onUseTemplate,on
   observer.observe(el);
   return ()=>observer.disconnect();
  },[]);
- const action={template:onTemplates,ai:onCreate,manual:onManual};
+ const action={template:onTemplates,ai:onCreate,manual:onManual,images:onImages};
  return <div ref={host} className="realizo-motion-home">
   <section className="realizo-motion-hero" aria-label="Bienvenido a Realizo" data-reveal>
    <div className="realizo-motion-grain" aria-hidden="true"/>
@@ -47,7 +48,7 @@ export default function RealizoMotionHome({onCreate,onTemplates,onUseTemplate,on
     <p>Crea anuncios que destacan.</p>
     <div className="realizo-motion-hero-actions">
      <button type="button" className="realizo-motion-cta" onClick={onCreate}>Crear video <span aria-hidden="true">↗</span></button>
-     <button type="button" className="realizo-motion-ghost" onClick={onTemplates}>Explorar plantillas <span aria-hidden="true">→</span></button>
+     <button type="button" className="realizo-motion-ghost" onClick={onImages}>Crear imagen <span aria-hidden="true">→</span></button>
     </div>
     <div className="realizo-motion-hero-foot"><span className="realizo-motion-sparkle" aria-hidden="true">✳</span> De tu producto al primer plano.</div>
    </div>
@@ -81,7 +82,7 @@ export default function RealizoMotionHome({onCreate,onTemplates,onUseTemplate,on
   <section className="realizo-motion-way" aria-label="Elige cómo crear" data-reveal>
    <div className="realizo-motion-section-head">
     <div><span className="realizo-motion-kicker">TU ESPACIO CREATIVO</span><h2>Tú eliges cómo crear<span>.</span></h2></div>
-    <span className="realizo-motion-head-counter">01 — 03</span>
+    <span className="realizo-motion-head-counter">01 — 04</span>
    </div>
    <div className="realizo-motion-way-grid">
     {access.map((a,i)=><button key={a.type} type="button" onClick={action[a.type]}
@@ -92,6 +93,19 @@ export default function RealizoMotionHome({onCreate,onTemplates,onUseTemplate,on
       <span className="realizo-motion-card-line" aria-hidden="true"/>
     </button>)}
    </div>
+  </section>
+  <section className="realizo-motion-image-spotlight" aria-label="Imágenes que venden" data-reveal>
+   <div className="realizo-motion-image-copy">
+     <span className="realizo-motion-kicker">NUEVO EN REALIZO · IMÁGENES</span>
+     <h2>Tu producto.<br/><em>El mismo impacto.</em></h2>
+     <p>Elige una plantilla publicitaria, sube tu producto y conserva el diseño que te gustó.</p>
+     <button type="button" className="realizo-motion-cta" onClick={onImages}>Explorar imágenes <span aria-hidden="true">↗</span></button>
+     <div className="realizo-motion-image-meta"><span>Plantillas premium</span><span>4K</span><span>Sin prompts</span></div>
+   </div>
+   <button type="button" className="realizo-motion-image-art" onClick={onImages} aria-label="Explorar plantilla Explosión Premium Azul">
+     <img src="/templates/explosion-premium-azul.webp" alt="Plantilla publicitaria Explosión Premium Azul" loading="lazy"/>
+     <span>EXPLORAR DISEÑO <b aria-hidden="true">↗</b></span>
+   </button>
   </section>
   <section className="realizo-motion-spotlight" aria-label="Plantilla disponible" data-reveal>
    <div className="realizo-motion-section-head">
