@@ -46,7 +46,7 @@ export default function RealizoStudio({accountId}){
  const [formatPreset,setFormatPreset]=useState('ugc');
  const [brief,setBrief]=useState(null);
  const [editorOpen,setEditorOpen]=useState(false);
- const [creatorMode,setCreatorMode]=useState('automatic');
+ const [creatorMode,setCreatorMode]=useState('premium');
  const [resumeProjectId,setResumeProjectId]=useState(null);
  const [createKey,setCreateKey]=useState(0);
  const [sidebar,setSidebar]=useState(false);
@@ -96,7 +96,7 @@ export default function RealizoStudio({accountId}){
  function openEditor(){setEditorOpen(true);setPage('create');setSidebar(false)}
  function startNewVideo(){
    setPage('create');setEditorOpen(false);setBrief(null);setFormatPreset('ugc');
-   setCreatorMode('automatic');setResumeProjectId(null);
+   setCreatorMode('premium');setResumeProjectId(null);
    setCreateKey(current=>current+1);setSidebar(false);
  }
  function newPremiumProject(){
@@ -235,12 +235,13 @@ export default function RealizoStudio({accountId}){
       {!editorOpen?<section className="realizo-create-flow max-w-[1230px] mx-auto space-y-6">
         <div className="realizo-modes flex flex-wrap gap-3 rounded-[22px] p-3" aria-label="Modalidad de creación">
           {[
-            ['automatic','Automático · sin costo IA'],
-            ['manual','Manual · tu prompt'],
-            ['premium','✦ La IA decide todo · Premium']
+            ['premium','✦ Crear con IA · Recomendado'],
+            ['automatic','Sin investigación IA'],
+            ['manual','Manual · tu prompt']
           ].map(([id,label])=><button key={id} type="button"
             onClick={()=>chooseCreatorMode(id)}
             aria-pressed={creatorMode===id}
+            data-primary-mode={id==='premium'?'true':undefined}
             className={'rounded-2xl px-5 py-3 text-sm font-bold transition '+
               (creatorMode===id?'bg-[#6E4BD2] text-white':'bg-[#F8F4FB] text-[#6B5092] hover:bg-[#EDE1FA]')}>
             {label}
