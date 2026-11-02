@@ -16,6 +16,7 @@ export async function GET(request){
   const env=await getWalletEnvironment();
   const user=await requireWalletUser(request,env);
   if(!user)return error('not_authenticated',401);
+  if(env.PAYPAL_MODE!=='live')return error('real_billing_required',503);
   const access=await premiumAccess(env,user);
   const list=await env.WALLETS_DB.prepare(
    'SELECT id,status,product_name,market_code,created_at FROM realizo_ai_projects WHERE user_id=? ORDER BY created_at DESC LIMIT 12'
