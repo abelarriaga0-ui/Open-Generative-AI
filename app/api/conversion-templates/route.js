@@ -1,6 +1,6 @@
 import { CONVERSION_TEMPLATES, isSafePublicImageUrl } from '@/lib/conversion-templates/catalog';
 import { getWalletEnvironment, getPricedModel } from '@/lib/wallet/server';
-import { isMuapiGenerationEnabled } from '@/lib/wallet/generation-policy';
+import { isConversionImageGenerationEnabled } from '@/lib/wallet/generation-policy';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,7 +40,7 @@ export async function GET() {
       aspect_ratio: template.aspectRatio,
       price_cents: pricing?.customer_price_cents ?? null,
       analysis_price_cents: analysisPricing?.customer_price_cents ?? null,
-      available: Boolean(compatible && isSafePublicImageUrl(referenceUrl) && env?.MUAPI_API_KEY && isMuapiGenerationEnabled(env)),
+      available: Boolean(compatible && isSafePublicImageUrl(referenceUrl) && isConversionImageGenerationEnabled(env)),
       preview_available: true
     };
   }));
