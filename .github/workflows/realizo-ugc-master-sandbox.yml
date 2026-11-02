@@ -75,3 +75,5 @@ jobs:
           if(wallet.status!==401)throw Error('Wallet must remain private: '+wallet.status);
           console.log('PASS: Sandbox website served; wallet protected; no video or AI requests sent.');
           JS
+
+# Re-run after final locked-master research instruction refinement.
