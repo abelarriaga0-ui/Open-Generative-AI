@@ -83,6 +83,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Pin published Tailwind build dependency in isolated Sandbox runner
+        run: |
+          # Prevent npm from selecting unpublished @tailwindcss/node@4.3.4.
+          # Only the temporary runner package manifest changes, never production.
+          npm pkg set 'devDependencies.@tailwindcss/vite=4.3.3'
       - name: Install locked dependencies
         run: npm install --no-audit --no-fund --legacy-peer-deps
       - name: Verify sandbox configuration and new error messages
