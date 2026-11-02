@@ -72,6 +72,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
  const [sellerConfirmed,setSellerConfirmed]=useState(false);
  const [style,setStyle]=useState(initialStyle),[shotPreference,setShotPreference]=useState('auto');
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
+ const [researchConfirm,setResearchConfirm]=useState(false);
  const fileRef=useRef(null),keyRef=useRef(null);
  const manualSpeechRef=useRef(false),manualPromptRef=useRef(false);
  useEffect(()=>{
@@ -193,9 +194,8 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
   if(!Number.isInteger(price)||price<0)return setError('No se pudo cotizar la investigación.');
   if(config.billing_mode!=='paid'||price<=0||config.general_available_cents<price)
     return setError('Saldo real insuficiente para pagar la investigación. Necesitas fondos verificados.');
-  const message='Investigación IA: USD '+(price/100).toFixed(2)+
-    '. Modelo '+chosen.name+', duración '+product.video_duration_seconds+' segundos, estilo '+product.creative_style+'. Se reservará de tu billetera ahora y se cobrará al entregar los 3 conceptos. El video se cotiza aparte. ¿Confirmas el pago?';
-  if(!window.confirm(message))return;
+  if(!researchConfirm){setResearchConfirm(true);return;}
+  setResearchConfirm(false);
   setBusy(true);setError('');
   if(!keyRef.current)keyRef.current=crypto.randomUUID();
   try{
@@ -450,8 +450,16 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
     <p className="text-xs text-[#755F88] rounded-xl bg-[#F8F3FC] p-3">
      Precio fijo: <strong>USD {((config?.customer_charge_cents||0)/100).toFixed(2)}</strong> por investigar y crear 3 conceptos. El video se cobra aparte.
     </p>
+    {researchConfirm&&<div role="region" aria-label="Confirmar investigación" className="rounded-2xl border border-[#B9A7D5] bg-white p-4 space-y-3">
+      <p className="font-bold text-[#4C3370]">Confirma tu investigación en Realizo</p>
+      <p className="text-sm">Se reservarán <strong>USD {((config?.customer_charge_cents||0)/100).toFixed(2)}</strong> de tu billetera. Al entregar los 3 conceptos se aplicará el cargo. La generación del video se cotiza por separado.</p>
+      <div className="flex gap-3 flex-wrap">
+       <button type="button" disabled={busy} onClick={start} className="rounded-xl bg-[#704CD4] text-white px-5 py-3 font-bold">Confirmar y continuar</button>
+       <button type="button" onClick={()=>setResearchConfirm(false)} className="rounded-xl border px-5 py-3">Cancelar</button>
+      </div>
+     </div>}
     <div className="flex flex-wrap gap-3">
-     <button type="button" disabled={busy||!config?.enabled||!image||!selectedModel||!product.video_duration_seconds}
+     <button type="button" disabled={busy||researchConfirm||!config?.enabled||!image||!selectedModel||!product.video_duration_seconds}
       onClick={start} className="rounded-2xl bg-[#704CD4] disabled:opacity-45 text-white px-6 py-3 font-bold">
       {busy?'Investigando…':'✦ Investigar y pagar $'+((config?.customer_charge_cents||0)/100).toFixed(2)}
      </button>
