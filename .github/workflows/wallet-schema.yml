@@ -11,6 +11,9 @@ on:
       - "tests/realizo-real-cost-dynamic-quote.test.mjs"
       - "tests/realizo-inline-charge-white-label.test.mjs"
       - "components/RealizoPremium.jsx"
+      - "tests/realizo-premium-cast-director.test.mjs"
+      - "lib/realizo-creative/**"
+      - "app/api/realizo/ai-premium/**"
       - "tests/paypal-webhook-registration.test.mjs"
       - "scripts/register-paypal-sandbox-webhook.mjs"
       - "package.json"
@@ -73,7 +76,21 @@ jobs:
         run: |
           node scripts/check-realizo-auth-sandbox.mjs
           npm run wallet:preflight:sandbox
-          node --test tests/realizo-inline-charge-white-label.test.mjs tests/realizo-real-cost-dynamic-quote.test.mjs
+          node --test tests/realizo-inline-charge-white-label.test.mjs tests/realizo-real-cost-dynamic-quote.test.mjs tests/realizo-premium-cast-director.test.mjs
+      - name: Prepare cast option in Sandbox D1 only
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          node scripts/check-realizo-auth-sandbox.mjs
+          if npx --no-install wrangler d1 execute realizo-wallets-sandbox --remote --config wrangler.auth-sandbox.jsonc --command "SELECT cast_mode FROM realizo_ai_projects LIMIT 1;" >/dev/null 2>&1; then
+            echo "Cast schema already installed in isolated Sandbox"
+          else
+            npx --no-install wrangler d1 execute realizo-wallets-sandbox --remote --config wrangler.auth-sandbox.jsonc --file scripts/realizo-premium-cast-sandbox.sql --yes
+          fi
+          npx --no-install wrangler d1 execute realizo-wallets-sandbox --remote --config wrangler.auth-sandbox.jsonc --command "SELECT cast_mode FROM realizo_ai_projects LIMIT 1;" >/dev/null
       - name: Build isolated sandbox Worker
         run: |
           npm run cloudflare:build:realizo-auth-sandbox
