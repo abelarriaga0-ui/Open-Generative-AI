@@ -21,7 +21,10 @@ test('all generated videos use owner-only download button, not provider download
  assert.match(creator,/downloadRealizoVideo\(jobId\)/);
  assert.match(history,/downloadRealizoVideo\(job\.id\)/);
  assert.match(history,/import\s*\{\s*downloadRealizoVideo\s*\}\s*from\s*['\"]@\/lib\/realizo-creative\/download-video['\"]/);
- assert.match(history,/try\{await downloadRealizoVideo\(job\.id\)\}catch/);
+ assert.match(history,/await downloadRealizoVideo\(job\.id,\{onProgress:/);
+ assert.match(history,/Descargar MP4 ahora/);
+ assert.match(history,/setDownloadError/);
+ assert.match(history,/role="status"/);
  assert.match(history,/MutationObserver\(protect\)/);
  assert.doesNotMatch(history,/href=\{job\.video_url\}/);
  assert.doesNotMatch(creator,/href=\{generated\}/);
@@ -46,14 +49,19 @@ test('download resolver rejects other users, unfinished jobs and untrusted URLs'
  assert.equal(extractOwnedDownloadUrl({status:'completed',result_json:JSON.stringify({outputs:['https://evil.example/video.mp4']})}),null);
 });
 
-test('downloads are submitted as native browser POST attachments, not delayed Blob click',()=>{
+test('download fetch checks response errors and gives an explicit MP4 fallback',()=>{
  const client=read('lib/realizo-creative/download-video.js');
  const api=read('app/api/realizo/jobs/[id]/download/route.js');
  assert.match(client,/export async function downloadRealizoVideo/);
- assert.match(client,/form\.method='POST'/);
- assert.match(client,/form\.submit\(\)/);
+ assert.match(client,/method:'POST'/);
+ assert.match(client,/credentials:'same-origin'/);
+ assert.match(client,/if\(!response\.ok\)/);
+ assert.match(client,/response\.json\(\)/);
+ assert.match(client,/URL\.createObjectURL\(blob\)/);
+ assert.match(client,/return \{url,filename\}/);
  assert.match(client,/encodeURIComponent\(jobId\)/);
- assert.doesNotMatch(client,/\.blob\(\)|URL\.createObjectURL/);
+ assert.doesNotMatch(client,/createElement\('iframe'\)/);
+ assert.doesNotMatch(client,/form\.submit\(\)/);
  assert.match(api,/redirect:'follow'/);
  assert.match(api,/Content-Disposition/);
  assert.match(api,/attachment; filename/);
