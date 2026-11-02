@@ -65,7 +65,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install locked dependencies
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund --legacy-peer-deps
       - name: Verify sandbox configuration and new error messages
         run: |
           node scripts/check-realizo-auth-sandbox.mjs
