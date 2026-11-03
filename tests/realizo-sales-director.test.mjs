@@ -228,7 +228,7 @@ test('demo/problem-solution receives the same timing and voice rules with any vi
  }
  const approval=readFileSync('app/api/realizo/ai-premium/[id]/approve/route.js','utf8');
  assert.match(approval,/spokenStyle=selectedStyle\(finalStyle,concept\.creative_style\)/);
- assert.match(approval,/scriptReadiness\(userSpeech,\{seconds:duration,style:spokenStyle\}\)/);
+ assert.match(approval,/scriptReadiness\(userSpeech,\{seconds:duration,style:spokenStyle,description:project.description/);
 });
 
 test('paid NOIL research image-description is repaired into a buyer-pain UGC script without an AI re-charge',()=>{
