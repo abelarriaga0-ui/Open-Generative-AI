@@ -23,6 +23,12 @@ on:
       - "lib/realizo-creative/sales-director.js"
       - "lib/realizo-creative/ugc-master-30.js"
       - "tests/realizo-physical-realism.test.mjs"
+      - "tests/realizo-luxury-template.test.mjs"
+      - "lib/realizo-creative/luxury-product-only-template.js"
+      - "lib/realizo-creative/ad-templates.js"
+      - "components/RealizoTemplateLibrary.jsx"
+      - "components/RealizoTemplateCreator.jsx"
+      - "app/api/realizo/template/luxury/prepare/route.js"
       - "components/RealizoMotionHome.jsx"
       - "components/ConversionTemplatesStudio.jsx"
       - "app/realizo-motion-home.css"
@@ -70,7 +76,7 @@ jobs:
           console.log('Verified public video, images, premium and Live checkout. Auto-topup remains consent-only and not implemented.');
           JS
       - name: Verify realistic video appearance across all director styles before deployment
-        run: node --test tests/realizo-physical-realism.test.mjs
+        run: node --test tests/realizo-physical-realism.test.mjs tests/realizo-luxury-template.test.mjs
       - name: Compile current Realizo application, including studio and all user workflows
         run: |
           npm pkg set 'devDependencies.@tailwindcss/vite=4.3.3'
