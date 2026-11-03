@@ -32,7 +32,7 @@ jobs:
           if(!key){console.log('MUAPI_API_KEY_NOT_IN_ACTIONS');process.exit(0)}
           const endpoint='https://api.cloudflare.com/client/v4/accounts/'+account+
             '/d1/database/2561f6c8-bfb2-4ea4-8527-7fec29188edf/query';
-          const sql="SELECT provider_request_id FROM generation_jobs WHERE "+
+          const sql="SELECT provider_request_id,LENGTH(provider_request_id) AS id_length FROM generation_jobs WHERE "+
             "idempotency_key LIKE 'image_research_v1_%' AND provider_request_id IS NOT NULL "+
             "ORDER BY created_at DESC LIMIT 2";
           const r=await fetch(endpoint,{method:'POST',headers:{Authorization:'Bearer '+token,
@@ -46,9 +46,10 @@ jobs:
               encodeURIComponent(row.provider_request_id)+'/result',{headers:{'x-api-key':key},
                signal:AbortSignal.timeout(18000)});
             let result={};try{result=await response.json()}catch{}
-            console.log(JSON.stringify({muapi_http:response.status,muapi_status:result.status||null,
+            console.log(JSON.stringify({muapi_http:response.status,provider_id_length:row.id_length,muapi_status:result.status||null,
               has_outputs:Boolean(result.outputs||result.output||result.url),
-              output_type:typeof (result.outputs||result.output||result.url)}));
+              output_type:typeof (result.outputs||result.output||result.url),
+              error_class:/not.found|does.not.exist/i.test(JSON.stringify(result))?'not_found':/invalid|malformed/i.test(JSON.stringify(result))?'invalid':/balance|credit|billing/i.test(JSON.stringify(result))?'billing':/auth|key|permission/i.test(JSON.stringify(result))?'auth':'other'}));
           }
           JS
       - name: Modelos de imagen activos y precios
