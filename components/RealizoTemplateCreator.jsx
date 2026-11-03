@@ -4,6 +4,7 @@ import {useRef,useState} from 'react';
 import {optimizeImage} from '@/lib/realizo-creative/optimize-image';
 import {extractGeneratedVideoUrl} from '@/lib/realizo-creative/wallet-generation';
 import {TEMPLATE_MODEL_ID} from '@/lib/realizo-creative/template-video-input';
+import {LUXURY_TEMPLATE_ID,LUXURY_TEMPLATE_MODEL_ID} from '@/lib/realizo-creative/luxury-product-only-template';
 import {downloadRealizoVideo} from '@/lib/realizo-creative/download-video';
 
 const money=c=>new Intl.NumberFormat('es-EC',{style:'currency',currency:'USD'}).format(Number(c||0)/100);
@@ -44,13 +45,15 @@ async function read(r){
 }
 async function pause(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
 
-export default function RealizoTemplateCreator({onBack,onWalletRefresh,onViewVideos}){
+export default function RealizoTemplateCreator({templateId='ugc-vendedor',onBack,onWalletRefresh,onViewVideos}){
+ const luxury=templateId===LUXURY_TEMPLATE_ID;
  const [photo,setPhoto]=useState(null);
  const [productName,setProductName]=useState('');
  const [description,setDescription]=useState('');
  const [changeRequest,setChangeRequest]=useState('');
  const [actor,setActor]=useState('hombre');
  const [setting,setSetting]=useState('');
+ const [visualDetail,setVisualDetail]=useState('auto');
  const [prepared,setPrepared]=useState(null);
  const [quote,setQuote]=useState(null);
  const [phase,setPhase]=useState('idle');
@@ -85,14 +88,25 @@ export default function RealizoTemplateCreator({onBack,onWalletRefresh,onViewVid
    }
    setError('');setPhase('preparing');
    try{
-     const preparedVideo=await read(await fetch('/api/realizo/template/prepare',{
+     const preparedVideo=await read(await fetch(luxury?'/api/realizo/template/luxury/prepare':'/api/realizo/template/prepare',{
        method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
        body:JSON.stringify({
          product_name:productName,description,image_url:photo.url,
-         actor,setting:setting||'auto',change_request:changeRequest
+         actor,setting:setting||'auto',change_request:changeRequest,visual_detail:visualDetail
        })
      }));
-     if(preparedVideo.model_id!==TEMPLATE_MODEL_ID||preparedVideo.input?.duration!==30||
+     if(luxury){
+       if(preparedVideo.template_id!==LUXURY_TEMPLATE_ID ||
+         preparedVideo.model_id!==LUXURY_TEMPLATE_MODEL_ID ||
+         preparedVideo.input?.duration!==8 ||
+         preparedVideo.input?.resolution!=='720p' ||
+         preparedVideo.input?.generate_audio!==true ||
+         !Array.isArray(preparedVideo.input?.images_list) ||
+         preparedVideo.input.images_list.length!==1 ||
+         !preparedVideo.input?.prompt?.includes('ABSOLUTE NO-VOICE AUDIO LOCK') ||
+         !preparedVideo.input?.prompt?.includes('PRODUCT_ONLY: ZERO HUMAN PIXELS'))
+         throw Error('La plantilla Premium no pudo verificarse.');
+     }else if(preparedVideo.model_id!==TEMPLATE_MODEL_ID||preparedVideo.input?.duration!==30||
        preparedVideo.input?.videos_list!==null)throw Error('La plantilla no pudo verificarse.');
      setPrepared(preparedVideo);setPhase('quoting');
      const q=await read(await fetch('/api/wallet/quote',{
@@ -143,8 +157,10 @@ export default function RealizoTemplateCreator({onBack,onWalletRefresh,onViewVid
    <button type="button" className="realizo-template-back" onClick={onBack}>← Volver a plantillas</button>
    <div className="realizo-template-creator-head">
      <span className="realizo-v11-eyebrow">CREAR DESDE PLANTILLA</span>
-     <h1>Tu producto. <em>Este video.</em></h1>
-     <div className="realizo-template-chips"><span>Realizo · Seedance 2.5</span><span>30 s</span><span>9:16</span><span>Español</span></div>
+     <h1>{luxury?'Tu producto.':'Tu producto.'} <em>{luxury?'Cine premium.':'Este video.'}</em></h1>
+     <div className="realizo-template-chips">{luxury?
+      <><span>Veo 3.1 · Referencias</span><span>8 s</span><span>720p</span><span>Sin voz</span><span>3 tomas</span></>:
+      <><span>Realizo · Seedance 2.5</span><span>30 s</span><span>9:16</span><span>Español</span></>}</div>
    </div>
    <div className="realizo-template-creator-grid">
      <div className="realizo-template-panel">
@@ -159,13 +175,25 @@ export default function RealizoTemplateCreator({onBack,onWalletRefresh,onViewVid
          <input className={inputClass} maxLength={100} placeholder="Ej. Irrigador bucal"
            disabled={busy||Boolean(jobId)} value={productName} onChange={e=>{setProductName(e.target.value);invalidate()}}/>
        </label>
-       <label>Descripción y beneficios
+       <label>{luxury?"Descripción del producto":"Descripción y beneficios"}
          <textarea className={inputClass} rows={4} maxLength={320} placeholder="¿Qué es, cómo se utiliza y qué beneficio ofrece?"
            disabled={busy||Boolean(jobId)} value={description} onChange={e=>{setDescription(e.target.value);invalidate()}}/>
        </label>
      </div>
      <div className="realizo-template-panel">
        <h2>Ajustes <span>opcionales</span></h2>
+       {luxury?<div className="space-y-3">
+         <p className="text-sm">3 tomas de estudio: macro (0–2 s), revelación (2–5 s) y plano final (5–8 s). Sin personas, sin voz ni acabados CGI.</p>
+         <label>Detalle del primer plano
+          <select className={inputClass} value={visualDetail} disabled={busy||Boolean(jobId)}
+           onChange={e=>{setVisualDetail(e.target.value);invalidate()}}>
+            <option value="auto">Que la IA elija un detalle real</option>
+            <option value="cap">Tapa o cierre</option>
+            <option value="label">Etiqueta auténtica</option>
+            <option value="texture">Textura del envase</option>
+          </select>
+         </label>
+        </div>:<>
        <div className="realizo-template-two">
         <label>Personaje
           <select className={inputClass} value={actor} disabled={busy||Boolean(jobId)}
@@ -184,12 +212,13 @@ export default function RealizoTemplateCreator({onBack,onWalletRefresh,onViewVid
           placeholder="Ej. Cambia al hombre por una mujer"
           value={changeRequest} onChange={e=>{setChangeRequest(e.target.value);invalidate()}}/>
        </label>
+       </>}
        {!quote&&!jobId&&<button className="realizo-template-primary" type="button" disabled={busy}
           onClick={prepare}>{phase==='preparing'?'Adaptando el anuncio…':phase==='quoting'?'Consultando precio…':'Ver precio del video →'}</button>}
        {quote&&!jobId&&<div className="realizo-template-quote" role="region" aria-label="Precio de generación">
          <span>Precio exacto de esta generación</span>
          <strong>{money(quote.price_cents)}</strong>
-         <small>Saldo disponible: {money(quote.available_cents)} · El cobro de esta generación se realiza tras tu confirmación. La adaptación del guion no tiene otro cargo.</small>
+         <small>Saldo disponible: {money(quote.available_cents)} · El cobro de esta generación se realiza tras tu confirmación. La preparación de la plantilla no tiene costo adicional.</small>
          <button className="realizo-template-primary" type="button" disabled={busy||!quote.affordable}
           onClick={generate}>Confirmar y generar · {money(quote.price_cents)}</button>
          {!quote.affordable&&<p>Saldo insuficiente. <Link href="/wallet">Recargar créditos</Link></p>}
@@ -212,6 +241,6 @@ export default function RealizoTemplateCreator({onBack,onWalletRefresh,onViewVid
        </div>}
      </div>
    </div>
-   <p className="realizo-template-note">El resultado puede variar entre generaciones.</p>
+   <p className="realizo-template-note">El resultado puede variar entre generaciones. La fotografía nueva define la identidad del producto, no el primer fotograma.</p>
  </section>;
 }
