@@ -107,7 +107,7 @@ jobs:
         run: |
           node --input-type=module <<'JS'
           const origin='https://realizo-auth-sandbox.abelarriaga0.workers.dev';
-          const paths=[['/studio',200],['/studio/images',200],['/login',200],['/api/auth/features',200],['/api/conversion-templates',200],['/api/wallet',401],['/api/wallet/paypal/config',401]];
+          const paths=[['/studio',200],['/studio/images',200],['/login',200],['/api/auth/features',200],['/api/conversion-templates',200],['/api/wallet',401],['/api/wallet/paypal/config',401],['/api/realizo/template/luxury/prepare',401]];
           for(const [p,status] of paths){
             const r=await fetch(origin+p,{redirect:'manual',signal:AbortSignal.timeout(20000)});
             if(r.status!==status)throw Error('Route '+p+' failed HTTP '+r.status+'; expected '+status);
