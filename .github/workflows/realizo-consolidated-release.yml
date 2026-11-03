@@ -5,6 +5,11 @@ on:
     paths:
       - ".github/workflows/realizo-consolidated-release.yml"
       - "components/RealizoStudio.jsx"
+      - "wrangler.consolidated.jsonc"
+      - "app/api/wallet/paypal/config/route.js"
+      - "app/api/wallet/paypal/create-order/route.js"
+      - "app/api/wallet/paypal/capture-order/route.js"
+      - "app/api/wallet/paypal/webhook/route.js"
       - "components/wallet/PaypalTopup.jsx"
       - "migrations/0026_wallet_operator_adjustments.sql"
       - "lib/wallet/server.js"
@@ -44,12 +49,12 @@ jobs:
           if(cfg.name!=='realizo-auth-sandbox'||
             cfg.d1_databases?.[0]?.database_id!=='2561f6c8-bfb2-4ea4-8527-7fec29188edf'||
             cfg.vars.REALIZO_ENV!=='production'||
-            cfg.vars.REALIZO_LIVE_PAYMENTS_ENABLED!=='false'||
+            cfg.vars.REALIZO_LIVE_PAYMENTS_ENABLED!=='true'||
             cfg.vars.MUAPI_GENERATION_ENABLED!=='false'||
             cfg.vars.REALIZO_MEDIA_D1_FALLBACK!=='true')
               throw Error('Unexpected or unsafe canonical worker configuration');
           if(!process.env.CLOUDFLARE_API_TOKEN)throw Error('Cloudflare token missing');
-          console.log('Verified canonical studio and existing D1; Live charging remains off.');
+          console.log('Verified canonical studio, D1 and enabled Live checkout; generation and auto-topup stay off.');
           JS
       - name: Compile current Realizo application, including studio and all user workflows
         run: |
@@ -81,7 +86,7 @@ jobs:
         run: |
           node --input-type=module <<'JS'
           const origin='https://realizo-auth-sandbox.abelarriaga0.workers.dev';
-          const paths=[['/studio',200],['/studio/images',200],['/login',200],['/api/auth/features',200],['/api/conversion-templates',200],['/api/wallet',401]];
+          const paths=[['/studio',200],['/studio/images',200],['/login',200],['/api/auth/features',200],['/api/conversion-templates',200],['/api/wallet',401],['/api/wallet/paypal/config',401]];
           for(const [p,status] of paths){
             const r=await fetch(origin+p,{redirect:'manual',signal:AbortSignal.timeout(20000)});
             if(r.status!==status)throw Error('Route '+p+' failed HTTP '+r.status+'; expected '+status);
@@ -91,5 +96,7 @@ jobs:
                 throw Error('Catalog not ready or paid generation unexpectedly active');
             }
           }
-          console.log('Canonical public studio OK, login OK, catalog OK, anonymous wallet blocked; paid checkout disabled.');
+          const webhook=await fetch(origin+'/api/wallet/paypal/webhook',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',redirect:'manual',signal:AbortSignal.timeout(20000)});
+          if(webhook.status!==401)throw Error('Unsigned PayPal webhook must be denied, got '+webhook.status);
+          console.log('Canonical studio and Live checkout deployed; login and unsigned webhook protected.');
           JS
