@@ -14,7 +14,7 @@ export async function POST(request) {
     const user=await requireWalletUser(request,env);
     if(!user)return Response.json({error:'not_authenticated'},{status:401});
     if(!isMuapiGenerationEnabled(env,user) ||
-       !await isOwnerMultiModelSandbox(env,user) || !env.MUAPI_API_KEY)
+       (env.REALIZO_ENV==='sandbox' && !await isOwnerMultiModelSandbox(env,user)) || !env.MUAPI_API_KEY)
       return Response.json({error:'model_not_ready_for_generation'},{status:503});
     if(Number(request.headers.get('content-length')||0)>125000)
       return Response.json({error:'payload_too_large'},{status:413});
@@ -23,15 +23,17 @@ export async function POST(request) {
     if(premiumError)return Response.json({error:premiumError},{status:422});
     await ensureOwnedMedia(env,user,body.input);
     const quote=await quoteLiveVideo(body.model_id,body.input,env.MUAPI_API_KEY);
+    // Display the full customer amount, including Realizo's 5% service margin.
+    const customerPriceCents=Math.max(quote.provider_cost_cents+1,Math.ceil(quote.provider_cost_cents*1.05));
     const wallet=await env.WALLETS_DB.prepare(
       'SELECT available_cents FROM wallets WHERE user_id=?'
     ).bind(user.id).first();
     if(!wallet)return Response.json({error:'wallet_not_found'},{status:404});
     return Response.json({
       model_id: quote.model_id,
-      price_cents: quote.provider_cost_cents,
+      price_cents: customerPriceCents,
       available_cents: wallet.available_cents,
-      affordable: wallet.available_cents >= quote.provider_cost_cents,
+      affordable: wallet.available_cents >= customerPriceCents,
       currency:'USD',
       note:'Precio calculado para esta configuración. Se confirmará antes de reservar créditos.'
     },{headers:{'Cache-Control':'private, no-store'}});
