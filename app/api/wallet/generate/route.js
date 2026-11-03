@@ -112,6 +112,13 @@ export async function POST(request) {
         'INSERT OR IGNORE INTO model_prices (model_id,muapi_endpoint,customer_price_cents,enabled,allowed_input_keys_json,fixed_options_json) VALUES (?,?,?,1,?,?)'
       ).bind(quote.model_id,quote.endpoint,customerPriceCents,
         JSON.stringify(Object.keys(body.input)), '{}').run();
+      // Muapi may change a model's public endpoint without changing its
+      // model ID (e.g. Seedance 2 Omni Reference gained ".0" in the slug).
+      // Update ONLY the trusted live-catalog endpoint before reserving funds.
+      // Do not trust any endpoint or price supplied by the browser.
+      await env.WALLETS_DB.prepare(
+        'UPDATE model_prices SET muapi_endpoint=?, updated_at=datetime(\'now\') WHERE model_id=? AND muapi_endpoint<>?'
+      ).bind(quote.endpoint,quote.model_id,quote.endpoint).run();
       const recorded=await env.WALLETS_DB.prepare(
         'SELECT muapi_endpoint FROM model_prices WHERE model_id=?'
       ).bind(quote.model_id).first();
