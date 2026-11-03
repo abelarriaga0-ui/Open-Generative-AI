@@ -52,6 +52,10 @@ on:
       - "app/api/realizo/images/**"
       - "migrations/0028_realizo_image_creative_studio.sql"
       - "tests/realizo-images.test.mjs"
+      - "tests/realizo-image-recovery.test.mjs"
+      - "app/api/wallet/jobs/[id]/route.js"
+      - "app/api/wallet/route.js"
+      - "app/api/realizo/jobs/route.js"
       - "app/layout.js"
   workflow_dispatch:
 permissions:
@@ -97,7 +101,7 @@ jobs:
       - name: Verify realistic video appearance across all director styles before deployment
         run: node --test tests/realizo-physical-realism.test.mjs tests/realizo-luxury-template.test.mjs tests/realizo-seedance-20-endpoint.test.mjs tests/realizo-user-templates.test.mjs tests/realizo-sales-director.test.mjs
       - name: Verify Image Studio creative rules, contracts and user privacy
-        run: node --test tests/realizo-images.test.mjs
+        run: node --test tests/realizo-images.test.mjs tests/realizo-image-recovery.test.mjs
       - name: Compile current Realizo application, including studio and all user workflows
         run: |
           npm pkg set 'devDependencies.@tailwindcss/vite=4.3.3'
