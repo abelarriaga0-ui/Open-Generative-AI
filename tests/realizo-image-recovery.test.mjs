@@ -37,12 +37,13 @@ test('el endpoint detecta error HTTP 400 con status failed anidado',()=>{
   assert.match(s,/provider_failed/);
   assert.match(s,/shouldExpireImageJob/);
 });
-test('generación funciona con fallo de investigación sin segundo cargo Gemini',()=>{
+test('generación directa usa solo Nano Banana y un cargo sin análisis previo',()=>{
   const source=readFileSync('app/api/realizo/images/generate/route.js','utf8');
   assert.match(source,/fallbackImageResearch/);
-  assert.match(source,/\['completed','failed'\]/);
+  assert.doesNotMatch(source,/research_job_id:body/);
   assert.match(source,/image_create_v1_/);
-  assert.match(source,/source\.upload_id!==body\.upload_id/);
+  assert.match(source,/images_list:\[upload\.image_url\]/);
+  assert.match(source,/research_job_id,upload_id,brief_json/);
 });
 test('la biblioteca de videos excluye procesos internos de imágenes',()=>{
   const s=readFileSync('app/api/realizo/jobs/route.js','utf8');
