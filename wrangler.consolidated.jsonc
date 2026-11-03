@@ -22,16 +22,17 @@
     "REALIZO_AUTH_ORIGIN": "https://realizo-auth-sandbox.abelarriaga0.workers.dev",
     "PAYPAL_MODE": "live",
     "REALIZO_LIVE_PAYMENTS_ENABLED": "true",
-    "MUAPI_GENERATION_ENABLED": "false",
+    "MUAPI_GENERATION_ENABLED": "true",
     "REALIZO_MUAPI_PILOT": "false",
     "REALIZO_MULTI_MODEL_SANDBOX": "false",
-    "REALIZO_AI_PREMIUM_ENABLED": "false",
-    "REALIZO_AI_PREMIUM_PUBLIC_ENABLED": "false",
+    "REALIZO_AI_PREMIUM_ENABLED": "true",
+    "REALIZO_AI_PREMIUM_PUBLIC_ENABLED": "true",
     "REALIZO_TEMPLATE_EXPLOSION_URL": "https://realizo-auth-sandbox.abelarriaga0.workers.dev/templates/explosion-premium-azul.webp",
     "REALIZO_TEMPLATE_IMAGE_MODEL_ID": "realizo_nano_banana_2_1_edit_4k",
     "REALIZO_TEMPLATE_ANALYZER_MODEL_ID": "realizo_gemini_2_5_flash",
-    "REALIZO_TEMPLATE_IMAGES_ENABLED": "false",
-    "REALIZO_MEDIA_D1_FALLBACK": "true"
+    "REALIZO_TEMPLATE_IMAGES_ENABLED": "true",
+    "REALIZO_MEDIA_D1_FALLBACK": "true",
+    "OPENAI_PREMIUM_MODEL": "gpt-6-luna"
   },
   "d1_databases": [
     {
