@@ -107,7 +107,7 @@ jobs:
           npx wrangler d1 execute WALLETS_DB --config wrangler.consolidated.jsonc --remote --command "SELECT CASE WHEN (SELECT COUNT(*) FROM sqlite_master WHERE name='realizo_user_templates' AND type='table')=1 AND (SELECT COUNT(*) FROM pragma_table_info('generation_jobs') WHERE name='template_source_json')=1 THEN 1 ELSE 0 END AS private_template_schema_ready;" > /tmp/realizo-templates-schema.json
           node - <<'JS'
           const result=require('node:fs').readFileSync('/tmp/realizo-templates-schema.json','utf8');
-          if(!/"private_template_schema_ready"\\s*:\\s*1/.test(result))throw Error('Private templates storage not migrated.');
+          if(!/"private_template_schema_ready"\s*:\s*1/.test(result))throw Error('Private templates storage not migrated.');
           console.log('Private per-user templates schema verified; wallets untouched.');
           JS
           npx wrangler d1 execute WALLETS_DB --config wrangler.consolidated.jsonc --remote --command "SELECT CASE WHEN (SELECT COUNT(*) FROM sqlite_master WHERE type='trigger' AND name IN ('paypal_live_first_topup_minimum','paypal_live_first_verified_deposit_minimum'))=2 THEN 1 ELSE 0 END AS live_first_payment_minimum_guard;" > /tmp/realizo-live-guard.json
