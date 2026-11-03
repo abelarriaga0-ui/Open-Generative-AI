@@ -8,8 +8,8 @@ export async function GET(request) {
     const user=await requireWalletUser(request,env);
     if(!user)return Response.json({error:'not_authenticated'},{status:401});
     const rows=await env.WALLETS_DB.prepare(
-      'SELECT id,model_id,status,price_cents,result_json,template_source_json,created_at,updated_at FROM generation_jobs WHERE user_id=? ORDER BY created_at DESC,id DESC LIMIT 30'
-    ).bind(user.id).all();
+      'SELECT id,model_id,status,price_cents,result_json,template_source_json,created_at,updated_at FROM generation_jobs WHERE user_id=? AND model_id NOT IN (?,?) ORDER BY created_at DESC,id DESC LIMIT 30'
+    ).bind(user.id,env.REALIZO_TEMPLATE_ANALYZER_MODEL_ID,env.REALIZO_TEMPLATE_IMAGE_MODEL_ID).all();
     const jobs=(rows.results||[]).map(x=>{
       let result=null;
       if(x.status==='completed'&&x.result_json){
