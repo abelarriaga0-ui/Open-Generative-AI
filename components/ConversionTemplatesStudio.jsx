@@ -1,327 +1,295 @@
 'use client';
+import {useEffect,useRef,useState} from 'react';
 
-import { useEffect, useRef, useState } from 'react';
-
-const GROUPS = [
-  { id: 'premium', name: 'Premium', detail: 'Anuncios de alto impacto' },
-  { id: 'ofertas', name: 'Ofertas y precios', detail: 'Promociones y venta directa' },
-  { id: 'problema', name: 'Problema y solución', detail: 'Beneficios visuales' },
-  { id: 'contexto', name: 'Producto en contexto', detail: 'Uso real y escenarios' },
-  { id: 'carruseles', name: 'Carruseles', detail: 'Historias que convierten' },
+const TYPES=[
+ {id:'premium',label:'Premium',detail:'Fotografía elegante'},
+ {id:'oferta',label:'Oferta',detail:'Venta directa'},
+ {id:'beneficios',label:'Beneficios',detail:'Lo que aporta'},
+ {id:'problema',label:'Problema / solución',detail:'Necesidad visible'},
+ {id:'ugc',label:'UGC',detail:'Estilo auténtico'},
+ {id:'minimalista',label:'Minimalista',detail:'Producto protagonista'}
 ];
-
-const money = (cents) => typeof cents === 'number'
-  ? new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(cents / 100)
-  : 'Precio por configurar';
-
-function getOutputUrl(result) {
-  const payload = result?.result || {};
-  const outputs = payload.outputs;
-  const first = Array.isArray(outputs) ? outputs[0] : null;
-  return (typeof first === 'string' ? first : first?.url) ||
-    (typeof payload.output === 'string' ? payload.output : payload.output?.url) ||
-    payload.url || null;
+const STYLES=[
+ {id:'elegante',label:'Elegante'}, {id:'venta',label:'Comercial'},
+ {id:'natural',label:'Natural'}, {id:'confianza',label:'Confianza'},
+ {id:'tecnologico',label:'Tecnológico'}
+];
+const FORMATS=['1:1','4:5','9:16','16:9'];
+const GOALS=[
+ {id:'compras',label:'Más compras'},
+ {id:'clics',label:'Más clics'},
+ {id:'confianza',label:'Más confianza'},
+ {id:'urgencia',label:'Acción inmediata'}
+];
+const DEFAULT={
+ creative_type:'premium',style:'elegante',goal:'compras',aspect_ratio:'4:5',
+ show_price:false,price:'',product_name:'',product_benefit:'',extra_instruction:''
+};
+const money=n=>Number.isInteger(n)?new Intl.NumberFormat('es-EC',{style:'currency',currency:'USD'}).format(n/100):'—';
+const outputURL=job=>{
+ const v=job?.result||{};
+ const items=v.outputs??v.output??v.url;
+ if(typeof items==='string')return items;
+ if(Array.isArray(items)&&items.length)return typeof items[0]==='string'?items[0]:items[0]?.url||null;
+ return items?.url||null;
+};
+function Choice({value,options,onChange,className=''}) {
+ return <div className={'ri-choice '+className} role="group">
+   {options.map(o=>{
+     const item=typeof o==='string'?{id:o,label:o}:o;
+     return <button type="button" key={item.id} className={value===item.id?'is-selected':''}
+       aria-pressed={value===item.id} onClick={()=>onChange(item.id)}>{item.label}</button>;
+   })}
+ </div>;
 }
+export default function ConversionTemplatesStudio({guest=false,onGenerationStart,onGenerationEnd,onGenerationComplete,onGenerationError}){
+ const [mode,setMode]=useState('create');
+ const [form,setForm]=useState(DEFAULT);
+ const [file,setFile]=useState(null);
+ const [preview,setPreview]=useState(null);
+ const [runtime,setRuntime]=useState(null);
+ const [presets,setPresets]=useState([]);
+ const [history,setHistory]=useState([]);
+ const [presetTitle,setPresetTitle]=useState('');
+ const [busy,setBusy]=useState(false);
+ const [phase,setPhase]=useState('');
+ const [error,setError]=useState('');
+ const [notice,setNotice]=useState('');
+ const [resultUrl,setResultUrl]=useState('');
+ const [currentJob,setCurrentJob]=useState('');
+ const inputRef=useRef(null);
+ const change=(key,value)=>{setForm(current=>({...current,[key]:value}));setError('');setNotice('');};
+ const imagePrice=runtime?.image_price_cents??null;
+ const researchPrice=runtime?.research_price_cents??null;
+ const total=Number.isInteger(imagePrice)&&Number.isInteger(researchPrice)?imagePrice+researchPrice:null;
+ const ready=Boolean(runtime?.available);
+ const mustPrice=form.show_price&&!form.price.trim();
+ const currentType=TYPES.find(t=>t.id===form.creative_type)||TYPES[0];
+ const aspect=form.aspect_ratio.replace(':',' / ');
+ const titleText=form.product_name.trim()||'Tu producto aquí';
 
-export default function ConversionTemplatesStudio({ guest = false, onGenerationStart, onGenerationEnd, onGenerationComplete, onGenerationError }) {
-  const [templates, setTemplates] = useState([]);
-  const [category, setCategory] = useState('premium');
-  const [selected, setSelected] = useState(null);
-  const [file, setFile] = useState(null);
-  const [localPreview, setLocalPreview] = useState(null);
-  const [confirmed, setConfirmed] = useState(false);
-  const [changeDescription, setChangeDescription] = useState('');
-  const [analysisSummary, setAnalysisSummary] = useState(null);
-  const [phase, setPhase] = useState('idle');
-  const [error, setError] = useState('');
-  const [resultUrl, setResultUrl] = useState('');
-  const [jobId, setJobId] = useState('');
-  const [referenceMissing, setReferenceMissing] = useState(false);
-  const fileRef = useRef(null);
-  const isBusy = phase === 'uploading' || phase === 'analyzing' || phase === 'generating' || phase === 'pending';
-  const loadingLabel = phase === 'uploading' ? 'Subiendo producto…' : phase === 'analyzing' ? 'Analizando ajustes…' : phase === 'pending' ? 'Pendiente de conciliación' : 'Creando imagen…';
-  const totalPrice = selected && typeof selected.price_cents === 'number' && (!changeDescription.trim() || typeof selected.analysis_price_cents === 'number') ? selected.price_cents + (changeDescription.trim() ? selected.analysis_price_cents : 0) : null;
-  const listed = templates.filter((item) => item.category === category);
-
-  useEffect(() => {
-    let active = true;
-    fetch('/api/conversion-templates', { cache: 'no-store' })
-      .then((res) => res.ok ? res.json() : Promise.reject(new Error('No se pudo cargar el catálogo.')))
-      .then((data) => { if (active) setTemplates(data.templates || []); })
-      .catch((e) => { if (active) setError(e.message); });
-    return () => { active = false; };
-  }, []);
-
-  useEffect(() => {
-    if (!file) { setLocalPreview(null); return; }
-    const url = URL.createObjectURL(file);
-    setLocalPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
-
-  function chooseFile(next) {
-    setError('');
-    setResultUrl('');
-    setAnalysisSummary(null);
-    setConfirmed(false);
-    if (!next) return setFile(null);
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(next.type) || next.size > 10 * 1024 * 1024) {
-      setError('Sube una imagen JPG, PNG o WebP de máximo 10 MB.');
-      return;
-    }
-    setFile(next);
+ useEffect(()=>{
+  let active=true;
+  fetch('/api/realizo/images/config',{cache:'no-store'})
+   .then(r=>r.ok?r.json():Promise.reject(Error('No se pudo consultar el motor de imágenes.')))
+   .then(data=>{if(active)setRuntime(data);}).catch(e=>{if(active)setError(e.message);});
+  return ()=>{active=false};
+ },[]);
+ useEffect(()=>{
+  if(!file){setPreview(null);return;}
+  const url=URL.createObjectURL(file);
+  setPreview(url);
+  return ()=>URL.revokeObjectURL(url);
+ },[file]);
+ useEffect(()=>{
+  if(guest)return;
+  if(mode==='presets')loadPresets();
+  if(mode==='history')loadHistory();
+ },[mode,guest]);
+ async function loadPresets(){
+  try{const r=await fetch('/api/realizo/images/presets',{cache:'no-store'});if(r.ok)setPresets((await r.json()).presets||[]);}
+  catch{setError('No se pudieron consultar tus plantillas.');}
+ }
+ async function loadHistory(){
+  try{
+   const r=await fetch('/api/realizo/images/history',{cache:'no-store'});
+   if(!r.ok)throw Error('history_unavailable');
+   const all=(await r.json()).creations||[];
+   setHistory(all);
+  }catch{setError('No se pudo consultar tu historial.');}
+ }
+ function chooseFile(next){
+  if(!next)return;
+  if(!['image/jpeg','image/png','image/webp'].includes(next.type)||next.size>10*1024*1024||next.size<1){
+   setError('Utiliza JPG, PNG o WebP de máximo 10 MB.');return;
   }
-
-  async function pollCompletedJob(id) {
-    for (let attempt = 0; attempt < 90; attempt += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-      const res = await fetch('/api/wallet/jobs/' + encodeURIComponent(id), { cache: 'no-store' });
-      const job = await res.json();
-      if (!res.ok) throw new Error(job.error || 'No fue posible consultar el estado.');
-      if (job.status === 'completed') return job;
-      if (job.status === 'failed') throw new Error('La solicitud falló. Se aplica la política de liberación del saldo.');
-      if (job.status === 'unknown') {
-        const err = new Error('Solicitud pendiente de conciliación. No solicites otra generación para evitar doble cobro.');
-        err.pending = true;
-        throw err;
-      }
-    }
-    const err = new Error('La solicitud sigue en proceso. Conserva el identificador para consultar el estado.');
-    err.pending = true;
-    throw err;
+  setFile(next);setResultUrl('');setError('');setNotice('');
+ }
+ function applyPreset(config,label){
+  setForm({...DEFAULT,...config,product_name:'',product_benefit:'',price:''});
+  setFile(null);setResultUrl('');setMode('create');setError('');setNotice('Configuración aplicada: '+label+'. Sube otro producto.');
+ }
+ async function savePreset(){
+  if(guest){window.location.assign('/login');return;}
+  if(busy)return;
+  const title=presetTitle.trim()||((currentType?.label||'Imagen')+' · '+form.aspect_ratio);
+  try{
+   const r=await fetch('/api/realizo/images/presets',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({title,config:form})});
+   const data=await r.json();
+   if(!r.ok)throw Error(data.error||'No se pudo guardar');
+   setNotice('Plantilla guardada. Podrás reutilizarla con otro producto.');
+   setPresetTitle('');await loadPresets();
+  }catch(e){setError(e.message);}
+ }
+ async function deletePreset(id){
+  const r=await fetch('/api/realizo/images/presets/'+encodeURIComponent(id),{method:'DELETE'});
+  if(r.ok){setPresets(prev=>prev.filter(x=>x.id!==id));setNotice('Plantilla eliminada.');}
+  else setError('No se pudo eliminar la plantilla.');
+ }
+ async function poll(id){
+  for(let i=0;i<100;i++){
+   await new Promise(resolve=>setTimeout(resolve,3000));
+   const r=await fetch('/api/wallet/jobs/'+encodeURIComponent(id),{cache:'no-store'});
+   const job=await r.json().catch(()=>({}));
+   if(!r.ok)throw Error(job.error||'No se pudo consultar el resultado.');
+   if(job.status==='completed')return job;
+   if(job.status==='failed')throw Error('La IA no pudo completar esta etapa. Revisa tu saldo o inténtalo de nuevo.');
+   if(job.status==='unknown'){const e=Error('Solicitud pendiente de conciliación. No generes otra para evitar un cobro duplicado.');e.pending=true;throw e;}
   }
-
-  async function generate() {
-    if (!selected || !file || !confirmed || isBusy || !selected.available) return;
-    const description = changeDescription.trim();
-    if (description && typeof selected.analysis_price_cents !== 'number') {
-      setError('El analizador Gemini todavía no tiene precio configurado.');
-      return;
-    }
-    setError('');
-    setResultUrl('');
-    setJobId('');
-    setAnalysisSummary(null);
-    onGenerationStart?.();
-    try {
-      setPhase('uploading');
-      const multipart = new FormData();
-      multipart.append('product', file);
-      const up = await fetch('/api/conversion-templates/upload', { method: 'POST', body: multipart });
-      const uploaded = await up.json();
-      if (!up.ok || !uploaded.image_url) throw new Error(uploaded.error || 'Error al subir el producto.');
-      let analysisId = null;
-      if (description) {
-        setPhase('analyzing');
-        const analysisRequest = await fetch('/api/conversion-templates/analyze', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            template_id: selected.id,
-            description,
-            idempotency_key: crypto.randomUUID().replaceAll('-', '')
-          })
-        });
-        const submission = await analysisRequest.json();
-        if (!analysisRequest.ok) throw new Error(submission.error || 'No se pudo analizar el cambio.');
-        if (!submission.job_id) throw new Error('El análisis no devolvió un identificador.');
-        analysisId = submission.job_id;
-        setJobId(analysisId);
-        if (submission.status === 'unknown') {
-          const error = new Error('Análisis en conciliación. No repitas la solicitud.');
-          error.pending = true;
-          throw error;
-        }
-        await pollCompletedJob(analysisId);
-        const detailResponse = await fetch('/api/conversion-templates/analysis/' +
-          encodeURIComponent(analysisId) + '?template_id=' + encodeURIComponent(selected.id), { cache: 'no-store' });
-        const analyzed = await detailResponse.json();
-        if (!detailResponse.ok) throw new Error(analyzed.error || 'El análisis no pudo validarse.');
-        setAnalysisSummary(analyzed);
-        if (!analyzed.changes?.length && analyzed.rejected?.length) {
-          throw new Error('Los cambios solicitados no están permitidos por esta plantilla. Ajusta tu solicitud para generar.');
-        }
-      }
-      setPhase('generating');
-      const submission = await fetch('/api/conversion-templates/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          template_id: selected.id,
-          product_url: uploaded.image_url,
-          claims_confirmed: true,
-          analysis_job_id: analysisId,
-          idempotency_key: crypto.randomUUID().replaceAll('-', '')
-        })
-      });
-      const data = await submission.json();
-      if (!submission.ok) throw new Error(data.error || 'No fue posible generar.');
-      if (!data.job_id) throw new Error('No se recibió el identificador de generación.');
-      setJobId(data.job_id);
-      if (data.status === 'unknown') {
-        const error = new Error('Generación en conciliación. No vuelvas a pagar.');
-        error.pending = true;
-        throw error;
-      }
-      const completed = await pollCompletedJob(data.job_id);
-      const url = getOutputUrl(completed);
-      if (!url) throw new Error('El proveedor no devolvió un archivo descargable.');
-      setResultUrl(url);
-      setPhase('completed');
-      onGenerationComplete?.({ url });
-    } catch (err) {
-      setError(err.message || 'No se pudo generar la imagen.');
-      setPhase(err.pending ? 'pending' : 'error');
-      onGenerationError?.(err.message);
-    } finally {
-      onGenerationEnd?.();
-    }
-  }
-
-  return (
-    <section className="realizo-images" aria-label="Imágenes publicitarias de Realizo">
-      <div className="realizo-images-heading">
-        <div>
-          <p className="realizo-images-eyebrow">REALIZO / ESTUDIO DE IMÁGENES</p>
-          <h1>Imágenes que <em>venden.</em></h1>
-          <p className="realizo-images-subtitle">Elige un diseño, sube tu producto y hazlo tuyo. Sin escribir prompts.</p>
-        </div>
-        <div className="realizo-images-heading-mark" aria-hidden="true">✳</div>
-      </div>
-
-      {!selected ? (
-        <>
-          <div className="realizo-images-categories" role="group" aria-label="Categorías publicitarias">
-            {GROUPS.map((group) => (
-              <button type="button" key={group.id} aria-pressed={category===group.id}
-                onClick={()=>setCategory(group.id)}
-                className={category===group.id ? 'is-active' : ''}>{group.name}</button>
-            ))}
-          </div>
-
-          <div className="realizo-images-section-header">
-            <div><span>COLECCIÓN / {String(GROUPS.findIndex(g=>g.id===category)+1).padStart(2,'0')}</span>
-              <h2>{GROUPS.find(g=>g.id===category)?.name}</h2></div>
-            <span className="realizo-images-count">{listed.length ? listed.length + (listed.length===1?' diseño':' diseños') : 'Próximamente'}</span>
-          </div>
-
-          {listed.length===0 ? (
-            <div className="realizo-images-upcoming">
-              <span aria-hidden="true">✳</span>
-              <h3>Más diseños en camino.</h3>
-              <p>Mientras tanto, explora la colección Premium.</p>
-              <button type="button" onClick={()=>setCategory('premium')}>Ver diseños premium ↗</button>
-            </div>
-          ) : (
-            <div className="realizo-images-showcase">
-              {listed.map((template) => (
-                <article className="realizo-images-feature" key={template.id}>
-                  <button className="realizo-images-photo" type="button"
-                    onClick={()=>{setSelected(template);setError('');setPhase('idle');}}
-                    aria-label={'Seleccionar '+template.name}>
-                    <img alt={'Diseño '+template.name} src={template.preview_url} loading="eager"
-                      onError={()=>setReferenceMissing(true)}/>
-                    {referenceMissing&&<span className="realizo-images-missing">Vista previa no disponible</span>}
-                    <span className="realizo-images-photo-label">PLANTILLA / 01</span>
-                  </button>
-                  <div className="realizo-images-feature-copy">
-                    <p className="realizo-images-eyebrow">DESTACADA / PREMIUM</p>
-                    <h3>{template.name}</h3>
-                    <p>Un anuncio de alto impacto con la composición original como referencia. La IA adapta tu envase al diseño seleccionado.</p>
-                    <div className="realizo-images-chips"><span>4K</span><span>Diseño de referencia</span><span>Formato vertical</span></div>
-                    <button type="button" className="realizo-images-primary"
-                      onClick={()=>{setSelected(template);setError('');setPhase('idle');}}>
-                      Usar este diseño <span aria-hidden="true">↗</span>
-                    </button>
-                    <p className="realizo-images-feature-note">Puedes revisar el costo antes de confirmar.</p>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-          {error&&<p className="realizo-images-error" role="alert">{error}</p>}
-        </>
-      ) : (
-        <div className="realizo-images-edit">
-          <button className="realizo-images-back" type="button" onClick={()=>{setSelected(null);setError('');setResultUrl('');setPhase('idle');}}>← Explorar diseños</button>
-          <div className="realizo-images-workspace">
-            <div className="realizo-images-reference">
-              <div className="realizo-images-preview">
-                <img src={selected.preview_url} alt={'Plantilla original '+selected.name}/>
-                <span className="realizo-images-preview-top">REFERENCIA ORIGINAL</span>
-              </div>
-              <div className="realizo-images-reference-meta">
-                <div><strong>{selected.name}</strong><span>Composición protegida</span></div>
-                <span>2:3 · 4K</span>
-              </div>
-            </div>
-            <div className="realizo-images-panel">
-              <div className="realizo-images-stepper"><span className="is-current">01 Producto</span><i/><span>02 Ajustes</span><i/><span>03 Generar</span></div>
-              <h2>Haz que este diseño <em>sea tuyo.</em></h2>
-              <p className="realizo-images-panel-intro">Usaremos tu producto como referencia y mantendremos el estilo de la plantilla.</p>
-
-              <div className="realizo-images-form-group">
-                <div className="realizo-images-form-head"><span className="realizo-images-number">01</span><label>Fotografía del producto</label><small>Obligatorio</small></div>
-                <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="realizo-images-visually-hidden"
-                  onChange={event=>chooseFile(event.target.files?.[0])}/>
-                <button type="button" className={'realizo-images-upload'+(localPreview?' has-image':'')}
-                  onClick={()=>fileRef.current?.click()}>
-                  {localPreview ? <img src={localPreview} alt="Producto que seleccionaste"/> : <span className="realizo-images-upload-icon" aria-hidden="true">＋</span>}
-                  <span><strong>{file ? 'Cambiar fotografía' : 'Seleccionar fotografía'}</strong><small>{file?.name || 'PNG, JPG o WebP · Hasta 10 MB'}</small></span>
-                  <span className="realizo-images-upload-arrow" aria-hidden="true">↗</span>
-                </button>
-              </div>
-
-              <div className="realizo-images-form-group">
-                <div className="realizo-images-form-head"><span className="realizo-images-number">02</span><label htmlFor="realizo-optional-changes">¿Algún cambio adicional?</label><small>Opcional</small></div>
-                <textarea id="realizo-optional-changes" rows={3} maxLength={1200} value={changeDescription}
-                  onChange={event=>{setChangeDescription(event.target.value);setAnalysisSummary(null);}}
-                  placeholder="Ej. Cambiar «Sabor vainilla» por «Sabor chocolate». Dejar todo lo demás igual."/>
-                <p className="realizo-images-assist">La IA interpretará tus ajustes. El fondo, la persona y la composición permanecen protegidos.</p>
-              </div>
-
-              <label className="realizo-images-confirmation">
-                <input type="checkbox" checked={confirmed} onChange={event=>setConfirmed(event.target.checked)}/>
-                <span>Confirmo que los beneficios escritos en esta plantilla corresponden a mi producto, salvo los textos que pedí modificar.</span>
-              </label>
-
-              <div className="realizo-images-checkout">
-                <div>
-                  <span className="realizo-images-total-label">Total antes de generar</span>
-                  <strong>{money(totalPrice)}</strong>
-                  <small>{changeDescription.trim() ? 'Incluye análisis de cambios y creación 4K' : 'Creación de imagen en 4K'} · Descuento de tu saldo</small>
-                </div>
-                {guest ? (
-                  <a className="realizo-images-primary" href="/login">Iniciar sesión <span aria-hidden="true">↗</span></a>
-                ) : (
-                  <button type="button" className="realizo-images-primary" onClick={generate}
-                    disabled={!selected.available||!file||!confirmed||isBusy||(Boolean(changeDescription.trim())&&typeof selected.analysis_price_cents!=='number')}>
-                    {isBusy ? loadingLabel : 'Generar imagen'} <span aria-hidden="true">↗</span>
-                  </button>
-                )}
-              </div>
-
-              {!selected.available && <p className="realizo-images-notice">Este diseño no está disponible para generar en este momento.</p>}
-              {analysisSummary && (
-                <div className="realizo-images-analysis">
-                  <strong>Ajustes analizados</strong>
-                  {(analysisSummary.changes||[]).map(c=><p key={c.field}>{c.original} → {c.text}</p>)}
-                  {(analysisSummary.rejected||[]).map((message,i)=><p className="is-rejected" key={i}>No aplicado: {message}</p>)}
-                </div>
-              )}
-              {error && <p className="realizo-images-error" role="alert">{error}</p>}
-              {jobId&&<p className="realizo-images-job">Solicitud: {jobId}</p>}
-              {resultUrl && (
-                <div className="realizo-images-result">
-                  <h3>Tu imagen está lista.</h3>
-                  <img src={resultUrl} alt="Imagen adaptada con tu producto"/>
-                  <a href={resultUrl} target="_blank" rel="noopener noreferrer">Ver y descargar imagen ↗</a>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+  const e=Error('La solicitud continúa procesándose. Consulta su estado desde tu historial.');e.pending=true;throw e;
+ }
+ async function run(){
+  if(guest){window.location.assign('/login');return;}
+  if(busy||!ready)return;
+  if(!file){setError('Primero sube la fotografía de tu producto.');return;}
+  if(mustPrice){setError('Introduce el precio que quieres mostrar en el anuncio.');return;}
+  const brief={...form,product_name:form.product_name.trim(),product_benefit:form.product_benefit.trim(),
+   price:form.show_price?form.price.trim():'',extra_instruction:form.extra_instruction.trim()};
+  setError('');setNotice('');setResultUrl('');setBusy(true);setCurrentJob('');
+  onGenerationStart?.();
+  try{
+   setPhase('Subiendo producto');
+   const multipart=new FormData();multipart.append('product',file);
+   const upload=await fetch('/api/realizo/images/upload',{method:'POST',body:multipart});
+   const uploaded=await upload.json().catch(()=>({}));
+   if(!upload.ok||!uploaded.upload_id)throw Error(uploaded.error||'No se pudo subir el producto.');
+   setPhase('Analizando producto y ángulo de venta');
+   const analysis=await fetch('/api/realizo/images/analyze',{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({upload_id:uploaded.upload_id,brief,idempotency_key:crypto.randomUUID()})});
+   const answer=await analysis.json().catch(()=>({}));
+   if(!analysis.ok||!answer.job_id)throw Error(answer.error||'No se pudo analizar el producto.');
+   setCurrentJob(answer.job_id);
+   if(answer.status==='unknown'){const e=Error('El análisis está pendiente de conciliación.');e.pending=true;throw e;}
+   await poll(answer.job_id);
+   setPhase('Generando creativo en 4K');
+   const generation=await fetch('/api/realizo/images/generate',{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({upload_id:uploaded.upload_id,research_job_id:answer.job_id,brief,
+     idempotency_key:crypto.randomUUID()})});
+   const created=await generation.json().catch(()=>({}));
+   if(!generation.ok||!created.job_id)throw Error(created.error||'No se pudo generar la imagen.');
+   setCurrentJob(created.job_id);
+   if(created.status==='unknown'){const e=Error('La generación está pendiente de conciliación.');e.pending=true;throw e;}
+   const finished=await poll(created.job_id);
+   const url=outputURL(finished);
+   if(!url)throw Error('La IA finalizó, pero no entregó una URL descargable.');
+   setResultUrl(url);
+   setNotice('Tu creativo está listo.');
+   onGenerationComplete?.({url});
+  }catch(e){setError(e.message||'Error al generar');onGenerationError?.(e.message);}
+  finally{setBusy(false);setPhase('');onGenerationEnd?.();}
+ }
+ const changeMode=name=>{if(busy)return;setMode(name);setError('');setNotice('');};
+ return <section className="ri-studio" aria-label="Generador de imágenes de Realizo">
+  <div className="ri-header">
+   <div><span className="ri-eyebrow">REALIZO · CREATIVOS ESTÁTICOS</span>
+    <h1>Imágenes que <em>venden.</em></h1>
+    <p>Tu producto, una idea comercial y una imagen lista para anunciar.</p>
+   </div>
+   <div className="ri-model-chip"><span>✳</span><strong>Imagen 4K</strong><small>Modelo automático</small></div>
+  </div>
+  <div className="ri-tabs" role="tablist" aria-label="Estudio de imágenes">
+   <button type="button" role="tab" aria-selected={mode==='create'} className={mode==='create'?'selected':''} onClick={()=>changeMode('create')}>✳ Crear imagen</button>
+   <button type="button" role="tab" aria-selected={mode==='presets'} className={mode==='presets'?'selected':''} onClick={()=>changeMode('presets')}>▦ Mis plantillas</button>
+   <button type="button" role="tab" aria-selected={mode==='history'} className={mode==='history'?'selected':''} onClick={()=>changeMode('history')}>◫ Mis imágenes</button>
+  </div>
+  {mode==='create'&&<div className="ri-grid">
+   <div className="ri-form">
+    <section className="ri-card">
+     <div className="ri-section-title"><span className="ri-num">01</span><div><h2>Tu producto</h2><p>Sube una foto clara del envase o producto real.</p></div></div>
+     <input className="ri-visually-hidden" ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp"
+      onChange={e=>chooseFile(e.target.files?.[0])}/>
+     <button type="button" onClick={()=>inputRef.current?.click()} className="ri-upload">
+      {preview?<img src={preview} alt="Tu producto" />:<span className="ri-upload-plus">＋</span>}
+      <span><strong>{file?'Cambiar fotografía':'Subir imagen del producto'}</strong><small>{file?.name||'JPG, PNG o WebP · Hasta 10 MB'}</small></span><b>↗</b>
+     </button>
+     <div className="ri-fields">
+      <label>Nombre del producto <span>opcional</span><input maxLength={90} value={form.product_name}
+       onChange={e=>change('product_name',e.target.value)} placeholder="Ej. Sérum capilar"/></label>
+      <label>Beneficio comprobable <span>opcional</span><input maxLength={220} value={form.product_benefit}
+       onChange={e=>change('product_benefit',e.target.value)} placeholder="Ej. Ayuda a retirar residuos del cuero cabelludo"/></label>
+     </div>
     </section>
-  );
+    <section className="ri-card">
+     <div className="ri-section-title"><span className="ri-num">02</span><div><h2>Cómo quieres que se vea</h2><p>Selecciona la intención visual de tu anuncio.</p></div></div>
+     <div className="ri-field-label">Tipo de imagen</div>
+     <div className="ri-type-grid">{TYPES.map(t=><button type="button" key={t.id} onClick={()=>change('creative_type',t.id)}
+      className={'ri-type '+(form.creative_type===t.id?'is-selected':'')} aria-pressed={form.creative_type===t.id}>
+       <strong>{t.label}</strong><small>{t.detail}</small></button>)}</div>
+     <div className="ri-field-label">Acabado visual</div>
+     <Choice options={STYLES} value={form.style} onChange={v=>change('style',v)}/>
+     <div className="ri-field-label">Objetivo</div>
+     <Choice options={GOALS} value={form.goal} onChange={v=>change('goal',v)}/>
+    </section>
+    <section className="ri-card">
+     <div className="ri-section-title"><span className="ri-num">03</span><div><h2>Formato y precio</h2><p>Solo lo necesario para publicar.</p></div></div>
+     <div className="ri-field-label">Formato</div>
+     <Choice options={FORMATS} value={form.aspect_ratio} onChange={v=>change('aspect_ratio',v)} className="ri-formats"/>
+     <div className="ri-field-label">Mostrar precio en la imagen</div>
+     <Choice options={[{id:false,label:'Sin precio'},{id:true,label:'Con precio'}]} value={form.show_price}
+      onChange={v=>change('show_price',v)}/>
+     {form.show_price&&<label className="ri-price-field">Precio de venta <input maxLength={28} value={form.price}
+      onChange={e=>change('price',e.target.value)} placeholder="Ej. $29.99" /></label>}
+     <label className="ri-extra">Instrucción adicional <span>opcional</span>
+      <textarea maxLength={500} rows={2} value={form.extra_instruction} onChange={e=>change('extra_instruction',e.target.value)}
+       placeholder="Ej. Fondo azul, luz de estudio, público femenino…"/></label>
+    </section>
+   </div>
+   <div className="ri-side">
+    <div className="ri-preview-card">
+     <div className="ri-preview-heading"><span>VISTA DE CONFIGURACIÓN</span><span>{form.aspect_ratio}</span></div>
+     <div className={'ri-preview-visual ri-preview-'+form.creative_type} style={{aspectRatio:aspect}}>
+      <span className="ri-preview-spark">✳</span>
+      {preview?<img src={preview} alt="Foto del producto (previsualización, no imagen generada)"/>:<div className="ri-placeholder"><span>＋</span><small>Tu producto aquí</small></div>}
+      <div className="ri-preview-bottom"><strong>{titleText}</strong><span>{currentType.label}</span>
+       {form.show_price&&form.price.trim()&&<b>{form.price.trim()}</b>}</div>
+     </div>
+     <p>Referencia de distribución. La IA creará una escena nueva, no una copia de esta vista.</p>
+    </div>
+    <div className="ri-action-card">
+     <span className="ri-eyebrow">LISTO PARA CREAR</span>
+     <h3>Tu próximo anuncio comienza aquí.</h3>
+     <p>La IA analiza el producto, elige un ángulo comercial y prepara el creativo automáticamente.</p>
+     <div className="ri-cost"><div><span>Investigación + imagen 4K</span><strong>{money(total)}</strong></div>
+      <small>Se descontará de tu saldo al generar; sin selección de modelo.</small></div>
+     <button className="ri-generate" type="button" disabled={busy||!ready||(!guest&&!file)||mustPrice}
+      onClick={run}>{busy?phase:(guest?'Iniciar sesión para crear':'Generar imagen')} <span>↗</span></button>
+     {!ready&&<p className="ri-small-warning">El motor no está disponible en este momento.</p>}
+     <div className="ri-save">
+      <input type="text" maxLength={70} value={presetTitle} onChange={e=>setPresetTitle(e.target.value)}
+       placeholder="Nombre de esta configuración" aria-label="Nombre de la plantilla"/>
+      <button disabled={busy} type="button" onClick={savePreset}>Guardar plantilla</button>
+     </div>
+     <small className="ri-save-note">La plantilla guarda el estilo y los ajustes, nunca tu foto ni claves privadas.</small>
+    </div>
+    {resultUrl&&<div className="ri-result"><h3>Imagen generada</h3><img src={resultUrl} alt="Anuncio generado"/>
+     <a href={resultUrl} target="_blank" rel="noopener noreferrer">Abrir y descargar imagen ↗</a>
+     <button type="button" onClick={()=>{setResultUrl('');setNotice('Listo para crear otra variación.');}}>Crear otra variación</button></div>}
+   </div>
+  </div>}
+  {mode==='presets'&&<div className="ri-library">
+   <div className="ri-library-heading"><h2>Mis plantillas guardadas</h2><button type="button" onClick={()=>changeMode('create')}>+ Crear nueva</button></div>
+   {guest?<p>Inicia sesión para guardar tus configuraciones.</p>:presets.length===0?<div className="ri-empty"><span>▦</span><h3>Aún no tienes plantillas.</h3><p>Configura una imagen y pulsa Guardar plantilla para reutilizar el estilo.</p></div>:
+   <div className="ri-list">{presets.map(p=><article key={p.id} className="ri-list-card">
+    <span>✳</span><div><strong>{p.title}</strong><small>{TYPES.find(t=>t.id===p.config.creative_type)?.label||'Imagen'} · {p.config.aspect_ratio} · {p.config.show_price?'Con precio':'Sin precio'}</small></div>
+    <button type="button" onClick={()=>applyPreset(p.config,p.title)}>Usar plantilla</button>
+    <button type="button" className="ri-delete" aria-label={'Eliminar '+p.title} onClick={()=>deletePreset(p.id)}>✕</button>
+   </article>)}</div>}
+  </div>}
+  {mode==='history'&&<div className="ri-library">
+   <div className="ri-library-heading"><h2>Mis imágenes</h2><button type="button" onClick={loadHistory}>Actualizar</button></div>
+   {guest?<p>Inicia sesión para consultar tus imágenes.</p>:history.length===0?<div className="ri-empty"><span>◫</span><h3>Tu primera imagen está por llegar.</h3><p>Genera un anuncio y aparecerá aquí.</p></div>:
+   <div className="ri-history-grid">{history.map(item=><article className="ri-history-card" key={item.id}>
+    <div className="ri-history-picture">{item.image_url?<img src={item.image_url} alt={'Resultado '+(item.config.product_name||'publicitario')}/>:<span>{item.status==='completed'?'Resultado no disponible':item.status==='failed'?'Error':'En proceso'}</span>}</div>
+    <strong>{item.config.product_name||'Anuncio publicitario'}</strong>
+    <small>{item.config.aspect_ratio||'4:5'} · {item.created_at}</small>
+    <div>{item.image_url&&<a href={item.image_url} target="_blank" rel="noopener noreferrer">Ver imagen ↗</a>}
+     <button type="button" onClick={()=>applyPreset(item.config,item.config.product_name||'anuncio')}>Reutilizar estilo</button></div>
+   </article>)}</div>}
+  </div>}
+  {error&&<div className="ri-error" role="alert">{error}{currentJob&&<small> Solicitud: {currentJob}</small>}</div>}
+  {notice&&<div className="ri-notice" role="status">{notice}</div>}
+ </section>;
 }
