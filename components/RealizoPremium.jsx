@@ -241,6 +241,8 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
     json.error==='premium_audio_cast_conflict'?'El diálogo entre actores requiere «Con personas». Selecciona voz en off o sin voces.':
     json.error==='ugc_speech_timing_invalid'?
     'Ajusta el diálogo UGC para que encaje en los segundos elegidos. No se cobrará otra investigación.':
+    json.error==='ugc_speech_quality_invalid'?
+    'El guion aún no está listo para vender: describe la fotografía, utiliza un gancho genérico o ignora el deseo principal del comprador. Edítalo aquí sin pagar otra investigación.':
     json.error==='review_product_responsibility'?
     'Acepta la declaración de responsabilidad comercial antes de aprobar.':
     'No se pudo aprobar: '+(json.error||r.status));
