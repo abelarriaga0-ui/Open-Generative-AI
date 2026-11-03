@@ -5,6 +5,7 @@ on:
     paths:
       - ".github/workflows/realizo-consolidated-release.yml"
       - "components/RealizoStudio.jsx"
+      - "components/wallet/PaypalTopup.jsx"
       - "components/RealizoMotionHome.jsx"
       - "components/ConversionTemplatesStudio.jsx"
       - "app/realizo-motion-home.css"
