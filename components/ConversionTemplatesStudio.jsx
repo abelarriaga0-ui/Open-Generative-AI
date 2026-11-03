@@ -141,17 +141,18 @@ export default function ConversionTemplatesStudio({guest=false,onGenerationStart
   if(r.ok){setPresets(prev=>prev.filter(x=>x.id!==id));setNotice('Plantilla eliminada.');}
   else setError('No se pudo eliminar la plantilla.');
  }
- async function poll(id){
-  for(let i=0;i<100;i++){
+ async function poll(id,kind){
+  const attempts=kind==='research'?65:205;
+  for(let i=0;i<attempts;i++){
    await new Promise(resolve=>setTimeout(resolve,3000));
    const r=await fetch('/api/wallet/jobs/'+encodeURIComponent(id),{cache:'no-store'});
    const job=await r.json().catch(()=>({}));
    if(!r.ok)throw Error(job.error||'No se pudo consultar el resultado.');
    if(job.status==='completed')return job;
-   if(job.status==='failed')throw Error('La IA no pudo completar esta etapa. Revisa tu saldo o inténtalo de nuevo.');
-   if(job.status==='unknown'){const e=Error('Solicitud pendiente de conciliación. No generes otra para evitar un cobro duplicado.');e.pending=true;throw e;}
+   if(job.status==='failed')throw Error('La solicitud no se completó dentro del tiempo permitido. La reserva de esta etapa volvió a tu saldo.');
+   if(job.status==='unknown')continue;
   }
-  const e=Error('La solicitud continúa procesándose. Consulta su estado desde tu historial.');e.pending=true;throw e;
+  const e=Error('El límite de tiempo está cumplido. Consulta el estado para verificar la liberación de saldo.');e.pending=true;throw e;
  }
  async function run(){
   if(guest){window.location.assign('/login');return;}
@@ -176,7 +177,7 @@ export default function ConversionTemplatesStudio({guest=false,onGenerationStart
    if(!analysis.ok||!answer.job_id)throw Error(answer.error||'No se pudo analizar el producto.');
    setCurrentJob(answer.job_id);
    if(answer.status==='unknown'){const e=Error('El análisis está pendiente de conciliación.');e.pending=true;throw e;}
-   await poll(answer.job_id);
+   await poll(answer.job_id,'research');
    setPhase('Generando creativo en 4K');
    const generation=await fetch('/api/realizo/images/generate',{method:'POST',
     headers:{'Content-Type':'application/json'},
@@ -186,7 +187,7 @@ export default function ConversionTemplatesStudio({guest=false,onGenerationStart
    if(!generation.ok||!created.job_id)throw Error(created.error||'No se pudo generar la imagen.');
    setCurrentJob(created.job_id);
    if(created.status==='unknown'){const e=Error('La generación está pendiente de conciliación.');e.pending=true;throw e;}
-   const finished=await poll(created.job_id);
+   const finished=await poll(created.job_id,'image');
    const url=outputURL(finished);
    if(!url)throw Error('La IA finalizó, pero no entregó una URL descargable.');
    setResultUrl(url);
