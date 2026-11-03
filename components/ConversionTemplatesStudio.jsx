@@ -96,7 +96,7 @@ export default function ConversionTemplatesStudio({guest=false,onGenerationStart
    if(!r.ok)throw Error('history_unavailable');
    const all=(await r.json()).creations||[];
    setHistory(all);
-   const pending=all.filter(item=>item.status==='submitted'&&item.job_id).slice(0,8);
+   const pending=all.filter(item=>['reserved','submitted','unknown'].includes(item.status)&&item.job_id).slice(0,8);
    if(pending.length){
     await Promise.allSettled(pending.map(async item=>{
      const status=await fetch('/api/wallet/jobs/'+encodeURIComponent(item.job_id),{cache:'no-store'});
