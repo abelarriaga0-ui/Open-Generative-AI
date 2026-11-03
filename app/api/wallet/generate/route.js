@@ -10,6 +10,7 @@ import {isOwnerMultiModelSandbox} from '@/lib/wallet/multi-model-access';
 import {quoteLiveVideo,ensureOwnedMedia,userFacingQuoteError,normalizeLiveVideoInput} from '@/lib/wallet/live-video-models';
 import {verifyPremiumGeneration} from '@/lib/realizo-creative/premium-generation-gate';
 import {applyRealismToVideoInput} from '@/lib/realizo-creative/video-realism';
+import {templateSourceFromVideo} from '@/lib/realizo-creative/user-templates';
 
 export const dynamic = 'force-dynamic';
 
@@ -185,6 +186,16 @@ export async function POST(request) {
     });
     if (!job.newlyCreated) {
       return Response.json({ job_id: job.id, status: job.status, idempotent: true });
+    }
+    // Keep a reusable, private creative recipe for successful videos. This is
+    // best-effort metadata only and must never affect paid Muapi generation.
+    const templateSource=templateSourceFromVideo(pricedInput,body.model_id);
+    if(templateSource){
+      try{
+        await env.WALLETS_DB.prepare(
+          "UPDATE generation_jobs SET template_source_json=? WHERE id=? AND user_id=? AND status='reserved'"
+        ).bind(templateSource,job.id,user.id).run();
+      }catch{console.warn('Realizo reusable recipe persistence unavailable');}
     }
     if(pilot && !multiModel){
       // A single D1 primary-key slot prevents concurrent requests from
