@@ -85,10 +85,15 @@ export async function POST(request,{params}){
   // Verify spoken dialogue fills the chosen runtime BEFORE any video charge.
   // A short, sparse script should be edited, not stretched with silent shots.
   if(spokenStyle==='ugc'||(spokenStyle==='demo'&&userSpeech)){
-   const timing=scriptReadiness(userSpeech,{seconds:duration,style:spokenStyle});
+   const timing=scriptReadiness(userSpeech,{seconds:duration,style:spokenStyle,description:project.description||''});
    if(timing.tooShort||timing.tooLong)
     return Response.json({error:'ugc_speech_timing_invalid',words:timing.words,
      minimum:timing.budget.minimum,maximum:timing.budget.maximum},{status:422});
+   // Reject paid generation only for clear commercial failures, not subjective
+   // hook preferences. No additional AI query or charge is performed.
+   if(timing.qualityIssues.length)
+    return Response.json({error:'ugc_speech_quality_invalid',
+     issues:timing.qualityIssues},{status:422});
   }
   if(selectedTemplate?.id==='ugc-vendedor'&&duration!==30)
     return Response.json({error:'template_requires_30_seconds'},{status:422});
