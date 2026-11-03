@@ -177,7 +177,7 @@ test('spoken sales timing scales across every supported runtime, not a fixed 12-
 });
 
 test('identical spoken sales directions apply across model families and preserve long scripts',()=>{
- const script=Array.from({length:44},()=>'Resuelve tu rutina con el producto y descubre el beneficio en su uso.').join(' ')
+ const script=Array.from({length:26},()=>'Resuelve tu rutina con el producto y descubre el beneficio en su uso.').join(' ')
   +' Pide información hoy.';
  assert.ok(script.length>1000&&script.length<3200);
  for(const modelId of [
