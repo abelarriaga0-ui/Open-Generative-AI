@@ -96,6 +96,20 @@ export default function ConversionTemplatesStudio({guest=false,onGenerationStart
    if(!r.ok)throw Error('history_unavailable');
    const all=(await r.json()).creations||[];
    setHistory(all);
+   const pending=all.filter(item=>item.status==='submitted'&&item.job_id).slice(0,8);
+   if(pending.length){
+    await Promise.allSettled(pending.map(async item=>{
+     const status=await fetch('/api/wallet/jobs/'+encodeURIComponent(item.job_id),{cache:'no-store'});
+     if(!status.ok)return;
+     const state=await status.json();
+     if(state.status==='completed'){
+      const image=outputURL(state);
+      setHistory(prev=>prev.map(x=>x.job_id===item.job_id?{...x,status:'completed',image_url:image}:x));
+     }else if(state.status==='failed'){
+      setHistory(prev=>prev.map(x=>x.job_id===item.job_id?{...x,status:'failed'}:x));
+     }
+    }));
+   }
   }catch{setError('No se pudo consultar tu historial.');}
  }
  function chooseFile(next){
