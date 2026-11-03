@@ -13,7 +13,8 @@ export async function GET(request) {
     if(env.PAYPAL_MODE==='live'){
       const verification=await paypalRequest(env,'/v1/notifications/webhooks/'+encodeURIComponent(env.PAYPAL_WEBHOOK_ID));
       const hook=verification.data;
-      const correctUrl=String(env.REALIZO_AUTH_ORIGIN||'').replace(/\\/$/,'')+'/api/wallet/paypal/webhook';
+      const configuredOrigin=String(env.REALIZO_AUTH_ORIGIN||'');
+      const correctUrl=(configuredOrigin.endsWith('/')?configuredOrigin.slice(0,-1):configuredOrigin)+'/api/wallet/paypal/webhook';
       if(!verification.ok||hook?.id!==env.PAYPAL_WEBHOOK_ID||hook?.url!==correctUrl||
          !Array.isArray(hook?.event_types)||!hook.event_types.some(e=>e.name==='PAYMENT.CAPTURE.COMPLETED'||e.name==='*'))
         throw new Error('paypal_live_webhook_not_verified');
