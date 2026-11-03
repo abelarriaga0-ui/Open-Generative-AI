@@ -60,8 +60,8 @@ export default function ConversionTemplatesStudio({guest=false,onGenerationStart
  const inputRef=useRef(null);
  const change=(key,value)=>{setForm(current=>({...current,[key]:value}));setError('');setNotice('');};
  const imagePrice=runtime?.image_price_cents??null;
- const researchPrice=runtime?.research_price_cents??null;
- const total=Number.isInteger(imagePrice)&&Number.isInteger(researchPrice)?imagePrice+researchPrice:null;
+ const researchPrice=0;
+ const total=Number.isInteger(imagePrice)?imagePrice:null;
  const ready=Boolean(runtime?.available);
  const mustPrice=form.show_price&&!form.price.trim();
  const currentType=TYPES.find(t=>t.id===form.creative_type)||TYPES[0];
@@ -142,17 +142,14 @@ export default function ConversionTemplatesStudio({guest=false,onGenerationStart
   else setError('No se pudo eliminar la plantilla.');
  }
  async function poll(id,kind){
-  const attempts=kind==='research'?65:205;
+  const attempts=205;
   for(let i=0;i<attempts;i++){
    await new Promise(resolve=>setTimeout(resolve,3000));
    const r=await fetch('/api/wallet/jobs/'+encodeURIComponent(id),{cache:'no-store'});
    const job=await r.json().catch(()=>({}));
    if(!r.ok)throw Error(job.error||'No se pudo consultar el resultado.');
    if(job.status==='completed')return job;
-   if(job.status==='failed'){
-    if(kind==='research')return job;
-    throw Error('La imagen no se completó. El importe reservado para esa generación volvió a tu saldo.');
-   }
+   if(job.status==='failed')throw Error(job.timeout_refunded ? 'Se alcanzó el límite de 10 minutos. Liberamos la reserva de esta imagen.' : 'Muapi no pudo crear la imagen. Liberamos la reserva; puedes volver a intentarlo.');
    if(job.status==='unknown')continue;
   }
   const e=Error('El límite de tiempo está cumplido. Consulta el estado para verificar la liberación de saldo.');e.pending=true;throw e;
@@ -172,25 +169,14 @@ export default function ConversionTemplatesStudio({guest=false,onGenerationStart
    const upload=await fetch('/api/realizo/images/upload',{method:'POST',body:multipart});
    const uploaded=await upload.json().catch(()=>({}));
    if(!upload.ok||!uploaded.upload_id)throw Error(uploaded.error||'No se pudo subir el producto.');
-   setPhase('Analizando producto y ángulo de venta');
-   const analysis=await fetch('/api/realizo/images/analyze',{method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({upload_id:uploaded.upload_id,brief,idempotency_key:crypto.randomUUID()})});
-   const answer=await analysis.json().catch(()=>({}));
-   if(!analysis.ok||!answer.job_id)throw Error(answer.error||'No se pudo analizar el producto.');
-   setCurrentJob(answer.job_id);
-   if(answer.status==='unknown')setNotice('Verificando la solicitud con Muapi…');
-   const researchResult=await poll(answer.job_id,'research');
-   if(researchResult.status==='failed')setNotice('Gemini no respondió correctamente. Continuaremos con una dirección creativa segura, sin cobrar el análisis fallido.');
-   setPhase('Generando creativo en 4K');
+   setPhase('Creando tu anuncio con IA en 4K');
    const generation=await fetch('/api/realizo/images/generate',{method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({upload_id:uploaded.upload_id,research_job_id:answer.job_id,brief,
-     idempotency_key:crypto.randomUUID()})});
+    body:JSON.stringify({upload_id:uploaded.upload_id,brief,idempotency_key:crypto.randomUUID()})});
    const created=await generation.json().catch(()=>({}));
    if(!generation.ok||!created.job_id)throw Error(created.error||'No se pudo generar la imagen.');
    setCurrentJob(created.job_id);
-   if(created.status==='unknown')setNotice('Verificando la generación con Muapi…');
+   if(created.status==='unknown')setNotice('Consultando el estado de la imagen, sin crear otro cobro…');
    const finished=await poll(created.job_id,'image');
    const url=outputURL(finished);
    if(!url)throw Error('La IA finalizó, pero no entregó una URL descargable.');
@@ -270,8 +256,8 @@ export default function ConversionTemplatesStudio({guest=false,onGenerationStart
     <div className="ri-action-card">
      <span className="ri-eyebrow">LISTO PARA CREAR</span>
      <h3>Tu próximo anuncio comienza aquí.</h3>
-     <p>La IA analiza el producto, elige un ángulo comercial y prepara el creativo automáticamente.</p>
-     <div className="ri-cost"><div><span>Investigación + imagen 4K</span><strong>{money(total)}</strong></div>
+     <p>La IA analiza tu foto, plantea un ángulo comercial y crea la imagen directamente.</p>
+     <div className="ri-cost"><div><span>Imagen comercial 4K</span><strong>{money(total)}</strong></div>
       <small>Se descontará de tu saldo al generar; sin selección de modelo.</small></div>
      <button className="ri-generate" type="button" disabled={busy||!ready||(!guest&&!file)||mustPrice}
       onClick={run}>{busy?phase:(guest?'Iniciar sesión para crear':'Generar imagen')} <span>↗</span></button>
