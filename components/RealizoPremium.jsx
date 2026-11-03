@@ -258,7 +258,8 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
  const availableDurations=selectedModel?.durations||[];
  const spokenWords=editedSpeech.trim()?editedSpeech.trim().split(/\s+/).length:0;
  const durationSpeech=Number(reviewDuration||project?.video_duration_seconds)||8;
- const {minimum:speechMin,maximum:speechMax,target:speechTarget}=voiceBudget(durationSpeech,style==='auto'?'ugc':style);
+ const selectedSpeechStyle=style==='auto'?(concepts[selection]?.creative_style||'ugc'):style;
+ const {minimum:speechMin,maximum:speechMax,target:speechTarget}=voiceBudget(durationSpeech,selectedSpeechStyle);
  const selectedProvider=selectedModel?.provider||'';
  const selectedFamily=selectedModel?.family_id||'';
  const providerOptions=Array.from(new Map(videoOptions.map(m=>[
