@@ -21,7 +21,7 @@
     "REALIZO_AUTH_PROVIDER": "native",
     "REALIZO_AUTH_ORIGIN": "https://realizo-auth-sandbox.abelarriaga0.workers.dev",
     "PAYPAL_MODE": "live",
-    "REALIZO_LIVE_PAYMENTS_ENABLED": "false",
+    "REALIZO_LIVE_PAYMENTS_ENABLED": "true",
     "MUAPI_GENERATION_ENABLED": "false",
     "REALIZO_MUAPI_PILOT": "false",
     "REALIZO_MULTI_MODEL_SANDBOX": "false",
