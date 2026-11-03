@@ -47,7 +47,7 @@ export async function POST(request){
    });
    if(upstream.status>=400&&upstream.status<500){
     await updateJobStatus(env.WALLETS_DB,user.id,job.id,'failed',null,'provider_rejected');
-    return error('research_provider_rejected',422);
+    return Response.json({job_id:job.id,status:'failed',fallback:true},{status:202});
    }
    if(!upstream.ok)throw Error('provider_ambiguous');
    const data=await upstream.json();
