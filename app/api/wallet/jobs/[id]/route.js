@@ -4,6 +4,8 @@ import {
 } from '@/lib/wallet/server';
 import { isMuapiGenerationEnabled, isConversionImageGenerationEnabled } from '@/lib/wallet/generation-policy';
 
+import { shouldExpireImageJob, imageExpiryReason } from '@/lib/realizo-images/job-timeout';
+
 export const dynamic = 'force-dynamic';
 
 export async function GET(request, { params }) {
@@ -14,6 +16,15 @@ export async function GET(request, { params }) {
     const { id } = await params;
     const job = await getGenerationJob(env.WALLETS_DB, user.id, id);
     if (!job) return Response.json({ error: 'job_not_found' }, { status: 404 });
+    if (shouldExpireImageJob(job)) {
+      await updateJobStatus(env.WALLETS_DB, user.id, job.id, 'failed', null, imageExpiryReason(job));
+      const settled = await getGenerationJob(env.WALLETS_DB, user.id, id);
+      return Response.json({ job_id: settled.id, status: settled.status,
+        customer_price_cents: settled.price_cents,
+        timeout_refunded: settled.status === 'failed',
+        result: settled.status === 'completed' && settled.result_json ? JSON.parse(settled.result_json) : undefined },
+        { headers: { 'Cache-Control': 'no-store' } });
+    }
     if (job.status === 'completed' || job.status === 'failed' || !job.provider_request_id) {
       return Response.json({ job_id: job.id, status: job.status, customer_price_cents: job.price_cents,
         result: job.status === 'completed' && job.result_json ? JSON.parse(job.result_json) : undefined },
