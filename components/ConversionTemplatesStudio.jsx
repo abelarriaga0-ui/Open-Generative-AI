@@ -176,7 +176,7 @@ export default function ConversionTemplatesStudio({guest=false,onGenerationStart
    const answer=await analysis.json().catch(()=>({}));
    if(!analysis.ok||!answer.job_id)throw Error(answer.error||'No se pudo analizar el producto.');
    setCurrentJob(answer.job_id);
-   if(answer.status==='unknown'){const e=Error('El análisis está pendiente de conciliación.');e.pending=true;throw e;}
+   if(answer.status==='unknown')setNotice('Verificando la solicitud con Muapi…');
    await poll(answer.job_id,'research');
    setPhase('Generando creativo en 4K');
    const generation=await fetch('/api/realizo/images/generate',{method:'POST',
@@ -186,7 +186,7 @@ export default function ConversionTemplatesStudio({guest=false,onGenerationStart
    const created=await generation.json().catch(()=>({}));
    if(!generation.ok||!created.job_id)throw Error(created.error||'No se pudo generar la imagen.');
    setCurrentJob(created.job_id);
-   if(created.status==='unknown'){const e=Error('La generación está pendiente de conciliación.');e.pending=true;throw e;}
+   if(created.status==='unknown')setNotice('Verificando la generación con Muapi…');
    const finished=await poll(created.job_id,'image');
    const url=outputURL(finished);
    if(!url)throw Error('La IA finalizó, pero no entregó una URL descargable.');
