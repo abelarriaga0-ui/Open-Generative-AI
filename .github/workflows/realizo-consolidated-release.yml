@@ -14,6 +14,8 @@ on:
       - "app/api/wallet/paypal/create-order/route.js"
       - "app/api/wallet/paypal/capture-order/route.js"
       - "app/api/wallet/paypal/webhook/route.js"
+      - "app/api/internal/paypal-preflight/route.js"
+      - "lib/wallet/request-policy.js"
       - "components/wallet/PaypalTopup.jsx"
       - "migrations/0026_wallet_operator_adjustments.sql"
       - "lib/wallet/server.js"
@@ -106,4 +108,37 @@ jobs:
           const webhook=await fetch(origin+'/api/wallet/paypal/webhook',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',redirect:'manual',signal:AbortSignal.timeout(20000)});
           if(webhook.status!==401)throw Error('Unsigned PayPal webhook must be denied, got '+webhook.status);
           console.log('Canonical public studio, generations and Live checkout deployed; login and unsigned webhook protected.');
+          JS
+      - name: Verify actual PayPal Live OAuth and signed-webhook configuration without charging anyone
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+        run: |
+          node --input-type=module <<'JS'
+          import { randomBytes } from 'node:crypto';
+          const api='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers/scripts/realizo-auth-sandbox/secrets';
+          const auth={'Authorization':'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+          const oneTimeToken=randomBytes(48).toString('hex');
+          const name='REALIZO_OPERATOR_PREFLIGHT_TOKEN';
+          const put=await fetch(api,{method:'PUT',headers:{...auth,'Content-Type':'application/json'},
+            body:JSON.stringify({name,type:'secret_text',text:oneTimeToken}),signal:AbortSignal.timeout(20000)});
+          if(!put.ok)throw Error('Cloudflare temporary merchant check secret setup failed HTTP '+put.status);
+          let verdict=null;
+          try{
+            for(let attempt=0;attempt<5;attempt++){
+              const r=await fetch('https://realizo-auth-sandbox.abelarriaga0.workers.dev/api/internal/paypal-preflight',{
+                headers:{'x-realizo-operator-token':oneTimeToken},signal:AbortSignal.timeout(30000),cache:'no-store'});
+              const data=await r.json().catch(()=>({}));
+              if(r.status===404){await new Promise(resolve=>setTimeout(resolve,1500));continue;}
+              verdict={status:r.status,ready:data.ready===true,reason:data.reason||null,paypal_status:data.paypal_status||null,checks:data.checks||null};
+              break;
+            }
+            if(!verdict)throw Error('PayPal merchant route unavailable after deployment');
+            console.log('LIVE_PAYPAL_READINESS='+JSON.stringify(verdict));
+            if(!verdict.ready)process.exitCode=1;
+          }finally{
+            const remove=await fetch(api+'/'+name,{method:'DELETE',headers:auth,signal:AbortSignal.timeout(20000)});
+            console.log('MERCHANT_CHECK_TEMPORARY_SECRET_REMOVAL_HTTP='+remove.status);
+            if(!remove.ok)process.exitCode=1;
+          }
           JS
