@@ -10,7 +10,7 @@ function getImageUrl(json){
    const first=output[0];
    return typeof first==='string'?first:first?.url||null;
   }
-  return typeof output==='object'?output?.url||null;
+  return output&&typeof output==='object'?(output.url||null):null;
  }catch{return null;}
 }
 export async function GET(request){
