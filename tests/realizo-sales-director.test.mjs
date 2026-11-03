@@ -206,3 +206,26 @@ test('identical spoken sales directions apply across model families and preserve
  assert.match(research,/REDACCIÓN UGC\/DEMO COMPATIBLE CON CUALQUIER MOTOR/);
  assert.doesNotMatch(research,/En 12 s NO entregues/);
 });
+
+test('demo/problem-solution receives the same timing and voice rules with any video engine',()=>{
+ for(const duration of [8,12,20,30,60]){
+  const beats=salesBeatPlan(duration,'demo');
+  assert.equal(beats.length,6);
+  assert.match(beats[1].name,/PROBLEMA/);
+  assert.match(beats[2].name,/SOLUCIÓN/);
+  assert.match(beats.at(-1).name,/CTA/);
+  const spoken='¿Te falta una solución práctica? Este producto permite organizar tu rutina. Aprende cómo utilizarlo correctamente y consulta los detalles antes de comprarlo. Pide información hoy.';
+  const plan=buildCommercialDirectorPackage({
+   concept:{name:'Demostración',angle:'problem',hook:'¿Te falta una solución?',spoken_script:spoken,cta:'Pide información hoy'},
+   productName:'Producto real',description:'Producto de uso habitual',style:'demo',
+   duration,modelId:'kling-example-image-to-video'
+  });
+  assert.equal(plan.sales_beats.length,6);
+  assert.match(plan.prompt,/MODEL-AGNOSTIC DEMO \/ PROBLEM-SOLUTION AUDIO/);
+  assert.match(plan.prompt,/SPOKEN SCRIPT/);
+  assert.match(plan.prompt,/CTA: Pide información hoy/);
+ }
+ const approval=readFileSync('app/api/realizo/ai-premium/[id]/approve/route.js','utf8');
+ assert.match(approval,/spokenStyle=selectedStyle\(finalStyle,concept\.creative_style\)/);
+ assert.match(approval,/scriptReadiness\(userSpeech,\{seconds:duration,style:spokenStyle\}\)/);
+});
