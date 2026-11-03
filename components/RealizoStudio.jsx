@@ -48,6 +48,8 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
  const [jobs,setJobs]=useState([]);
  const [jobsLoading,setJobsLoading]=useState(false);
  const [downloadJob,setDownloadJob]=useState(null);
+ const [savingTemplateJob,setSavingTemplateJob]=useState(null);
+ const [templateNotice,setTemplateNotice]=useState('');
  const [downloadError,setDownloadError]=useState('');
  const [downloadProgress,setDownloadProgress]=useState('');
  const [downloadReady,setDownloadReady]=useState(null);
@@ -111,6 +113,40 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
  },[]);
 
  const onWalletGenerate=useCallback((params,opts)=>generateWithRealizoWallet(params,opts),[]);
+ const savePersonalTemplate=useCallback(async(recipe)=>{
+   const r=await fetch('/api/realizo/user-templates',{
+     method:'POST',credentials:'same-origin',
+     headers:{'Content-Type':'application/json'},body:JSON.stringify(recipe)
+   });
+   const data=await r.json().catch(()=>({}));
+   if(!r.ok)throw Error(({
+     template_source_unavailable:'Este video es anterior a la nueva función. Guarda su prompt desde el editor.',
+     template_limit_reached:'Llegaste al límite de 100 plantillas. Elimina alguna para continuar.',
+     invalid_template:'Revisa la descripción del video antes de guardar.'
+   })[data.error]||'No pudimos guardar la plantilla.');
+   return data.template;
+ },[]);
+ async function chooseSavedTemplate(summary){
+   const r=await fetch('/api/realizo/user-templates/'+encodeURIComponent(summary.id),{
+     credentials:'same-origin',cache:'no-store'
+   });
+   const data=await r.json().catch(()=>({}));
+   if(!r.ok||!data.template?.prompt)throw Error('No se pudo abrir esta plantilla.');
+   const t=data.template;
+   setBrief({
+     revision:'user-template-'+t.id+'-'+Date.now(),
+     prompt:t.prompt,
+     video_model_id:t.model_id,
+     video_duration_seconds:t.duration_seconds||8,
+     video_workflow_id:t.workflow_id||null,
+     images:[],
+     media_role:t.workflow_id==='references'?'reference_only':'user_template',
+     creative_style:t.category==='cine_premium'?'premium':t.category==='ugc'?'ugc':'commercial',
+   });
+   setTemplateId(null);setFormatPreset(t.category==='cine_premium'?'premium':'ugc');
+   setResumeProjectId(null);setCreatorMode('manual');
+   setEditorOpen(true);setPage('create');setCreateKey(n=>n+1);setSidebar(false);
+ }
  useEffect(()=>{
    if(guest||page!=='videos')return;
    let cancelled=false;
@@ -249,7 +285,7 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
           <p className="realizo-kicker">PLANTILLAS REALES</p>
           <h1>Elige tu próxima <em>creación.</em></h1>
          </div>
-         <RealizoTemplateLibrary onChoose={chooseAdTemplate}/>
+         <RealizoTemplateLibrary onChoose={chooseAdTemplate} onChooseSaved={chooseSavedTemplate} guest={guest}/>
         </>}
       </div>}
      {page==='images'&&<ConversionTemplatesStudio guest={guest} onGenerationComplete={refreshWallet} onGenerationEnd={refreshWallet} />}
@@ -313,7 +349,7 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
         <div className="realizo-native-video rounded-[26px] overflow-hidden h-[min(790px,calc(100vh-190px))] min-h-[605px]">
           <VideoStudio locale="en" apiKey={null} persistenceScope={accountId} preparedBrief={brief}
             realizoBrand previewOnly freshCreation uploadAsset={uploadAsset}
-            onWalletGenerate={onWalletGenerate} generationReady={generationReady}
+            onWalletGenerate={onWalletGenerate} onSaveTemplate={savePersonalTemplate} generationReady={generationReady}
             billableModelIds={billableModelIds} />
         </div>
         {pilotAvailable&&!generationReady&&<div className="rounded-2xl border border-[#EBD7C8] bg-[#FFF4E9] px-5 py-3 flex flex-wrap items-center justify-between gap-3">
@@ -326,6 +362,7 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
      </>}
 
      {page==='videos'&&<section className="realizo-videos-page max-w-[1250px] mx-auto">
+      {templateNotice&&<p role="status" className="rounded-xl bg-[#ECE4F8] px-4 py-3 text-[#694A9A] text-sm mb-3">{templateNotice}</p>}
       {downloadError&&<p role="alert" className="mb-3 text-sm text-red-600">{downloadError}</p>}
        <p className="uppercase tracking-[.19em] text-[#8A61B5] font-bold text-[11px] mb-2">Biblioteca</p>
        <h1 className="text-[36px] tracking-tight font-extrabold">Tu biblioteca creativa<span className="text-[#EB8A87]">.</span></h1>
@@ -352,7 +389,18 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
                <span className="inline-flex text-[11px] rounded-full bg-[#EBE1F8] text-[#7155A1] px-3 py-1 font-semibold">
                 {job.status==='completed'?'Completado':job.status==='failed'?'No completado':job.status==='unknown'?'En revisión':'En proceso'}
                </span>
-               {job.video_url&&<div className="space-y-2">
+               {job.can_save_template&&<button type="button"
+                  disabled={Boolean(savingTemplateJob)}
+                  className="text-[#674A96] font-semibold underline text-sm disabled:opacity-40"
+                  onClick={async()=>{
+                    setSavingTemplateJob(job.id);setTemplateNotice('');
+                    try{
+                      const saved=await savePersonalTemplate({job_id:job.id});
+                      setTemplateNotice('✓ Guardada en Mis plantillas: '+saved.title);
+                    }catch(e){setTemplateNotice(e?.message||'No se pudo guardar la plantilla.');}
+                    finally{setSavingTemplateJob(null)}
+                  }}>{savingTemplateJob===job.id?'Guardando…':'☆ Guardar como plantilla'}</button>}
+                {job.video_url&&<div className="space-y-2">
              <button type="button" disabled={Boolean(downloadJob)}
               onClick={async()=>{
                setDownloadJob(job.id);setDownloadError('');setDownloadReady(null);
