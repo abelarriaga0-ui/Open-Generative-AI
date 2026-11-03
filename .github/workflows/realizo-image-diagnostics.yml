@@ -21,6 +21,36 @@ jobs:
       - name: Resumen anónimo de trabajos de imagen
         run: |
           npx --yes wrangler@4.156.2 d1 execute WALLETS_DB --config wrangler.consolidated.jsonc --remote --command "SELECT model_id,status,COUNT(*) AS jobs,SUM(CASE WHEN provider_request_id IS NULL THEN 1 ELSE 0 END) AS missing_provider_id,MAX(ROUND((julianday('now') - julianday(created_at))*24*60)) AS oldest_minutes FROM generation_jobs WHERE idempotency_key LIKE 'image_research_v1_%' OR idempotency_key LIKE 'image_create_v1_%' GROUP BY model_id,status ORDER BY model_id,status;"
+      - name: Revisar estado Gemini del proveedor sin revelar datos
+        env:
+          REALIZO_MUAPI_API_KEY: ${{ secrets.REALIZO_MUAPI_API_KEY }}
+        run: |
+          node --input-type=module <<'JS'
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          const key=process.env.REALIZO_MUAPI_API_KEY;
+          if(!key){console.log('MUAPI_API_KEY_NOT_IN_ACTIONS');process.exit(0)}
+          const endpoint='https://api.cloudflare.com/client/v4/accounts/'+account+
+            '/d1/database/2561f6c8-bfb2-4ea4-8527-7fec29188edf/query';
+          const sql="SELECT provider_request_id FROM generation_jobs WHERE "+
+            "idempotency_key LIKE 'image_research_v1_%' AND provider_request_id IS NOT NULL "+
+            "ORDER BY created_at DESC LIMIT 2";
+          const r=await fetch(endpoint,{method:'POST',headers:{Authorization:'Bearer '+token,
+            'Content-Type':'application/json'},body:JSON.stringify({sql})});
+          if(!r.ok)throw Error('D1_READ_HTTP_'+r.status);
+          const data=await r.json();
+          const ids=data.result?.[0]?.results||[];
+          console.log('PENDING_GEMINI_PROVIDER_TASKS_CHECKED='+ids.length);
+          for(const row of ids){
+            const response=await fetch('https://api.muapi.ai/api/v1/predictions/'+
+              encodeURIComponent(row.provider_request_id)+'/result',{headers:{'x-api-key':key},
+               signal:AbortSignal.timeout(18000)});
+            let result={};try{result=await response.json()}catch{}
+            console.log(JSON.stringify({muapi_http:response.status,muapi_status:result.status||null,
+              has_outputs:Boolean(result.outputs||result.output||result.url),
+              output_type:typeof (result.outputs||result.output||result.url)}));
+          }
+          JS
       - name: Modelos de imagen activos y precios
         run: |
           npx --yes wrangler@4.156.2 d1 execute WALLETS_DB --config wrangler.consolidated.jsonc --remote --command "SELECT model_id,muapi_endpoint,enabled,customer_price_cents FROM model_prices WHERE model_id LIKE 'realizo_%';"
