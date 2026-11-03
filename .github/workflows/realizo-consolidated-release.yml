@@ -31,6 +31,13 @@ on:
       - "components/RealizoTemplateLibrary.jsx"
       - "components/RealizoTemplateCreator.jsx"
       - "app/api/realizo/template/luxury/prepare/route.js"
+      - "app/api/realizo/user-templates/route.js"
+      - "app/api/realizo/user-templates/[id]/route.js"
+      - "lib/realizo-creative/user-templates.js"
+      - "migrations/0027_realizo_user_templates.sql"
+      - "app/api/realizo/jobs/route.js"
+      - "packages/studio/src/components/VideoStudio.jsx"
+      - "tests/realizo-user-templates.test.mjs"
       - "components/RealizoMotionHome.jsx"
       - "components/ConversionTemplatesStudio.jsx"
       - "app/realizo-motion-home.css"
@@ -78,7 +85,7 @@ jobs:
           console.log('Verified public video, images, premium and Live checkout. Auto-topup remains consent-only and not implemented.');
           JS
       - name: Verify realistic video appearance across all director styles before deployment
-        run: node --test tests/realizo-physical-realism.test.mjs tests/realizo-luxury-template.test.mjs tests/realizo-seedance-20-endpoint.test.mjs
+        run: node --test tests/realizo-physical-realism.test.mjs tests/realizo-luxury-template.test.mjs tests/realizo-seedance-20-endpoint.test.mjs tests/realizo-user-templates.test.mjs
       - name: Compile current Realizo application, including studio and all user workflows
         run: |
           npm pkg set 'devDependencies.@tailwindcss/vite=4.3.3'
@@ -97,6 +104,12 @@ jobs:
           console.log('Existing identity, media and AI project record counts preserved.');
           JS
           npx wrangler d1 migrations apply WALLETS_DB --config wrangler.consolidated.jsonc --remote
+          npx wrangler d1 execute WALLETS_DB --config wrangler.consolidated.jsonc --remote --command "SELECT CASE WHEN (SELECT COUNT(*) FROM sqlite_master WHERE name='realizo_user_templates' AND type='table')=1 AND (SELECT COUNT(*) FROM pragma_table_info('generation_jobs') WHERE name='template_source_json')=1 THEN 1 ELSE 0 END AS private_template_schema_ready;" > /tmp/realizo-templates-schema.json
+          node - <<'JS'
+          const result=require('node:fs').readFileSync('/tmp/realizo-templates-schema.json','utf8');
+          if(!/"private_template_schema_ready"\\s*:\\s*1/.test(result))throw Error('Private templates storage not migrated.');
+          console.log('Private per-user templates schema verified; wallets untouched.');
+          JS
           npx wrangler d1 execute WALLETS_DB --config wrangler.consolidated.jsonc --remote --command "SELECT CASE WHEN (SELECT COUNT(*) FROM sqlite_master WHERE type='trigger' AND name IN ('paypal_live_first_topup_minimum','paypal_live_first_verified_deposit_minimum'))=2 THEN 1 ELSE 0 END AS live_first_payment_minimum_guard;" > /tmp/realizo-live-guard.json
           node - <<'JS'
           const s=require('node:fs').readFileSync('/tmp/realizo-live-guard.json','utf8');
@@ -109,7 +122,7 @@ jobs:
         run: |
           node --input-type=module <<'JS'
           const origin='https://realizo-auth-sandbox.abelarriaga0.workers.dev';
-          const paths=[['/studio',200],['/studio/images',200],['/login',200],['/api/auth/features',200],['/api/conversion-templates',200],['/api/wallet',401],['/api/wallet/paypal/config',401],['/api/realizo/template/luxury/prepare',405]];
+          const paths=[['/studio',200],['/studio/images',200],['/login',200],['/api/auth/features',200],['/api/conversion-templates',200],['/api/wallet',401],['/api/wallet/paypal/config',401],['/api/realizo/template/luxury/prepare',405],['/api/realizo/user-templates',401]];
           for(const [p,status] of paths){
             const r=await fetch(origin+p,{redirect:'manual',signal:AbortSignal.timeout(20000)});
             if(r.status!==status)throw Error('Route '+p+' failed HTTP '+r.status+'; expected '+status);
@@ -123,6 +136,12 @@ jobs:
             headers:{'Content-Type':'application/json','Origin':origin},body:'{}',redirect:'manual',
             signal:AbortSignal.timeout(20000)});
           if(luxury.status!==401)throw Error('Unauthenticated luxury prepare must return 401, got '+luxury.status);
+          const privatePost=await fetch(origin+'/api/realizo/user-templates',{
+            method:'POST',headers:{'Origin':origin,'Content-Type':'application/json'},
+            body:JSON.stringify({prompt:'Example private template prompt',model_id:'veo3.1-reference-to-video'}),
+            redirect:'manual',signal:AbortSignal.timeout(20000)
+          });
+          if(privatePost.status!==401)throw Error('Unauthenticated template write must return 401; got '+privatePost.status);
           const webhook=await fetch(origin+'/api/wallet/paypal/webhook',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',redirect:'manual',signal:AbortSignal.timeout(20000)});
           if(webhook.status!==401)throw Error('Unsigned PayPal webhook must be denied, got '+webhook.status);
           console.log('Canonical public studio, generations and Live checkout deployed; login and unsigned webhook protected.');
