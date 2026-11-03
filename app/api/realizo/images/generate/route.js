@@ -1,7 +1,7 @@
 import {getWalletEnvironment,requireWalletUser,getPricedModel,createReservedJob,updateJobStatus,jsonError} from '@/lib/wallet/server';
 import {enforceSameOrigin} from '@/lib/wallet/access-auth';
 import {isConversionImageGenerationEnabled} from '@/lib/wallet/generation-policy';
-import {normalizeImageBrief,SAFE_ID,parseCreativeResearch,buildSalesImagePrompt} from '@/lib/realizo-images/creative';
+import {normalizeImageBrief,SAFE_ID,parseCreativeResearch,buildSalesImagePrompt,fallbackImageResearch} from '@/lib/realizo-images/creative';
 export const dynamic='force-dynamic';
 const failure=(error,status=422)=>Response.json({error},{status,headers:{'Cache-Control':'no-store'}});
 export async function POST(request){
@@ -20,17 +20,21 @@ export async function POST(request){
    .bind(body.upload_id,user.id).first();
   if(!upload)return failure('product_image_not_found',404);
   const research=await env.WALLETS_DB.prepare(
-   'SELECT status,model_id,idempotency_key,result_json,template_source_json FROM generation_jobs WHERE id=? AND user_id=?'
+   'SELECT status,model_id,idempotency_key,error_reason,result_json,template_source_json FROM generation_jobs WHERE id=? AND user_id=?'
   ).bind(body.research_job_id,user.id).first();
   if(!research||research.model_id!==env.REALIZO_TEMPLATE_ANALYZER_MODEL_ID||
      !research.idempotency_key?.startsWith('image_research_v1_'))return failure('research_not_found',404);
-  if(research.status!=='completed')return failure('research_not_ready',409);
+  if(!['completed','failed'].includes(research.status))return failure('research_not_ready',409);
+  if(research.status==='failed' && !['provider_failed','provider_rejected','image_research_timeout_3min','manual_reconciliation'].includes(research.error_reason))return failure('research_result_invalid',409);
   let source,concept;
   try{
    source=JSON.parse(research.template_source_json||'null');
    if(source?.kind!=='image_research_v1'||source.upload_id!==body.upload_id||
       JSON.stringify(source.brief)!==JSON.stringify(brief))return failure('research_brief_mismatch',409);
-   concept=parseCreativeResearch(JSON.parse(research.result_json||'null'));
+   if(research.status==='completed'){
+     try{concept=parseCreativeResearch(JSON.parse(research.result_json||'null'));}
+     catch{concept=fallbackImageResearch(brief);}
+   }else concept=fallbackImageResearch(brief);
   }catch{return failure('research_result_invalid');}
   const model=await getPricedModel(env.WALLETS_DB,env.REALIZO_TEMPLATE_IMAGE_MODEL_ID);
   if(!model||model.muapi_endpoint!=='nano-banana-2-1-edit')return failure('image_model_unavailable',503);
