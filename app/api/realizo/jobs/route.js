@@ -8,7 +8,7 @@ export async function GET(request) {
     const user=await requireWalletUser(request,env);
     if(!user)return Response.json({error:'not_authenticated'},{status:401});
     const rows=await env.WALLETS_DB.prepare(
-      'SELECT id,model_id,status,price_cents,result_json,created_at,updated_at FROM generation_jobs WHERE user_id=? ORDER BY created_at DESC,id DESC LIMIT 30'
+      'SELECT id,model_id,status,price_cents,result_json,template_source_json,created_at,updated_at FROM generation_jobs WHERE user_id=? ORDER BY created_at DESC,id DESC LIMIT 30'
     ).bind(user.id).all();
     const jobs=(rows.results||[]).map(x=>{
       let result=null;
@@ -20,7 +20,8 @@ export async function GET(request) {
         }catch{}
       }
       return {id:x.id,model:x.model_id,status:x.status,price_cents:x.price_cents,
-        created_at:x.created_at,updated_at:x.updated_at,video_url:result};
+        created_at:x.created_at,updated_at:x.updated_at,video_url:result,
+        can_save_template:x.status==='completed'&&Boolean(x.template_source_json)};
     });
     return Response.json({jobs},{headers:{'Cache-Control':'private, no-store'}});
   }catch(e){return jsonError(e)}
