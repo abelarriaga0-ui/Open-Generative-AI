@@ -1,10 +1,11 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import {AD_TEMPLATES} from '@/lib/realizo-creative/ad-templates';
+import {USER_TEMPLATE_CATEGORIES} from '@/lib/realizo-creative/user-templates';
 import {LUXURY_TEMPLATE_ID,LUXURY_TEMPLATE_SAMPLE_URL} from '@/lib/realizo-creative/luxury-product-only-template';
 import {TEMPLATE_PREVIEW_SRC,TEMPLATE_HOVER_SRC,TEMPLATE_POSTER_SRC} from '@/lib/realizo-creative/template-video-input';
 
-export default function RealizoTemplateLibrary({onChoose,featured=false}){
+export default function RealizoTemplateLibrary({onChoose,onChooseSaved,guest=false,featured=false}){
  const hover=useRef(null);
  const full=useRef(null);
  const [open,setOpen]=useState(false);
@@ -17,6 +18,42 @@ export default function RealizoTemplateLibrary({onChoose,featured=false}){
  const item=AD_TEMPLATES[0];
  const luxury=AD_TEMPLATES.find(t=>t.id===LUXURY_TEMPLATE_ID);
  const [luxuryPreviewFailed,setLuxuryPreviewFailed]=useState(false);
+ const [personalTemplates,setPersonalTemplates]=useState([]);
+ const [personalLoading,setPersonalLoading]=useState(false);
+ const [personalError,setPersonalError]=useState('');
+ const [activeCategory,setActiveCategory]=useState('todos');
+ const [workingTemplate,setWorkingTemplate]=useState(null);
+ const labels=Object.fromEntries(USER_TEMPLATE_CATEGORIES.map(x=>[x.id,x.label]));
+ useEffect(()=>{
+   if(guest||featured)return;
+   let cancelled=false;
+   setPersonalLoading(true);
+   fetch('/api/realizo/user-templates',{credentials:'same-origin',cache:'no-store'})
+     .then(async r=>{if(!r.ok)throw Error('No se pudieron cargar tus plantillas.');return r.json()})
+     .then(j=>{if(!cancelled)setPersonalTemplates(Array.isArray(j.templates)?j.templates:[])})
+     .catch(e=>{if(!cancelled)setPersonalError(e.message)})
+     .finally(()=>{if(!cancelled)setPersonalLoading(false)});
+   return ()=>{cancelled=true};
+ },[featured,guest]);
+ async function usePersonalTemplate(item){
+   if(!onChooseSaved)return;
+   setWorkingTemplate(item.id);setPersonalError('');
+   try{await onChooseSaved(item);}
+   catch(e){setPersonalError(e?.message||'No pudimos abrir esta plantilla.');}
+   finally{setWorkingTemplate(null);}
+ }
+ async function deletePersonalTemplate(item){
+   if(!window.confirm('¿Eliminar la plantilla "'+item.title+'"?'))return;
+   setWorkingTemplate(item.id);setPersonalError('');
+   try{
+     const r=await fetch('/api/realizo/user-templates/'+encodeURIComponent(item.id),{
+       method:'DELETE',credentials:'same-origin'
+     });
+     if(!r.ok)throw Error('No se pudo eliminar la plantilla.');
+     setPersonalTemplates(list=>list.filter(x=>x.id!==item.id));
+   }catch(e){setPersonalError(e.message)}
+   finally{setWorkingTemplate(null);}
+ }
  const blockSave=e=>e.preventDefault();
 
  const stopHover=()=>{
@@ -67,13 +104,21 @@ export default function RealizoTemplateLibrary({onChoose,featured=false}){
  };
  return <section className={'realizo-v11-library'+(featured?' realizo-v11-featured':'')} aria-label="Plantillas publicitarias">
    {!featured&&<div className="realizo-v11-lib-head">
-    <div><span className="realizo-v11-eyebrow">PLANTILLAS REALES</span>
+    <div><span className="realizo-v11-eyebrow">PLANTILLAS REALES Y MIS PLANTILLAS</span>
       <h2>Explora. Elige. Crea.</h2>
     </div><span className="realizo-v11-count">{AD_TEMPLATES.length} plantillas</span>
    </div>}
-   {!featured&&<div className="realizo-template-filter"><span>Todos</span><span>UGC</span><span>Premium</span></div>}
+   {!featured&&<div className="realizo-template-filter" role="group" aria-label="Filtrar plantillas">
+    {[{id:'todos',label:'Todos'},...USER_TEMPLATE_CATEGORIES].map(category=>
+      <button type="button" key={category.id}
+        aria-pressed={activeCategory===category.id}
+        onClick={()=>setActiveCategory(category.id)}
+        className={'rounded-full px-4 py-2 text-xs font-semibold '+(activeCategory===category.id?'bg-[#EFAC75] text-[#261A35]':'bg-[#EDE3F5] text-[#604881]')}>
+        {category.label}
+      </button>)}
+   </div>}
    <div className="realizo-v11-cards">
-    <article className="realizo-v11-card realizo-template-preview-card"
+    {(activeCategory==='todos'||activeCategory==='ugc')&&<article className="realizo-v11-card realizo-template-preview-card"
       onMouseEnter={playHover} onMouseLeave={stopHover} onContextMenu={blockSave}>
       <div className="realizo-v11-image-link realizo-template-video-frame">
        <div className="realizo-v11-card-photo realizo-v11-photo-0" aria-hidden="true"/>
@@ -97,8 +142,8 @@ export default function RealizoTemplateLibrary({onChoose,featured=false}){
         
       </div>}
       <button type="button" className="realizo-v11-use" onClick={()=>onChoose(item.id)}>Usar plantilla <span aria-hidden="true">→</span></button>
-    </article>
-    {luxury&&<article className="realizo-v11-card realizo-template-preview-card" aria-label="Plantilla Luxury Film solo producto">
+    </article>}
+    {luxury&&(activeCategory==='todos'||activeCategory==='cine_premium')&&<article className="realizo-v11-card realizo-template-preview-card" aria-label="Plantilla Luxury Film solo producto">
       <div className="realizo-v11-image-link realizo-template-video-frame">
         <div className="realizo-v11-card-photo realizo-v11-photo-1" aria-hidden="true"/>
         {!luxuryPreviewFailed&&<video
@@ -119,6 +164,36 @@ export default function RealizoTemplateLibrary({onChoose,featured=false}){
       </button>
     </article>}
    </div>
+   {!featured&&!guest&&<section className="mt-9 space-y-4" aria-label="Mis plantillas">
+     <div className="flex flex-wrap items-center justify-between gap-2">
+       <div><h3 className="text-2xl font-extrabold text-[#31233B]">Mis plantillas</h3>
+       <p className="text-sm text-[#786B86]">Privadas, clasificadas automáticamente y reutilizables sin volver a pagar por guardarlas.</p></div>
+       <span className="text-xs font-semibold text-[#805F9E]">{personalTemplates.length}/100 guardadas</span>
+     </div>
+     {personalError&&<p role="alert" className="rounded-xl bg-[#FCE8E7] p-3 text-sm text-[#9E3636]">{personalError}</p>}
+     {personalLoading?<p role="status" className="text-sm text-[#887990]">Cargando tus plantillas…</p>:
+      personalTemplates.filter(t=>activeCategory==='todos'||t.category===activeCategory).length?
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+       {personalTemplates.filter(t=>activeCategory==='todos'||t.category===activeCategory).map(t=>
+        <article key={t.id} className="rounded-2xl border border-[#E7D8E7] bg-white p-5 shadow-sm space-y-3">
+         <span className="inline-flex rounded-full bg-[#F2E6F8] px-3 py-1 text-xs font-bold text-[#755199]">{labels[t.category]||'Otros'}</span>
+         <h4 className="font-extrabold text-[#30263A]">{t.title}</h4>
+         <p className="line-clamp-3 text-sm text-[#6F6377]">{t.description}</p>
+         <p className="text-xs text-[#887B91]">{t.model_id}{t.duration_seconds?' · '+t.duration_seconds+' s':''}</p>
+         <div className="flex flex-wrap items-center gap-3 pt-2">
+          <button type="button" onClick={()=>usePersonalTemplate(t)} disabled={Boolean(workingTemplate)}
+           className="rounded-xl bg-[#6E4BD2] px-4 py-2 text-xs font-bold text-white disabled:opacity-50">
+           {workingTemplate===t.id?'Abriendo…':'Usar plantilla'}
+          </button>
+          <button type="button" onClick={()=>deletePersonalTemplate(t)} disabled={Boolean(workingTemplate)}
+           className="text-xs font-semibold text-[#97575B] underline disabled:opacity-50">Eliminar</button>
+         </div>
+        </article>)}
+      </div>:
+      <p className="rounded-2xl border border-dashed border-[#D7C4DC] bg-[#FAF7FC] p-5 text-sm text-[#807184]">
+       {personalTemplates.length?'No tienes plantillas en esta categoría.':'Tus creaciones guardadas aparecerán aquí. Usa “Guardar plantilla” en el editor o “Mis videos”.'}
+      </p>}
+   </section>}
    {open&&<div className="realizo-template-modal" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)close()}}>
     <div role="dialog" aria-modal="true" aria-label="Video original de la plantilla" onContextMenu={blockSave}>
       <div className="realizo-template-modal-top">
