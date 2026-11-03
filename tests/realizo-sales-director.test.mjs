@@ -122,10 +122,10 @@ test('12-second spoken UGC has enough words, a full solution, and an end-of-vide
   productName:'Combo NOIL + GODA',description:'Shampoo perfumado y esencia concentrada',
   style:'ugc',duration:12,modelId:'seedance-2.5-intl-omni-reference'
  });
- assert.match(result.prompt,/TOP-PRIORITY UGC AUDIO PERFORMANCE/);
- assert.match(result.prompt,/90–98% voice occupancy/);
+ assert.match(result.prompt,/MODEL-AGNOSTIC SPOKEN UGC AUDIO PERFORMANCE/);
+ assert.match(result.prompt,/90–98% of the chosen runtime/);
  assert.match(result.prompt,/SOLUTION is intelligible before the PRODUCT name/);
- assert.match(result.prompt,/speech occupies nearly the entire runtime/i);
+ assert.match(result.prompt,/speech must occupy nearly the whole video/i);
  assert.match(result.prompt,/final spoken CTA|final 0.2 seconds/);
 });
 
