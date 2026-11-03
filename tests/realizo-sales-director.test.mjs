@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {normalizeProductCopy,videoEngineCapabilities,planSalesVideo,
  buildCommercialDirectorPackage} from '../lib/realizo-creative/sales-director.js';
+import {voiceBudget,salesBeatPlan,improveSalesScript,scriptReadiness} from '../lib/realizo-creative/sales-storyboard.js';
 
 const concept={name:'Nippori UGC',angle:'ugc',hook:'¿La caspa te incomoda?',
  spoken_script:'¿Caspa otra vez? Mira Nippori. Descubre el producto y pide hoy. Paga al recibir.',
@@ -83,11 +84,58 @@ test('12-second UGC prioritizes a spoken buyer review over a five-shot silent mo
    style:'ugc',shotPreference:'multi',duration:12,modelId:'seedance-2.5-intl-omni-reference'
  });
  assert.equal(result.shot_count,2);
- assert.match(result.prompt,/0-2\.9s speaker says a compelling hook/i);
+ assert.match(result.prompt,/0-1\.8s speaker says a concise compelling hook/i);
  assert.match(result.prompt,/70-85%/);
  assert.match(result.prompt,/SPOKEN SCRIPT \(Spanish, target market EC\)/);
  assert.match(result.prompt,/no standalone product montage/i);
  assert.doesNotMatch(result.prompt,/Mostrar 4 acciones separadas/);
  assert.doesNotMatch(result.prompt,/0–3 s hombre en espejo/);
  assert.match(result.prompt,/CTA/);
+});
+
+test('12-second spoken UGC has enough words, a full solution, and an end-of-video CTA',()=>{
+ const budget=voiceBudget(12,'ugc');
+ assert.deepEqual(budget,{minimum:30,target:34,maximum:37});
+ const phases=salesBeatPlan(12,'ugc');
+ assert.equal(phases.length,6);
+ assert.equal(phases[0].end,1.8);
+ assert.match(phases[1].name,/PROBLEMA/);
+ assert.match(phases[2].name,/SOLUCIÓN/);
+ assert.match(phases[3].name,/PRODUCTO/);
+ assert.match(phases.at(-1).name,/CTA/);
+ assert.equal(phases.at(-1).end,12);
+ const improved=improveSalesScript('¿Sales hoy? Conoce NOIL y GODA. Escríbenos.',{
+  seconds:12,style:'ugc',productName:'Combo NOIL + GODA',
+  description:'Shampoo perfumado NOIL más esencia concentrada de perfume GODA',
+  concept:{hook:'¿Listo para salir?',cta:'Pide el combo hoy'},
+  language:'es',
+ });
+ const ready=scriptReadiness(improved,{seconds:12,style:'ugc'});
+ assert.equal(ready.tooShort,false);
+ assert.equal(ready.tooLong,false);
+ assert.match(improved,/La solución/);
+ assert.match(improved,/NOIL/);
+ assert.match(improved,/GODA/);
+ assert.match(improved,/Pide el combo hoy/);
+ const result=buildCommercialDirectorPackage({
+  concept:{name:'Combo',angle:'problem',hook:'¿Listo para salir?',spoken_script:improved,cta:'Pide el combo hoy'},
+  productName:'Combo NOIL + GODA',description:'Shampoo perfumado y esencia concentrada',
+  style:'ugc',duration:12,modelId:'seedance-2.5-intl-omni-reference'
+ });
+ assert.match(result.prompt,/TOP-PRIORITY UGC AUDIO PERFORMANCE/);
+ assert.match(result.prompt,/90–98% voice occupancy/);
+ assert.match(result.prompt,/SOLUTION is intelligible before the PRODUCT name/);
+ assert.match(result.prompt,/speech occupies nearly the entire runtime/i);
+ assert.match(result.prompt,/final spoken CTA|final 0.2 seconds/);
+});
+
+test('approval blocks sparse UGC audio before confirming video generation',()=>{
+ const approval=readFileSync('app/api/realizo/ai-premium/[id]/approve/route.js','utf8');
+ assert.match(approval,/scriptReadiness\(userSpeech/);
+ assert.match(approval,/ugc_speech_timing_invalid/);
+ assert.ok(scriptReadiness('Mira esto. Compra hoy.',{seconds:12,style:'ugc'}).tooShort);
+ assert.equal(voiceBudget(30,'ugc').target,84);
+ const master=readFileSync('lib/realizo-creative/ugc-master-30.js','utf8');
+ assert.match(master,/voiceBudget\(30,'ugc'\)/);
+ assert.match(master,/90-98% of runtime/);
 });
