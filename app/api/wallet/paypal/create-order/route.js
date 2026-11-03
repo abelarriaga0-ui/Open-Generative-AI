@@ -47,8 +47,14 @@ export async function POST(request) {
         description: 'Créditos de generación Realizo (no transferibles)',
         amount: { currency_code: 'USD', value: usdFromCents(cents) },
       }],
-      // Do not force a PayPal Wallet payment source: secure CardFields must be
-      // able to attach a card to the order in the PayPal SDK when eligible.
+      // Wallet credits are digital services: no postal delivery is required.
+      // Use application_context for both wallet buttons and CardFields,
+      // without binding the order to a PayPal-only payment_source.
+      application_context: {
+        brand_name: 'Realizo',
+        shipping_preference: 'NO_SHIPPING',
+        user_action: 'PAY_NOW',
+      },
     }, intentId);
     if (!ok || typeof data?.id !== 'string' || !/^[A-Z0-9]{10,25}$/.test(data.id)) {
       throw new Error('paypal_create_order_failed');
