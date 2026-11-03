@@ -53,6 +53,10 @@ jobs:
             if(!response.ok){const safe=JSON.stringify(result).replace(/https?:\/\/[^\s\"']+/g,'[url]').replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/gi,'[id]').replace(/[A-Za-z0-9_-]{32,}/g,'[opaque]');console.log('MUAPI_SAFE_ERROR='+safe.slice(0,350));}
           }
           JS
+      - name: Diagnosticar solicitud fallida de la captura sin datos personales
+        run: |
+          npx --yes wrangler@4.156.2 d1 execute WALLETS_DB --config wrangler.consolidated.jsonc --remote --command "SELECT model_id,status,error_reason,price_cents,datetime(created_at) AS created_at,datetime(updated_at) AS updated_at,LENGTH(provider_request_id) AS provider_id_length FROM generation_jobs WHERE id='f416c8a6-0812-420c-9aac-7e87c40b90e9';"
+          npx --yes wrangler@4.156.2 d1 execute WALLETS_DB --config wrangler.consolidated.jsonc --remote --command "SELECT j.model_id,j.status,j.error_reason,j.price_cents,datetime(j.created_at) AS created_at,LENGTH(j.provider_request_id) AS provider_id_length FROM generation_jobs j JOIN generation_jobs target ON j.user_id=target.user_id WHERE target.id='f416c8a6-0812-420c-9aac-7e87c40b90e9' AND (j.idempotency_key LIKE 'image_research_v1_%' OR j.idempotency_key LIKE 'image_create_v1_%') ORDER BY j.created_at DESC LIMIT 10;"
       - name: Modelos de imagen activos y precios
         run: |
           npx --yes wrangler@4.156.2 d1 execute WALLETS_DB --config wrangler.consolidated.jsonc --remote --command "SELECT model_id,muapi_endpoint,enabled,customer_price_cents FROM model_prices WHERE model_id LIKE 'realizo_%';"
