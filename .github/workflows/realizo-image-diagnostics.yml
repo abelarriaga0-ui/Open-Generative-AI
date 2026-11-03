@@ -50,6 +50,7 @@ jobs:
               has_outputs:Boolean(result.outputs||result.output||result.url),
               output_type:typeof (result.outputs||result.output||result.url),
               error_class:/not.found|does.not.exist/i.test(JSON.stringify(result))?'not_found':/invalid|malformed/i.test(JSON.stringify(result))?'invalid':/balance|credit|billing/i.test(JSON.stringify(result))?'billing':/auth|key|permission/i.test(JSON.stringify(result))?'auth':'other'}));
+            if(!response.ok){const safe=JSON.stringify(result).replace(/https?:\/\/[^\s\"']+/g,'[url]').replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/gi,'[id]').replace(/[A-Za-z0-9_-]{32,}/g,'[opaque]');console.log('MUAPI_SAFE_ERROR='+safe.slice(0,350));}
           }
           JS
       - name: Modelos de imagen activos y precios
