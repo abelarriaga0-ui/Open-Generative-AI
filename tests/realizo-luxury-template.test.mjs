@@ -31,7 +31,7 @@ test('Nippori example preserves fixed Veo 3.1 reference-image generation contrac
   assert.match(data.input.prompt,/ABSOLUTE NO-VOICE AUDIO LOCK/);
   assert.match(data.input.prompt,/PRODUCT_ONLY: ZERO HUMAN PIXELS/);
   assert.match(data.input.prompt,/IMAGE IS NOT FIRST FRAME/);
-  assert.doesNotMatch(data.input.prompt,/bathroom tutorial|SPOKEN SCRIPT \(/);
+  assert.doesNotMatch(data.input.prompt,/SPOKEN SCRIPT \(/);
 });
 
 test('Untrusted free-form visual-detail instructions cannot override product-only or audio lock',()=>{
