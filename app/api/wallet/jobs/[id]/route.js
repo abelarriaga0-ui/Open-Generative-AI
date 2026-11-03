@@ -43,11 +43,21 @@ export async function GET(request, { params }) {
       'https://api.muapi.ai/api/v1/predictions/' + encodeURIComponent(job.provider_request_id) + '/result', {
       headers: { 'x-api-key': env.MUAPI_API_KEY },
     });
+    const result = await providerResponse.json().catch(() => ({}));
+    const status = String(result.status || result.detail?.status || '').toLowerCase();
+    if (!providerResponse.ok && ['failed','cancelled','canceled'].includes(status)) {
+      await updateJobStatus(env.WALLETS_DB, user.id, job.id, 'failed', null, 'provider_failed');
+      return Response.json({ job_id: job.id, status: 'failed', customer_price_cents: job.price_cents,
+        provider_failed: true }, { headers: { 'Cache-Control': 'no-store' } });
+    }
     if (!providerResponse.ok) {
+      if (shouldExpireImageJob(job)) {
+        await updateJobStatus(env.WALLETS_DB, user.id, job.id, 'failed', null, imageExpiryReason(job));
+        return Response.json({ job_id: job.id, status: 'failed', timeout_refunded: true,
+          customer_price_cents: job.price_cents }, { headers: { 'Cache-Control': 'no-store' } });
+      }
       return Response.json({ job_id: job.id, status: job.status, polling_error: true }, { status: 202 });
     }
-    const result = await providerResponse.json();
-    const status = String(result.status || '').toLowerCase();
     if (['completed','succeeded','success'].includes(status)) {
       const safeResult = {
         status,
