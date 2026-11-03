@@ -23,5 +23,20 @@ export async function GET(request) {
       client_id: env.PAYPAL_CLIENT_ID, currency: 'USD',
       mode: env.PAYPAL_MODE || 'sandbox'
     }, { headers: { 'Cache-Control': 'no-store' } });
-  } catch (error) { return jsonError(error); }
+  } catch (error) {
+    const code=String(error?.message||'');
+    if(code==='paypal_auth_unavailable'||code==='paypal_auth_invalid'){
+      return Response.json({
+        error:'paypal_live_credentials_rejected',
+        message:'PayPal Live rechazó las credenciales. Vuelve a guardar el Client ID y la Secret Key de la misma aplicación Realizo en Cloudflare.'
+      },{status:503,headers:{'Cache-Control':'no-store'}});
+    }
+    if(code==='paypal_live_webhook_not_verified'){
+      return Response.json({
+        error:'paypal_live_webhook_not_verified',
+        message:'Las credenciales funcionan, pero el Webhook ID de PayPal Live no coincide con la dirección de Realizo o le falta el evento PAYMENT.CAPTURE.COMPLETED.'
+      },{status:503,headers:{'Cache-Control':'no-store'}});
+    }
+    return jsonError(error);
+  }
 }
