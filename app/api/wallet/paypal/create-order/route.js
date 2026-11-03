@@ -9,6 +9,14 @@ export async function POST(request) {
     const env = await getWalletEnvironment();
     const user = await requireWalletUser(request, env);
     if (!user) return Response.json({ error: 'not_authenticated' }, { status: 401 });
+    // First Live payment is an owner-only checkout verification. Do not accept
+    // purchases from customers while real Muapi generation is disabled.
+    if (env.REALIZO_LIVE_CHECKOUT_OWNER_ONLY !== 'false') {
+      const owner=await env.WALLETS_DB.prepare(
+        'SELECT user_id FROM realizo_prepaid_muapi_imports WHERE slot=1 AND user_id=? AND amount_cents=775'
+      ).bind(user.id).first();
+      if (!owner) return Response.json({error:'live_checkout_owner_test_only',message:'Las recargas estarán disponibles cuando Realizo habilite las generaciones.'},{status:403});
+    }
     assertPaypalConfigured(env);
     paypalBaseUrl(env);
     // Sandbox captures are not real merchant revenue. Freeze new fake wallet
