@@ -35,6 +35,7 @@ test('job template source does not preserve uploaded photos, card details or pro
  const payload=JSON.parse(source);
  assert.equal(payload.model_id,'seedance-2-image-to-video');
  assert.equal(payload.duration_seconds,12);
+ assert.equal(payload.workflow_id,'animate_image');
  assert.equal(payload.images_list,undefined);
  assert.doesNotMatch(source,/sig=secret|api_key|private-video/);
 });
