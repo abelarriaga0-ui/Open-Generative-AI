@@ -1,7 +1,7 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import {optimizeImage} from '@/lib/realizo-creative/optimize-image';
-import {improveSalesScript,voiceBudget} from '@/lib/realizo-creative/sales-storyboard';
+import {improveSalesScript,voiceBudget,MAX_SPOKEN_SCRIPT_CHARACTERS} from '@/lib/realizo-creative/sales-storyboard';
 import {getAdTemplate,templatePlan} from '@/lib/realizo-creative/ad-templates';
 
 const angles=[
@@ -258,7 +258,8 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
  const availableDurations=selectedModel?.durations||[];
  const spokenWords=editedSpeech.trim()?editedSpeech.trim().split(/\s+/).length:0;
  const durationSpeech=Number(reviewDuration||project?.video_duration_seconds)||8;
- const {minimum:speechMin,maximum:speechMax,target:speechTarget}=voiceBudget(durationSpeech,style==='auto'?'ugc':style);
+ const selectedSpeechStyle=style==='auto'?(concepts[selection]?.creative_style||'ugc'):style;
+ const {minimum:speechMin,maximum:speechMax,target:speechTarget}=voiceBudget(durationSpeech,selectedSpeechStyle);
  const selectedProvider=selectedModel?.provider||'';
  const selectedFamily=selectedModel?.family_id||'';
  const providerOptions=Array.from(new Map(videoOptions.map(m=>[
@@ -654,7 +655,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
          <p className="text-xs font-bold text-[#7555A5]">{style==='premium'||style==='cinematic'?(reviewAudioMode==='voiceover'?'Voz en off':'Diálogo entre actores'):'Guion hablado'} · {languages.find(([code])=>code===(project.video_language||'es'))?.[1]||'Español'}</p>
          <textarea value={editedSpeech} onChange={e=>{manualSpeechRef.current=true;setEditedSpeech(e.target.value)}}
           aria-label="Editar guion hablado sin costo adicional"
-          className={field+' mt-2 min-h-[95px] text-sm'} maxLength={650}/>
+          className={field+' mt-2 min-h-[95px] text-sm'} maxLength={MAX_SPOKEN_SCRIPT_CHARACTERS}/>
          <p className="text-xs text-[#816D8F] mt-1">Edita el gancho, la explicación y el cierre sin pagar otra investigación. {style==='ugc'?
            spokenWords+' palabras · objetivo '+speechMin+'–'+speechMax+' (ideal '+speechTarget+') para '+durationSpeech+' s.':
            'El guion debe caber en '+durationSpeech+' segundos.'}</p>

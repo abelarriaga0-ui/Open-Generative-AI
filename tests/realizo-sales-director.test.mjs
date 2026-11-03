@@ -139,3 +139,93 @@ test('approval blocks sparse UGC audio before confirming video generation',()=>{
  assert.match(master,/voiceBudget\(30,'ugc'\)/);
  assert.match(master,/90-98% of runtime/);
 });
+
+test('spoken sales timing scales across every supported runtime, not a fixed 12-second preset',()=>{
+ const runtimes=[5,8,10,12,15,20,30,45,60,90,120];
+ let priorWords=0;
+ for(const seconds of runtimes){
+  const b=voiceBudget(seconds,'ugc');
+  const demo=voiceBudget(seconds,'demo');
+  const phases=salesBeatPlan(seconds,'ugc');
+  assert.ok(b.minimum<=b.target&&b.target<=b.maximum);
+  assert.ok(demo.minimum<=demo.target&&demo.target<=demo.maximum);
+  assert.ok(b.target>priorWords);
+  priorWords=b.target;
+  assert.equal(phases.length,6);
+  assert.equal(phases[0].start,0);
+  assert.equal(phases.at(-1).end,seconds);
+  assert.ok(phases.every((p,i)=>p.end>p.start&&(i===0||p.start>=phases[i-1].end)));
+  assert.match(phases[1].name,/PROBLEMA/);
+  assert.match(phases[2].name,/SOLUCIÓN/);
+  assert.match(phases[3].name,/PRODUCTO/);
+  assert.match(phases[5].name,/CTA/);
+ }
+ for(const seconds of [5,8,10,12,15,20,25,30]){
+  const dialogue=improveSalesScript('Conoce NOIL y GODA. Pide el combo.',{
+   seconds,style:'ugc',productName:'Combo NOIL + GODA',
+   description:'Shampoo perfumado NOIL más esencia concentrada de perfume GODA',
+   concept:{hook:'¿Listo para salir?',cta:'Pide el combo hoy'},language:'es'
+  });
+  const result=scriptReadiness(dialogue,{seconds,style:'ugc'});
+  assert.equal(result.tooShort,false,'No sparse script at '+seconds+' seconds');
+  assert.equal(result.tooLong,false,'No overlong script at '+seconds+' seconds');
+  assert.equal(result.weakStructure,false,'Complete commercial story at '+seconds+' seconds');
+  assert.match(dialogue,/NOIL/);
+  assert.match(dialogue,/GODA/);
+  assert.match(dialogue,/Pide el combo hoy/);
+ }
+});
+
+test('identical spoken sales directions apply across model families and preserve long scripts',()=>{
+ const script=Array.from({length:26},()=>'Resuelve tu rutina con el producto y descubre el beneficio en su uso.').join(' ')
+  +' Pide información hoy.';
+ assert.ok(script.length>1000&&script.length<3200);
+ for(const modelId of [
+  'seedance-2.5-intl-omni-reference','kling-any-image-to-video','veo-3.1-reference-to-video',
+  'minimax-text-to-video','wan-i2v','provider-new-model'
+ ]){
+  const x=buildCommercialDirectorPackage({
+   concept:{name:'UGC',angle:'problem',hook:'¿Te falta algo?',spoken_script:script,
+    cta:'Pide información hoy'},productName:'NOIL',description:'Shampoo perfumado',
+   style:'ugc',duration:120,modelId
+  });
+  assert.equal(x.spoken_script,script,'Script preserved for '+modelId);
+  assert.ok(x.prompt.length<=5400,'Prompt valid for '+modelId);
+  assert.match(x.prompt,/MODEL-AGNOSTIC SPOKEN UGC AUDIO PERFORMANCE/);
+  assert.match(x.prompt,/120-second runtime/);
+  assert.match(x.prompt,/SPOKEN SCRIPT/);
+  assert.match(x.prompt,/CTA: Pide información hoy/);
+  assert.match(x.prompt,/SPEECH DENSITY \/ RUNTIME CHECK/);
+ }
+ const approved=readFileSync('app/api/realizo/ai-premium/[id]/approve/route.js','utf8');
+ const editor=readFileSync('components/RealizoPremium.jsx','utf8');
+ assert.match(approved,/MAX_SPOKEN_SCRIPT_CHARACTERS/);
+ assert.match(editor,/maxLength=\{MAX_SPOKEN_SCRIPT_CHARACTERS\}/);
+ const research=readFileSync('lib/realizo-creative/ai-premium.js','utf8');
+ assert.match(research,/salesBeatPlan\(seconds,chosen\)/);
+ assert.match(research,/REDACCIÓN UGC\/DEMO COMPATIBLE CON CUALQUIER MOTOR/);
+ assert.doesNotMatch(research,/En 12 s NO entregues/);
+});
+
+test('demo/problem-solution receives the same timing and voice rules with any video engine',()=>{
+ for(const duration of [8,12,20,30,60]){
+  const beats=salesBeatPlan(duration,'demo');
+  assert.equal(beats.length,6);
+  assert.match(beats[1].name,/PROBLEMA/);
+  assert.match(beats[2].name,/SOLUCIÓN/);
+  assert.match(beats.at(-1).name,/CTA/);
+  const spoken='¿Te falta una solución práctica? Este producto permite organizar tu rutina. Aprende cómo utilizarlo correctamente y consulta los detalles antes de comprarlo. Pide información hoy.';
+  const plan=buildCommercialDirectorPackage({
+   concept:{name:'Demostración',angle:'problem',hook:'¿Te falta una solución?',spoken_script:spoken,cta:'Pide información hoy'},
+   productName:'Producto real',description:'Producto de uso habitual',style:'demo',
+   duration,modelId:'kling-example-image-to-video'
+  });
+  assert.equal(plan.sales_beats.length,6);
+  assert.match(plan.prompt,/MODEL-AGNOSTIC DEMO \/ PROBLEM-SOLUTION AUDIO/);
+  assert.match(plan.prompt,/SPOKEN SCRIPT/);
+  assert.match(plan.prompt,/CTA: Pide información hoy/);
+ }
+ const approval=readFileSync('app/api/realizo/ai-premium/[id]/approve/route.js','utf8');
+ assert.match(approval,/spokenStyle=selectedStyle\(finalStyle,concept\.creative_style\)/);
+ assert.match(approval,/scriptReadiness\(userSpeech,\{seconds:duration,style:spokenStyle\}\)/);
+});
