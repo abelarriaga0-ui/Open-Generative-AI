@@ -164,6 +164,21 @@ export default function PaypalTopup({ minCents, firstTopup, onPaid, theme = 'dar
       {error&&<button type="button" onClick={()=>{setError(null);setConfig(null);setRetryCount(v=>v+1);}}
         className="rounded-lg border border-amber-400 p-2 text-amber-300 text-sm">Reintentar carga de PayPal</button>}
       {status && <p role="status" className={theme === 'light' ? 'text-[#6E4BD2] text-sm' : 'text-cyan-300 text-sm'}>{status}</p>}
+      <section aria-label="Preferencia de recarga automática" className="space-y-2 rounded-xl border border-[#DED4D8] bg-[#F7F3EE] text-[#251D37] p-4">
+        <label className="flex gap-3 items-start text-sm cursor-pointer">
+          <input type="checkbox" checked={autoTopupPreferred}
+            onChange={event=>setAutoTopupPreferred(event.target.checked)}
+            aria-describedby="realizo-auto-topup-explanation"
+            className="mt-1 h-4 w-4 accent-[#7748A9]"/>
+          <span><strong>Recarga automática (opcional)</strong>: añadir $20 cuando tu saldo llegue a $5.</span>
+        </label>
+        <p id="realizo-auto-topup-explanation" className="text-xs text-[#665977]">
+          {autoTopupPreferred
+            ? 'Marcada por defecto. Para habilitar futuros cargos deberás aprobar por separado un acuerdo con PayPal, si tu cuenta es elegible. Esta casilla por sí sola no autoriza cargos.'
+            : 'Desactivada. Tu pago será único; no se solicitará autorización para recargas automáticas.'}
+          {' '}Las recargas automáticas todavía no están habilitadas.
+        </p>
+      </section>
       <section aria-label="Pago con tarjeta en Realizo" className="space-y-3">
         {cardAvailable===true&&<p className="font-bold">Pagar con tarjeta dentro de Realizo</p>}
         <div className={cardAvailable===false?'hidden':'space-y-3'}>
@@ -185,20 +200,7 @@ export default function PaypalTopup({ minCents, firstTopup, onPaid, theme = 'dar
         {cardAvailable===false&&<p className="text-sm text-white/70">PayPal no ha habilitado el pago integrado con tarjeta para esta cuenta o región. Los datos de tarjetas nunca se solicitan directamente en Realizo.</p>}
       </section>
       <div ref={node} aria-label="Pagar con cuenta PayPal" />
-      <section className="space-y-2 rounded-xl border border-white/20 p-3">
-        <label className="flex gap-2 items-start text-sm">
-          <input type="checkbox" checked={autoTopupPreferred}
-            onChange={event=>setAutoTopupPreferred(event.target.checked)}
-            aria-describedby="realizo-auto-topup-explanation"/>
-          <span>Quiero configurar una recarga automática de <strong>$20</strong> cuando mi saldo llegue a <strong>$5</strong>.</span>
-        </label>
-        <p id="realizo-auto-topup-explanation" className="text-xs text-white/60">
-          {autoTopupPreferred
-            ? 'Preferencia seleccionada. Para activar los cargos automáticos tendrás que autorizar por separado un método de pago apto para pagos futuros.'
-            : 'Preferencia desmarcada. No se solicitará configurar recargas automáticas.'}
-          {' '}Actualmente no se ejecutan cargos automáticos.
-        </p>
-      </section>
+
     </div>
   );
 }
