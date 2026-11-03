@@ -6,6 +6,7 @@ import {signedMediaUrl} from '@/lib/realizo-creative/media';
 import {buildCommercialDirectorPackage,normalizeProductCopy} from '@/lib/realizo-creative/sales-director';
 import {acceptsSellerConfirmation} from '@/lib/realizo-creative/approval-consent';
 import {getAdTemplate} from '@/lib/realizo-creative/ad-templates';
+import {selectedStyle} from '@/lib/realizo-creative/format-guides';
 import {scriptReadiness,MAX_SPOKEN_SCRIPT_CHARACTERS} from '@/lib/realizo-creative/sales-storyboard';
 import {normalizeCastMode,isFilmStyle} from '@/lib/realizo-creative/cast-mode';
 import {normalizeAudioMode,filmAudioValid} from '@/lib/realizo-creative/audio-mode';
@@ -80,10 +81,11 @@ export async function POST(request,{params}){
   // Final duration is chosen AFTER research at no new AI charge.
   // The same exact model must explicitly support it.
   const duration=videoChoice.duration;
+  const spokenStyle=selectedStyle(finalStyle,concept.creative_style);
   // Verify spoken dialogue fills the chosen runtime BEFORE any video charge.
   // A short, sparse script should be edited, not stretched with silent shots.
-  if(finalStyle==='ugc'||(finalStyle==='demo'&&userSpeech)){
-   const timing=scriptReadiness(userSpeech,{seconds:duration,style:finalStyle});
+  if(spokenStyle==='ugc'||(spokenStyle==='demo'&&userSpeech)){
+   const timing=scriptReadiness(userSpeech,{seconds:duration,style:spokenStyle});
    if(timing.tooShort||timing.tooLong)
     return Response.json({error:'ugc_speech_timing_invalid',words:timing.words,
      minimum:timing.budget.minimum,maximum:timing.budget.maximum},{status:422});
