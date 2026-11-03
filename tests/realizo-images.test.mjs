@@ -53,6 +53,8 @@ test('servidor exige propiedad de imagen, sesión y cobro idempotente',async()=>
  const submitted=readFileSync(new URL('generate/route.js',base),'utf8');
  assert.match(submitted,/createReservedJob/);
  assert.match(submitted,/source\.upload_id!==body\.upload_id/);
- assert.match(submitted,/\['completed','failed'\]/);
+ assert.match(submitted,/image_create_v1_/);
+ assert.doesNotMatch(submitted,/getPricedModel\(env\.WALLETS_DB,env\.REALIZO_TEMPLATE_ANALYZER_MODEL_ID\)/);
+ assert.match(submitted,/google_search:true/);
  assert.match(submitted,/nano-banana-2-1-edit/);
 });
