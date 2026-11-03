@@ -32,6 +32,8 @@ export async function POST(request){
    idempotencyKey:'image_research_v1_'+body.idempotency_key
   });
   if(!job.newlyCreated)return Response.json({job_id:job.id,status:job.status,idempotent:true});
+  await env.WALLETS_DB.prepare('UPDATE generation_jobs SET template_source_json=? WHERE id=? AND user_id=?')
+    .bind(JSON.stringify({kind:'image_research_v1',upload_id:body.upload_id,brief}),job.id,user.id).run();
   const input={
    ...fixed,
    system_prompt:buildResearchSystemPrompt(),
