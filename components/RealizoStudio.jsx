@@ -240,7 +240,7 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
       />}
      {page==='templates'&&<div className="realizo-templates-page max-w-[1420px] mx-auto">
        {templateId?
-        <RealizoTemplateCreator key={templateId+'-'+createKey}
+        <RealizoTemplateCreator key={templateId+'-'+createKey} templateId={templateId}
          onBack={()=>setTemplateId(null)}
          onWalletRefresh={refreshWallet}
          onViewVideos={()=>{setTemplateId(null);setPage('videos')}}/>:
