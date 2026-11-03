@@ -16,6 +16,8 @@ on:
       - "app/api/wallet/paypal/webhook/route.js"
       - "app/api/internal/paypal-preflight/route.js"
       - "lib/wallet/request-policy.js"
+      - "lib/wallet/live-video-models.js"
+      - "tests/realizo-seedance-20-endpoint.test.mjs"
       - "components/wallet/PaypalTopup.jsx"
       - "migrations/0026_wallet_operator_adjustments.sql"
       - "lib/wallet/server.js"
@@ -76,7 +78,7 @@ jobs:
           console.log('Verified public video, images, premium and Live checkout. Auto-topup remains consent-only and not implemented.');
           JS
       - name: Verify realistic video appearance across all director styles before deployment
-        run: node --test tests/realizo-physical-realism.test.mjs tests/realizo-luxury-template.test.mjs
+        run: node --test tests/realizo-physical-realism.test.mjs tests/realizo-luxury-template.test.mjs tests/realizo-seedance-20-endpoint.test.mjs
       - name: Compile current Realizo application, including studio and all user workflows
         run: |
           npm pkg set 'devDependencies.@tailwindcss/vite=4.3.3'
