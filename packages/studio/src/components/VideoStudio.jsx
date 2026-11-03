@@ -795,6 +795,7 @@ export default function VideoStudio({
   freshCreation = false,
   uploadAsset = null,
   onWalletGenerate = null,
+  onSaveTemplate = null,
   generationReady = false,
   billableModelIds = [],
 }) {
@@ -890,6 +891,7 @@ export default function VideoStudio({
 
   // ── prompt ──
   const [prompt, setPrompt] = useState("");
+  const [savingPersonalTemplate,setSavingPersonalTemplate]=useState(false);
   const [allowAnimationInsteadOfReference, setAllowAnimationInsteadOfReference] = useState(false);
 
   // ── refs ──
@@ -2201,6 +2203,26 @@ export default function VideoStudio({
     setCanvasModel(model);
     setShowCanvas(true);
   }, []);
+
+  // Save the current creative recipe privately, without contacting Muapi.
+  // References intentionally are NOT saved: each reuse asks for fresh media.
+  async function handleSavePersonalTemplate(){
+    if(!onSaveTemplate||savingPersonalTemplate)return;
+    const recipe=String(prompt||'').trim();
+    if(recipe.length<10){toast.error('Escribe primero la descripción del video.');return;}
+    setSavingPersonalTemplate(true);
+    try{
+      const saved=await onSaveTemplate({
+        prompt:recipe,model_id:selectedModel,
+        duration_seconds:Number(selectedDuration)||null,
+        workflow_id:selectedWorkflowId||null,
+        style:preparedBrief?.creative_style||'',
+        product_name:preparedBrief?.productName||''
+      });
+      toast.success('Plantilla guardada en Mis plantillas: '+(saved?.category_label||saved?.title||'lista'));
+    }catch(error){toast.error(error?.message||'No se pudo guardar la plantilla.');}
+    finally{setSavingPersonalTemplate(false);}
+  }
 
   // ── generate ──────────────────────────────────────────────────────────────
   const handleGenerate = useCallback(async () => {
@@ -3622,6 +3644,14 @@ export default function VideoStudio({
               )}
             </PromptControls>
 
+            {/* Free, private template saving (no Muapi call). */}
+            {realizoBrand&&typeof onSaveTemplate==='function'&&
+              <button type="button"
+                className="rounded-xl border border-[#A485C9] px-3 py-2 text-[12px] font-semibold text-[#D7C4F7] hover:bg-[#553D76] disabled:opacity-45"
+                disabled={savingPersonalTemplate||generating||!prompt.trim()}
+                onClick={handleSavePersonalTemplate}>
+                {savingPersonalTemplate?'Guardando…':'☆ Guardar plantilla'}
+              </button>}
             {/* Generate button */}
             <PromptAction
               className={realizoBrand ? "realizo-generation-action" : ""}
