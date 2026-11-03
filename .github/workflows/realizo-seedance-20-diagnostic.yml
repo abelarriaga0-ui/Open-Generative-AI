@@ -1,0 +1,57 @@
+name: Realizo - Seedance 2.0 read-only diagnostics
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/realizo-seedance-20-diagnostic.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect failures by model only (no identities or prompts)
+        run: |
+          set -euo pipefail
+          npm install --prefix "$RUNNER_TEMP/wrangler" --no-save --no-audit --no-fund wrangler@4.156.2
+          export PATH="$RUNNER_TEMP/wrangler/node_modules/.bin:$PATH"
+          echo 'FAILED_MODELS_404'
+          wrangler d1 execute WALLETS_DB --config wrangler.consolidated.jsonc --remote --command "SELECT g.model_id,m.muapi_endpoint,g.error_reason,COUNT(*) AS failures,MAX(g.updated_at) AS last_failed_at FROM generation_jobs g LEFT JOIN model_prices m ON m.model_id=g.model_id WHERE g.status='failed' AND (g.error_reason='generation_model_unavailable' OR g.model_id LIKE 'seedance-2-%' OR g.model_id LIKE 'seedance-v2.0-%') GROUP BY g.model_id,m.muapi_endpoint,g.error_reason ORDER BY last_failed_at DESC LIMIT 12;"
+      - name: Read-only Muapi model and endpoint metadata (no API key, no billing)
+        run: |
+          node --input-type=module <<'JS'
+          const prefix='https://api.muapi.ai/api/v1';
+          const ids=[
+            'seedance-2-image-to-video',
+            'seedance-2-omni-reference-no-video',
+            'seedance-v2.0-i2v',
+            'seedance-2-i2v',
+            'seedance-2-omni-reference',
+            'seedance-2-new-omni',
+            'seedance-2.0-omni-reference'
+          ];
+          try {
+            const r=await fetch(prefix+'/models',{signal:AbortSignal.timeout(20000)});
+            const j=await r.json();
+            console.log('PUBLIC_MODELS_HTTP',r.status,'COUNT',Array.isArray(j.models)?j.models.length:'unknown');
+            if(Array.isArray(j.models)){
+              console.log('SEEDANCE20_PROVIDER_ENTRIES',JSON.stringify(j.models.filter(m=>String(m.name||m.id||'').startsWith('seedance-2-') || String(m.name||m.id||'').startsWith('seedance-v2.0-')).filter(m=>ids.includes(m.name||m.id)).map(m=>({name:m.name,id:m.id,endpoint:m.endpoint_url||m.endpoint,category:m.category,group_of:m.group_of,dynamic_pricing:m.dynamic_pricing,enabled:m.is_enabled,cost_currency:m.cost_currency}))));
+            }
+          } catch(e){console.log('PUBLIC_CATALOG_ERROR',String(e.name||e.message).slice(0,80))}
+          for(const id of ids){
+            try{
+              const r=await fetch(prefix+'/models/'+encodeURIComponent(id),{signal:AbortSignal.timeout(12000)});
+              const j=await r.json().catch(()=>({}));
+              const m=j.model&&typeof j.model==='object'?j.model:j;
+              console.log('MODEL_LOOKUP',JSON.stringify({id,status:r.status,name:m.name,endpoint:m.endpoint_url||m.endpoint,category:m.category,dynamic_pricing:m.dynamic_pricing,enabled:m.is_enabled}));
+            }catch(e){console.log('MODEL_LOOKUP_ERROR',id,String(e.name||e.message).slice(0,50))}
+          }
+          JS
