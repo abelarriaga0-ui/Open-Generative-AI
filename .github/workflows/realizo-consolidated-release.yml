@@ -6,6 +6,8 @@ on:
       - ".github/workflows/realizo-consolidated-release.yml"
       - "components/RealizoStudio.jsx"
       - "components/wallet/PaypalTopup.jsx"
+      - "migrations/0026_wallet_operator_adjustments.sql"
+      - "lib/wallet/server.js"
       - "components/RealizoMotionHome.jsx"
       - "components/ConversionTemplatesStudio.jsx"
       - "app/realizo-motion-home.css"
