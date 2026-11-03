@@ -31,5 +31,29 @@ jobs:
           node --check app/api/realizo/images/presets/'[id]'/route.js
           node --check app/api/realizo/images/history/route.js
           node --test tests/realizo-images.test.mjs
+
+      - name: Verificación de producción sin consumir créditos
+        run: |
+          node --input-type=module <<'JS'
+          const origin='https://realizo-auth-sandbox.abelarriaga0.workers.dev';
+          const request=async(path)=>fetch(origin+path,{cache:'no-store',redirect:'manual',signal:AbortSignal.timeout(20000)});
+          const config=await request('/api/realizo/images/config');
+          const info=await config.json().catch(()=>({}));
+          console.log('IMAGES_CONFIG_HTTP='+config.status);
+          console.log('IMAGES_READY='+Boolean(info.available));
+          console.log('IMAGE_PRICE_CENTS='+String(info.image_price_cents));
+          console.log('RESEARCH_PRICE_CENTS='+String(info.research_price_cents));
+          console.log('FORMATS='+JSON.stringify(info.formats));
+          if(config.status!==200||!info.available||info.image_price_cents!==14||
+             info.research_price_cents!==1||!['1:1','4:5','9:16','16:9'].every(x=>info.formats?.includes(x)))
+             throw Error('Motor de imágenes no disponible o precio no configurado.');
+          for(const [path,status] of [['/studio/images',200],['/api/realizo/images/presets',401],
+            ['/api/realizo/images/history',401]]){
+            const r=await request(path);
+            console.log('PATH='+path+' HTTP='+r.status);
+            if(r.status!==status)throw Error('Acceso inesperado en '+path);
+          }
+          console.log('REALIZO_NEW_IMAGE_STUDIO_READY=true');
+          JS
       - name: Validación de interfaz JSX
         run: npx --yes esbuild@0.25.12 components/ConversionTemplatesStudio.jsx --loader:.jsx=jsx --outfile=/tmp/realizo-images-ui.js
