@@ -107,7 +107,7 @@ jobs:
         run: |
           node --input-type=module <<'JS'
           const origin='https://realizo-auth-sandbox.abelarriaga0.workers.dev';
-          const paths=[['/studio',200],['/studio/images',200],['/login',200],['/api/auth/features',200],['/api/conversion-templates',200],['/api/wallet',401],['/api/wallet/paypal/config',401],['/api/realizo/template/luxury/prepare',401]];
+          const paths=[['/studio',200],['/studio/images',200],['/login',200],['/api/auth/features',200],['/api/conversion-templates',200],['/api/wallet',401],['/api/wallet/paypal/config',401],['/api/realizo/template/luxury/prepare',405]];
           for(const [p,status] of paths){
             const r=await fetch(origin+p,{redirect:'manual',signal:AbortSignal.timeout(20000)});
             if(r.status!==status)throw Error('Route '+p+' failed HTTP '+r.status+'; expected '+status);
@@ -117,6 +117,10 @@ jobs:
                 throw Error('Catalog not ready or paid generation unexpectedly active');
             }
           }
+          const luxury=await fetch(origin+'/api/realizo/template/luxury/prepare',{method:'POST',
+            headers:{'Content-Type':'application/json','Origin':origin},body:'{}',redirect:'manual',
+            signal:AbortSignal.timeout(20000)});
+          if(luxury.status!==401)throw Error('Unauthenticated luxury prepare must return 401, got '+luxury.status);
           const webhook=await fetch(origin+'/api/wallet/paypal/webhook',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',redirect:'manual',signal:AbortSignal.timeout(20000)});
           if(webhook.status!==401)throw Error('Unsigned PayPal webhook must be denied, got '+webhook.status);
           console.log('Canonical public studio, generations and Live checkout deployed; login and unsigned webhook protected.');
