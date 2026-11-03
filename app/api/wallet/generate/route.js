@@ -9,6 +9,7 @@ import { isAllowedMuapiEndpoint } from '@/lib/wallet/muapi-endpoint';
 import {isOwnerMultiModelSandbox} from '@/lib/wallet/multi-model-access';
 import {quoteLiveVideo,ensureOwnedMedia,userFacingQuoteError,normalizeLiveVideoInput} from '@/lib/wallet/live-video-models';
 import {verifyPremiumGeneration} from '@/lib/realizo-creative/premium-generation-gate';
+import {applyRealismToVideoInput} from '@/lib/realizo-creative/video-realism';
 
 export const dynamic = 'force-dynamic';
 
@@ -83,6 +84,8 @@ export async function POST(request) {
     }
     const premiumError=await verifyPremiumGeneration(env.WALLETS_DB,user.id,body.model_id,body.input,body.creative_context);
     if(premiumError)return Response.json({error:premiumError},{status:422});
+    // Enforce the same video realism contract used during the price quote.
+    const renderInput=applyRealismToVideoInput(body.input);
     phase='model-lookup';
     const pilot=env.REALIZO_ENV==='sandbox';
     const multiModel=!pilot || await isOwnerMultiModelSandbox(env,user);
@@ -92,8 +95,8 @@ export async function POST(request) {
       // Never accept a client-supplied price or an arbitrary provider endpoint.
       let quote;
       try {
-        await ensureOwnedMedia(env,user,body.input);
-        quote=await quoteLiveVideo(body.model_id,body.input,env.MUAPI_API_KEY);
+        await ensureOwnedMedia(env,user,renderInput);
+        quote=await quoteLiveVideo(body.model_id,renderInput,env.MUAPI_API_KEY);
       } catch(err) {
         return Response.json({error:userFacingQuoteError(err)},{status:422});
       }
@@ -161,7 +164,7 @@ export async function POST(request) {
     // Unsupported inputs fail before provider billing; do not auto-switch models.
     let pricedInput;
     try{
-      pricedInput=normalizeLiveVideoInput(body.model_id,{...body.input,...fixed});
+      pricedInput=normalizeLiveVideoInput(body.model_id,{...renderInput,...fixed});
     }catch(err){
       return Response.json({error:userFacingQuoteError(err)},{status:422});
     }
