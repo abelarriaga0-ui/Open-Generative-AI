@@ -23,6 +23,12 @@ on:
       - "lib/wallet/server.js"
       - "lib/realizo-creative/video-realism.js"
       - "lib/realizo-creative/sales-director.js"
+      - "lib/realizo-creative/sales-storyboard.js"
+      - "lib/realizo-creative/format-guides.js"
+      - "lib/realizo-creative/ai-premium.js"
+      - "app/api/realizo/ai-premium/[id]/approve/route.js"
+      - "components/RealizoPremium.jsx"
+      - "tests/realizo-sales-director.test.mjs"
       - "lib/realizo-creative/ugc-master-30.js"
       - "tests/realizo-physical-realism.test.mjs"
       - "tests/realizo-luxury-template.test.mjs"
@@ -89,7 +95,7 @@ jobs:
           console.log('Verified public video, images, premium and Live checkout. Auto-topup remains consent-only and not implemented.');
           JS
       - name: Verify realistic video appearance across all director styles before deployment
-        run: node --test tests/realizo-physical-realism.test.mjs tests/realizo-luxury-template.test.mjs tests/realizo-seedance-20-endpoint.test.mjs tests/realizo-user-templates.test.mjs
+        run: node --test tests/realizo-physical-realism.test.mjs tests/realizo-luxury-template.test.mjs tests/realizo-seedance-20-endpoint.test.mjs tests/realizo-user-templates.test.mjs tests/realizo-sales-director.test.mjs
       - name: Verify Image Studio creative rules, contracts and user privacy
         run: node --test tests/realizo-images.test.mjs
       - name: Compile current Realizo application, including studio and all user workflows
