@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import {AD_TEMPLATES} from '@/lib/realizo-creative/ad-templates';
+import {LUXURY_TEMPLATE_ID,LUXURY_TEMPLATE_SAMPLE_URL} from '@/lib/realizo-creative/luxury-product-only-template';
 import {TEMPLATE_PREVIEW_SRC,TEMPLATE_HOVER_SRC,TEMPLATE_POSTER_SRC} from '@/lib/realizo-creative/template-video-input';
 
 export default function RealizoTemplateLibrary({onChoose,featured=false}){
@@ -14,6 +15,8 @@ export default function RealizoTemplateLibrary({onChoose,featured=false}){
  const [loading,setLoading]=useState(false);
  const [paused,setPaused]=useState(true);
  const item=AD_TEMPLATES[0];
+ const luxury=AD_TEMPLATES.find(t=>t.id===LUXURY_TEMPLATE_ID);
+ const [luxuryPreviewFailed,setLuxuryPreviewFailed]=useState(false);
  const blockSave=e=>e.preventDefault();
 
  const stopHover=()=>{
@@ -66,9 +69,9 @@ export default function RealizoTemplateLibrary({onChoose,featured=false}){
    {!featured&&<div className="realizo-v11-lib-head">
     <div><span className="realizo-v11-eyebrow">PLANTILLAS REALES</span>
       <h2>Explora. Elige. Crea.</h2>
-    </div><span className="realizo-v11-count">1 plantilla</span>
+    </div><span className="realizo-v11-count">{AD_TEMPLATES.length} plantillas</span>
    </div>}
-   {!featured&&<div className="realizo-template-filter"><span>Todos</span><span>UGC</span></div>}
+   {!featured&&<div className="realizo-template-filter"><span>Todos</span><span>UGC</span><span>Premium</span></div>}
    <div className="realizo-v11-cards">
     <article className="realizo-v11-card realizo-template-preview-card"
       onMouseEnter={playHover} onMouseLeave={stopHover} onContextMenu={blockSave}>
@@ -95,6 +98,26 @@ export default function RealizoTemplateLibrary({onChoose,featured=false}){
       </div>}
       <button type="button" className="realizo-v11-use" onClick={()=>onChoose(item.id)}>Usar plantilla <span aria-hidden="true">→</span></button>
     </article>
+    {luxury&&<article className="realizo-v11-card realizo-template-preview-card" aria-label="Plantilla Luxury Film solo producto">
+      <div className="realizo-v11-image-link realizo-template-video-frame">
+        <div className="realizo-v11-card-photo realizo-v11-photo-1" aria-hidden="true"/>
+        {!luxuryPreviewFailed&&<video
+          src={LUXURY_TEMPLATE_SAMPLE_URL} className="realizo-template-preview-video is-playing"
+          muted playsInline loop autoPlay preload="metadata"
+          disablePictureInPicture controlsList="nodownload noremoteplayback noplaybackrate"
+          onError={()=>setLuxuryPreviewFailed(true)} aria-label="Ejemplo Nippori de Luxury Film 8 segundos"/>}
+        <div className="realizo-v11-photo-fade"/>
+        <span className="realizo-v11-duration">0:08</span>
+        <div className="realizo-v11-card-overlay">
+          <h3>{luxury.name}</h3><p>Premium · 8 segundos · sin personas · sin voz</p>
+          <span className="realizo-v11-tag">✧ 3 tomas · Realismo físico</span>
+        </div>
+      </div>
+      {!featured&&<div className="realizo-v11-card-extra"><span>8 s · 720p · Veo 3.1 Referencias</span></div>}
+      <button type="button" className="realizo-v11-use" onClick={()=>onChoose(luxury.id)}>
+        Usar plantilla <span aria-hidden="true">→</span>
+      </button>
+    </article>}
    </div>
    {open&&<div className="realizo-template-modal" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)close()}}>
     <div role="dialog" aria-modal="true" aria-label="Video original de la plantilla" onContextMenu={blockSave}>
