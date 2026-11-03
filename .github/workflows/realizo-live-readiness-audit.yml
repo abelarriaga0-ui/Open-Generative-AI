@@ -1,0 +1,57 @@
+name: Realizo - Live PayPal readiness and wallet balance audit
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/realizo-live-readiness-audit.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify installed Live credentials and registered webhook without printing credentials
+        run: |
+          node --input-type=module <<'JS'
+          const token=process.env.CLOUDFLARE_API_TOKEN,acct=process.env.CLOUDFLARE_ACCOUNT_ID;
+          if(!token)throw Error('Missing Cloudflare token');
+          const base='https://api.cloudflare.com/client/v4/accounts/'+acct+'/workers/scripts/realizo-auth-sandbox';
+          const r=await fetch(base+'/secrets',{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(16000)});
+          if(!r.ok)throw Error('Cloudflare secret inventory unavailable '+r.status);
+          const j=await r.json();const names=new Set((j.result||[]).map(v=>v.name));
+          for(const p of ['PAYPAL_CLIENT_ID','PAYPAL_CLIENT_SECRET','PAYPAL_WEBHOOK_ID'])if(!names.has(p))throw Error('Missing Worker secret: '+p);
+          console.log('PAYPAL_REQUIRED_WORKER_SECRETS_PRESENT=true');
+          // We cannot read encrypted Worker secrets. Runtime must verify OAuth using those exact installed secrets.
+          console.log('PAYPAL_WORKER_SECRET_VALUES_NOT_READABLE=true');
+          JS
+      - name: Read-only wallet and provenance breakdown for owner account
+        run: |
+          set -euo pipefail
+          npm install --prefix "$RUNNER_TEMP/wrangler" --no-save --no-audit --no-fund wrangler@4.156.2
+          export PATH="$RUNNER_TEMP/wrangler/node_modules/.bin:$PATH"
+          echo OWNER_WALLET_CURRENT
+          wrangler d1 execute WALLETS_DB --config wrangler.consolidated.jsonc --remote --command "SELECT w.available_cents,w.reserved_cents, (SELECT COUNT(*) FROM generation_jobs g WHERE g.user_id=w.user_id AND g.status IN ('reserved','submitted','unknown')) AS pending_jobs, (SELECT COUNT(*) FROM verified_deposits d WHERE d.user_id=w.user_id AND d.provider_environment='live') AS live_deposits, (SELECT COUNT(*) FROM verified_deposits d WHERE d.user_id=w.user_id AND d.provider_environment<>'live') AS other_deposits FROM wallets w JOIN wallet_users u ON u.id=w.user_id JOIN realizo_accounts a ON a.id=u.auth_subject WHERE u.auth_provider='realizo';"
+          echo OWNER_LEDGER_PROVENANCE
+          wrangler d1 execute WALLETS_DB --config wrangler.consolidated.jsonc --remote --command "SELECT l.kind,CASE WHEN l.external_reference LIKE 'historical-muapi-prepaid:%' THEN 'historic_muapi' WHEN l.external_reference LIKE 'pilot-credit:%' THEN 'pilot_credit' WHEN l.external_reference LIKE 'payment:paypal:%' THEN 'paypal' WHEN l.external_reference LIKE 'generation:%' THEN 'generation' ELSE 'other' END AS category,COUNT(*) AS entries,SUM(l.available_delta_cents) AS net_available_cents FROM wallet_ledger l JOIN wallet_users u ON u.id=l.user_id JOIN realizo_accounts a ON a.id=u.auth_subject WHERE u.auth_provider='realizo' GROUP BY l.kind,category;"
+          echo OWNER_PAYPAL_PROVENANCE
+          wrangler d1 execute WALLETS_DB --config wrangler.consolidated.jsonc --remote --command "SELECT provider_environment,COUNT(*) AS payments,COALESCE(SUM(amount_cents),0) AS cents FROM verified_deposits d JOIN wallet_users u ON u.id=d.user_id JOIN realizo_accounts a ON a.id=u.auth_subject WHERE u.auth_provider='realizo' GROUP BY provider_environment;"
+          echo OWNER_HISTORIC_IMPORT
+          wrangler d1 execute WALLETS_DB --config wrangler.consolidated.jsonc --remote --command "SELECT COUNT(*) AS rows,COALESCE(SUM(amount_cents),0) AS cents FROM realizo_prepaid_muapi_imports;"
+      - name: Ask deployed Worker for preflight status without exposing OAuth credentials
+        run: |
+          node --input-type=module <<'JS'
+          const base='https://realizo-auth-sandbox.abelarriaga0.workers.dev';
+          for(const path of ['/api/auth/features','/api/wallet/paypal/config']){
+            const r=await fetch(base+path,{redirect:'manual',signal:AbortSignal.timeout(15000)});
+            console.log('PUBLIC_HTTP '+path+' '+r.status);
+            if(path==='/api/wallet/paypal/config'&&r.status!==401)throw Error('PayPal config must require authenticated user');
+          }
+          JS
