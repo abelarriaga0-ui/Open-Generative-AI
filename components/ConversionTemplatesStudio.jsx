@@ -149,7 +149,10 @@ export default function ConversionTemplatesStudio({guest=false,onGenerationStart
    const job=await r.json().catch(()=>({}));
    if(!r.ok)throw Error(job.error||'No se pudo consultar el resultado.');
    if(job.status==='completed')return job;
-   if(job.status==='failed')throw Error('La solicitud no se completó dentro del tiempo permitido. La reserva de esta etapa volvió a tu saldo.');
+   if(job.status==='failed'){
+    if(kind==='research')return job;
+    throw Error('La imagen no se completó. El importe reservado para esa generación volvió a tu saldo.');
+   }
    if(job.status==='unknown')continue;
   }
   const e=Error('El límite de tiempo está cumplido. Consulta el estado para verificar la liberación de saldo.');e.pending=true;throw e;
@@ -177,7 +180,8 @@ export default function ConversionTemplatesStudio({guest=false,onGenerationStart
    if(!analysis.ok||!answer.job_id)throw Error(answer.error||'No se pudo analizar el producto.');
    setCurrentJob(answer.job_id);
    if(answer.status==='unknown')setNotice('Verificando la solicitud con Muapi…');
-   await poll(answer.job_id,'research');
+   const researchResult=await poll(answer.job_id,'research');
+   if(researchResult.status==='failed')setNotice('Gemini no respondió correctamente. Continuaremos con una dirección creativa segura, sin cobrar el análisis fallido.');
    setPhase('Generando creativo en 4K');
    const generation=await fetch('/api/realizo/images/generate',{method:'POST',
     headers:{'Content-Type':'application/json'},
