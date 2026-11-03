@@ -318,10 +318,10 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
         </div>
         {pilotAvailable&&!generationReady&&<div className="rounded-2xl border border-[#EBD7C8] bg-[#FFF4E9] px-5 py-3 flex flex-wrap items-center justify-between gap-3">
           <p className="text-[13px] text-[#7A5663] font-semibold">Para generar necesitas al menos {usd(pilotPrice||35)} en tu billetera.</p>
-          <Link href="/wallet" className="font-bold text-[#6845AB] text-sm underline">Recargar créditos de prueba</Link>
+          <Link href="/wallet" className="font-bold text-[#6845AB] text-sm underline">Recargar créditos</Link>
         </div>}
 
-        {!pilotAvailable&&<p className="text-[12px] text-[#9A8B9B]">La generación se habilitará cuando tu cuenta esté lista para crear videos.</p>}
+        {!pilotAvailable&&<p className="text-[12px] text-[#9A8B9B]">Selecciona un modelo y confirma el costo antes de generar.</p>}
        </section>}
      </>}
 
