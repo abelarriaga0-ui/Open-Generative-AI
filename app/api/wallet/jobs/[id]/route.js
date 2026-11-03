@@ -39,10 +39,21 @@ export async function GET(request, { params }) {
       return Response.json({ error: 'generation_disabled_in_test_environment' }, { status: 503 });
     }
     if (!env.MUAPI_API_KEY) return Response.json({ error: 'muapi_secret_not_configured' }, { status: 503 });
-    const providerResponse = await fetch(
-      'https://api.muapi.ai/api/v1/predictions/' + encodeURIComponent(job.provider_request_id) + '/result', {
-      headers: { 'x-api-key': env.MUAPI_API_KEY },
-    });
+    let providerResponse;
+    try {
+      providerResponse = await fetch(
+        'https://api.muapi.ai/api/v1/predictions/' + encodeURIComponent(job.provider_request_id) + '/result', {
+        headers: { 'x-api-key': env.MUAPI_API_KEY },
+        signal: AbortSignal.timeout(12000)
+      });
+    } catch {
+      if (shouldExpireImageJob(job)) {
+        await updateJobStatus(env.WALLETS_DB, user.id, job.id, 'failed', null, imageExpiryReason(job));
+        return Response.json({job_id:job.id,status:'failed',timeout_refunded:true},
+          {headers:{'Cache-Control':'no-store'}});
+      }
+      return Response.json({job_id:job.id,status:job.status,polling_error:true},{status:202});
+    }
     const result = await providerResponse.json().catch(() => ({}));
     const status = String(result.status || result.detail?.status || '').toLowerCase();
     if (!providerResponse.ok && ['failed','cancelled','canceled'].includes(status)) {
