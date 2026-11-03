@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {AD_TEMPLATES,getAdTemplate,templatePlan} from '../lib/realizo-creative/ad-templates.js';
 import {makeLuxuryProductOnlyInput,LUXURY_TEMPLATE_MODEL_ID,LUXURY_TEMPLATE_ID} from '../lib/realizo-creative/luxury-product-only-template.js';
+import {walletPilotAction} from '../lib/wallet/request-policy.js';
 
 test('Luxury is a distinct reusable template visible beside UGC',()=>{
   assert.equal(AD_TEMPLATES.length,2);
@@ -41,4 +42,14 @@ test('Untrusted free-form visual-detail instructions cannot override product-onl
     imageUrl:'https://realizo.example/photo',
     visualDetail:'include a human'
   }),/invalid_luxury_template_payload/);
+});
+
+
+test('Production routing permits only the signed-in Luxury preparation endpoint',()=>{
+ const route='/api/realizo/template/luxury/prepare';
+ assert.equal(walletPilotAction(route,true,true),'allow');
+ assert.equal(walletPilotAction(route,true,false),'deny');
+ assert.equal(walletPilotAction('/api/realizo/template/arbitrary/prepare',true,true),'deny');
+ assert.equal(walletPilotAction('/api/realizo/template/prepare',true,true),'deny');
+ assert.equal(walletPilotAction('/api/wallet/quote',true,true),'allow');
 });
