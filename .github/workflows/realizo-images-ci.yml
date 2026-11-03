@@ -49,7 +49,7 @@ jobs:
           console.log('RESEARCH_PRICE_CENTS='+String(info.research_price_cents));
           console.log('FORMATS='+JSON.stringify(info.formats));
           if(config.status!==200||!info.available||info.image_price_cents!==14||
-             info.research_price_cents!==1||!['1:1','4:5','9:16','16:9'].every(x=>info.formats?.includes(x)))
+             info.research_price_cents!==0||!['1:1','4:5','9:16','16:9'].every(x=>info.formats?.includes(x)))
              throw Error('Motor de imágenes no disponible o precio no configurado.');
           for(const [path,status] of [['/studio/images',200],['/api/realizo/images/presets',401],
             ['/api/realizo/images/history',401]]){
