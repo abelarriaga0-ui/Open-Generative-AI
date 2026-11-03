@@ -3,6 +3,7 @@ import {
   getWalletActivity, getActiveModels, jsonError
 } from '@/lib/wallet/server';
 import { isMuapiGenerationEnabled } from '@/lib/wallet/generation-policy';
+import { reconcilePendingUserImages } from '@/lib/realizo-images/reconcile';
 import {getPilotSlotsRemaining,isPilotAccount,PILOT_MODEL_ID,PILOT_PRICE_CENTS} from '@/lib/wallet/muapi-pilot';
 
 export const dynamic = 'force-dynamic';
@@ -12,6 +13,7 @@ export async function GET(request) {
     const env = await getWalletEnvironment();
     const user = await requireWalletUser(request, env);
     if (!user) return Response.json({ error: 'not_authenticated' }, { status: 401 });
+    await reconcilePendingUserImages(env,user.id).catch(() => {});
     const [balance, activity, catalog, previousDeposits, pilotSlots] = await Promise.all([
       getWallet(env.WALLETS_DB, user.id),
       getWalletActivity(env.WALLETS_DB, user.id),
