@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {normalizeProductCopy,videoEngineCapabilities,planSalesVideo,
  buildCommercialDirectorPackage} from '../lib/realizo-creative/sales-director.js';
-import {voiceBudget,salesBeatPlan,improveSalesScript,scriptReadiness,spokenHook} from '../lib/realizo-creative/sales-storyboard.js';
+import {voiceBudget,salesBeatPlan,improveSalesScript,scriptReadiness,spokenHook,buyerIntent} from '../lib/realizo-creative/sales-storyboard.js';
 import {safeResearchResponse,buildResearchRequest} from '../lib/realizo-creative/ai-premium.js';
 
 const concept={name:'Nippori UGC',angle:'ugc',hook:'¿La caspa te incomoda?',
@@ -320,4 +320,21 @@ test('payment approval blocks photo narration and generic hooks before paid gene
  assert.match(approval,/timing\.qualityIssues\.length/);
  const client=readFileSync('components/RealizoPremium.jsx','utf8');
  assert.match(client,/ugc_speech_quality_invalid/);
+});
+
+test('seller typos in attraction language retain the true aroma selling angle',()=>{
+ const seller='NOIL shampoo para tener un olor irreciscitble a lals muejres y recibir alagos';
+ assert.equal(buyerIntent(seller).socialScent,true);
+ const old='¿Buscas una solución para tu día a día? La fotografía muestra la marca NOIL. Conoce NOIL en esta publicación.';
+ const copy=improveSalesScript(old,{
+  seconds:12,style:'ugc',productName:'NOIL',description:seller,
+  concept:{hook:'¿Listo para salir?',cta:'Conoce NOIL en esta publicación'},
+  report:{product_dossier:{actual_category:'HAIR CARE SHAMPOO'}},language:'es'
+ });
+ const quality=scriptReadiness(copy,{seconds:12,style:'ugc',description:seller});
+ assert.equal(quality.tooShort,false);
+ assert.equal(quality.tooLong,false);
+ assert.deepEqual(quality.qualityIssues,[]);
+ assert.match(copy,/aroma|hueles/i);
+ assert.doesNotMatch(copy,/fotograf[ií]a|publicaci[oó]n/i);
 });
