@@ -1,22 +1,5 @@
--- Retain a clear, auditable debit instead of rewriting or deleting payment records.
--- The pre-existing wallet_ledger has a restrictive kind CHECK; rebuild it once
--- to add an explicit 'adjustment' kind and preserve all existing rows.
-CREATE TABLE wallet_ledger_rebuilt (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES wallet_users(id),
-  kind TEXT NOT NULL CHECK(kind IN ('deposit','reserve','capture','release','adjustment')),
-  available_delta_cents INTEGER NOT NULL,
-  reserved_delta_cents INTEGER NOT NULL,
-  external_reference TEXT UNIQUE NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-INSERT INTO wallet_ledger_rebuilt
-(id,user_id,kind,available_delta_cents,reserved_delta_cents,external_reference,created_at)
-SELECT id,user_id,kind,available_delta_cents,reserved_delta_cents,external_reference,created_at FROM wallet_ledger;
-DROP TABLE wallet_ledger;
-ALTER TABLE wallet_ledger_rebuilt RENAME TO wallet_ledger;
-CREATE INDEX wallet_ledger_by_user ON wallet_ledger(user_id,created_at DESC);
-
+-- Preserve historical payment ledger and generation triggers without rebuilding tables.
+-- Operator adjustments have a separate immutable audit trail and a controlled wallet delta.
 CREATE TABLE IF NOT EXISTS wallet_operator_adjustments (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES wallet_users(id),
@@ -26,8 +9,10 @@ CREATE TABLE IF NOT EXISTS wallet_operator_adjustments (
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   CHECK(after_cents < before_cents)
 );
+CREATE INDEX IF NOT EXISTS wallet_operator_adjustments_by_user
+ON wallet_operator_adjustments(user_id,created_at DESC);
 
-CREATE TRIGGER wallet_operator_adjustment_guard
+CREATE TRIGGER IF NOT EXISTS wallet_operator_adjustment_guard
 BEFORE INSERT ON wallet_operator_adjustments
 BEGIN
   SELECT RAISE(ABORT,'operator_adjustment_not_owner')
@@ -52,14 +37,11 @@ BEGIN
   );
 END;
 
-CREATE TRIGGER wallet_operator_adjustment_apply
+CREATE TRIGGER IF NOT EXISTS wallet_operator_adjustment_apply
 AFTER INSERT ON wallet_operator_adjustments
 BEGIN
-  UPDATE wallets SET available_cents=NEW.after_cents,updated_at=datetime('now')
-  WHERE user_id=NEW.user_id;
-  INSERT INTO wallet_ledger
-    (id,user_id,kind,available_delta_cents,reserved_delta_cents,external_reference)
-  VALUES
-    ('operator:'||NEW.id,NEW.user_id,'adjustment',
-     NEW.after_cents-NEW.before_cents,0,'operator-test-balance-cleanup:'||NEW.id);
+  UPDATE wallets
+  SET available_cents=NEW.after_cents,updated_at=datetime('now')
+  WHERE user_id=NEW.user_id AND available_cents=NEW.before_cents
+    AND reserved_cents=0;
 END;
