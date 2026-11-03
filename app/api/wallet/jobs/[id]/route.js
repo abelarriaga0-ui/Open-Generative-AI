@@ -16,7 +16,7 @@ export async function GET(request, { params }) {
     const { id } = await params;
     const job = await getGenerationJob(env.WALLETS_DB, user.id, id);
     if (!job) return Response.json({ error: 'job_not_found' }, { status: 404 });
-    if (shouldExpireImageJob(job)) {
+    if (shouldExpireImageJob(job) && !job.provider_request_id) {
       await updateJobStatus(env.WALLETS_DB, user.id, job.id, 'failed', null, imageExpiryReason(job));
       const settled = await getGenerationJob(env.WALLETS_DB, user.id, id);
       return Response.json({ job_id: settled.id, status: settled.status,
@@ -66,6 +66,13 @@ export async function GET(request, { params }) {
     if (['failed','cancelled','canceled'].includes(status)) {
       await updateJobStatus(env.WALLETS_DB, user.id, job.id, 'failed', null, 'provider_failed');
       return Response.json({ job_id: job.id, status: 'failed', customer_price_cents: job.price_cents });
+    }
+    if (shouldExpireImageJob(job)) {
+      await updateJobStatus(env.WALLETS_DB, user.id, job.id, 'failed', null, imageExpiryReason(job));
+      const expired = await getGenerationJob(env.WALLETS_DB, user.id, id);
+      return Response.json({ job_id: expired.id, status: expired.status,
+        timeout_refunded: expired.status === 'failed',
+        customer_price_cents: expired.price_cents }, { headers: { 'Cache-Control':'no-store' } });
     }
     return Response.json({ job_id: job.id, status: job.status, provider_status: status },
       { headers: { 'Cache-Control': 'no-store' } });
