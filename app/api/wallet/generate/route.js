@@ -85,7 +85,7 @@ export async function POST(request) {
     if(premiumError)return Response.json({error:premiumError},{status:422});
     phase='model-lookup';
     const pilot=env.REALIZO_ENV==='sandbox';
-    const multiModel=pilot && await isOwnerMultiModelSandbox(env,user);
+    const multiModel=!pilot || await isOwnerMultiModelSandbox(env,user);
     let model;
     if (multiModel) {
       // Recalculate the price from the provider for this exact payload.
@@ -97,8 +97,9 @@ export async function POST(request) {
       } catch(err) {
         return Response.json({error:userFacingQuoteError(err)},{status:422});
       }
+      const customerPriceCents=Math.max(quote.provider_cost_cents+1,Math.ceil(quote.provider_cost_cents*1.05));
       if(!Number.isSafeInteger(body.max_price_cents) ||
-         body.max_price_cents<=0 || quote.provider_cost_cents>body.max_price_cents) {
+         body.max_price_cents<=0 || customerPriceCents>body.max_price_cents) {
         return Response.json({error:'price_changed_confirm_again'},{status:409});
       }
       // The foreign key for generation_jobs requires a catalog model row.
@@ -106,7 +107,7 @@ export async function POST(request) {
       // old shared catalog price that could be changed by another request.
       await env.WALLETS_DB.prepare(
         'INSERT OR IGNORE INTO model_prices (model_id,muapi_endpoint,customer_price_cents,enabled,allowed_input_keys_json,fixed_options_json) VALUES (?,?,?,1,?,?)'
-      ).bind(quote.model_id,quote.endpoint,quote.provider_cost_cents,
+      ).bind(quote.model_id,quote.endpoint,customerPriceCents,
         JSON.stringify(Object.keys(body.input)), '{}').run();
       const recorded=await env.WALLETS_DB.prepare(
         'SELECT muapi_endpoint FROM model_prices WHERE model_id=?'
@@ -114,7 +115,7 @@ export async function POST(request) {
       if(recorded?.muapi_endpoint!==quote.endpoint)
         return Response.json({error:'model_endpoint_conflict'},{status:409});
       model={model_id:quote.model_id,muapi_endpoint:quote.endpoint,
-        customer_price_cents:quote.provider_cost_cents,
+        customer_price_cents:customerPriceCents,
         allowed_input_keys_json:JSON.stringify(Object.keys(body.input)),
         fixed_options_json:'{}'};
     } else {
