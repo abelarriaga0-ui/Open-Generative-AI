@@ -1,0 +1,35 @@
+name: Realizo imágenes - validación rápida
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/realizo-images-ci.yml"
+      - "lib/realizo-images/**"
+      - "app/api/realizo/images/**"
+      - "components/ConversionTemplatesStudio.jsx"
+      - "tests/realizo-images.test.mjs"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Sintaxis y normas comerciales
+        run: |
+          node --check lib/realizo-images/creative.js
+          node --check app/api/realizo/images/upload/route.js
+          node --check app/api/realizo/images/analyze/route.js
+          node --check app/api/realizo/images/generate/route.js
+          node --check app/api/realizo/images/config/route.js
+          node --check app/api/realizo/images/presets/route.js
+          node --check app/api/realizo/images/presets/'[id]'/route.js
+          node --check app/api/realizo/images/history/route.js
+          node --test tests/realizo-images.test.mjs
+      - name: Validación de interfaz JSX
+        run: npx --yes esbuild@0.25.12 components/ConversionTemplatesStudio.jsx --loader:.jsx=jsx --outfile=/tmp/realizo-images-ui.js
