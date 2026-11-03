@@ -8,6 +8,10 @@ on:
       - "app/api/realizo/images/**"
       - "components/ConversionTemplatesStudio.jsx"
       - "tests/realizo-images.test.mjs"
+      - "tests/realizo-image-recovery.test.mjs"
+      - "app/api/wallet/jobs/[id]/route.js"
+      - "app/api/wallet/route.js"
+      - "app/api/realizo/jobs/route.js"
   workflow_dispatch:
 permissions:
   contents: read
@@ -30,7 +34,7 @@ jobs:
           node --check app/api/realizo/images/presets/route.js
           node --check app/api/realizo/images/presets/'[id]'/route.js
           node --check app/api/realizo/images/history/route.js
-          node --test tests/realizo-images.test.mjs
+          node --test tests/realizo-images.test.mjs tests/realizo-image-recovery.test.mjs
 
       - name: Verificación de producción sin consumir créditos
         run: |
