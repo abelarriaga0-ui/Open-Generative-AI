@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {normalizeProductCopy,videoEngineCapabilities,planSalesVideo,
  buildCommercialDirectorPackage} from '../lib/realizo-creative/sales-director.js';
-import {voiceBudget,salesBeatPlan,improveSalesScript,scriptReadiness} from '../lib/realizo-creative/sales-storyboard.js';
+import {voiceBudget,salesBeatPlan,improveSalesScript,scriptReadiness,spokenHook} from '../lib/realizo-creative/sales-storyboard.js';
+import {safeResearchResponse,buildResearchRequest} from '../lib/realizo-creative/ai-premium.js';
 
 const concept={name:'Nippori UGC',angle:'ugc',hook:'¿La caspa te incomoda?',
  spoken_script:'¿Caspa otra vez? Mira Nippori. Descubre el producto y pide hoy. Paga al recibir.',
@@ -228,4 +229,95 @@ test('demo/problem-solution receives the same timing and voice rules with any vi
  const approval=readFileSync('app/api/realizo/ai-premium/[id]/approve/route.js','utf8');
  assert.match(approval,/spokenStyle=selectedStyle\(finalStyle,concept\.creative_style\)/);
  assert.match(approval,/scriptReadiness\(userSpeech,\{seconds:duration,style:spokenStyle\}\)/);
+});
+
+test('paid NOIL research image-description is repaired into a buyer-pain UGC script without an AI re-charge',()=>{
+ const description='NOIL shampoo perfumado para tener un olor irresistible a las mujeres y causar buena primera impresión';
+ const bad='¿Buscas una solución para tu día a día? Conoce NOIL: La fotografía muestra un envase con la marca NOIL y la categoría HAIR CARE SHAMPOO. Una alternativa para tu rutina. Conoce NOIL en esta publicación.';
+ const source={name:'Antes de salir',angle:'benefits',creative_style:'ugc',
+  spoken_script:bad,hook:'¿Listo para salir? Empieza por tu rutina.',
+  cta:'Conoce NOIL en esta publicación',buyer_motive:'Elegir un producto de cuidado capilar'};
+ const old={
+  id:'saved-premium',product_name:'NOIL',description,creative_style:'ugc',video_language:'es',
+  video_duration_seconds:12,video_model_id:'seedance-2.5-intl-omni-reference',
+  market_code:'EC',status:'ready',
+  findings_json:JSON.stringify({selected_sales_angle:'Una rutina de lavado con un toque perfumado',
+   product_dossier:{actual_category:'HAIR CARE SHAMPOO',features:['La fotografía muestra un envase con la marca']}}),
+  concepts_json:JSON.stringify([source,source,source]),
+ };
+ const restored=safeResearchResponse(old),result=restored.concepts[0];
+ const ready=scriptReadiness(result.spoken_script,{seconds:12,style:'ugc',description});
+ assert.equal(ready.tooShort,false);
+ assert.equal(ready.tooLong,false);
+ assert.deepEqual(ready.qualityIssues,[]);
+ assert.equal(ready.weakStructure,false);
+ assert.match(result.spoken_script,/impresionarla|impresi[oó]n/i);
+ assert.match(result.spoken_script,/olvidas|aroma|hueles/i);
+ assert.match(result.spoken_script,/soluci[oó]n/i);
+ assert.match(result.spoken_script,/NOIL.+shampoo perfumado/i);
+ assert.match(result.spoken_script,/Pide NOIL hoy\.$/);
+ assert.doesNotMatch(result.spoken_script,/fotograf[ií]a|fotograf[ií]a muestra|envase|esta publicaci[oó]n|hair care shampoo/i);
+ assert.equal(result.hook,spokenHook(result.spoken_script));
+ assert.equal(result.cta,'Pide NOIL hoy');
+ assert.match(result.buyer_motive,/primera impresi[oó]n/i);
+ assert.match(restored.findings.selected_sales_angle,/primera impresi[oó]n/i);
+ const video=buildCommercialDirectorPackage({
+  concept:result,productName:'NOIL',description,style:'ugc',duration:12,
+  modelId:'seedance-2.5-intl-omni-reference'
+ });
+ assert.match(video.prompt,/VOICE\/VISUAL BUYER-PAIN LOCK/);
+ assert.match(video.prompt,/getting ready before going out/);
+ assert.ok(video.prompt.includes(result.spoken_script),'The model receives the exact approved dialogue');
+ assert.match(video.prompt,/CTA: Pide NOIL hoy/);
+});
+
+test('commercial desire scripting scales without promises for shampoos, perfumes and essences',()=>{
+ const bad='¿Buscas una solución para tu día a día? La fotografía muestra un envase de la marca. Conoce el producto en esta publicación.';
+ const products=[
+  ['NOIL','Shampoo perfumado para tener un olor irresistible a las mujeres','HAIR CARE SHAMPOO'],
+  ['GODA','Esencia de perfume para hombres que desean impresionar a las mujeres con un buen olor','esencia de perfume'],
+ ];
+ for(const [productName,description,actual_category] of products){
+  for(const seconds of [5,8,12,15,20,25,30]){
+   const speech=improveSalesScript(bad,{seconds,style:'ugc',productName,description,
+    concept:{cta:'Conoce el producto en esta publicación',hook:'¿Listo para salir?'},
+    report:{product_dossier:{actual_category}},language:'es'});
+   const ready=scriptReadiness(speech,{seconds,style:'ugc',description});
+   assert.equal(ready.tooShort,false,productName+' '+seconds+'s must fill the runtime');
+   assert.equal(ready.tooLong,false,productName+' '+seconds+'s must fit runtime');
+   assert.deepEqual(ready.qualityIssues,[],productName+' '+seconds+'s is buyer-relevant');
+   assert.match(speech,new RegExp(productName));
+   assert.doesNotMatch(speech,/fotograf[ií]a|garantiz|vas a conquistar|todas las mujeres se enamorar[aá]n/i);
+  }
+ }
+});
+
+test('research prompt makes seller buyer desire and audio-visual action the priority, not image inspection',()=>{
+ const request=buildResearchRequest(
+  {OPENAI_PREMIUM_MODEL:'gpt-6-luna',REALIZO_ENV:'production'},
+  {id:'demo',signedImage:'data:image/jpeg;base64,YWJj',product_name:'NOIL',
+   description:'Shampoo perfumado con aroma para impresionar en una cita',
+   video_duration_seconds:12,creative_style:'ugc',video_language:'es',market_code:'EC',
+   video_model_id:'seedance-2.5-intl-omni-reference'}
+ );
+ assert.match(request.instructions,/DIRECTOR DE CONVERSI[ÓO]N/);
+ assert.match(request.instructions,/DESCRIPCI[ÓO]N Y OBJETIVO COMERCIAL/);
+ assert.match(request.instructions,/SINCRONIZACI[ÓO]N VIDEO Y VOZ/);
+ assert.match(request.instructions,/PRIMER FOTOGRAMA/);
+ assert.match(request.instructions,/NUNCA asegurar atraer mujeres/);
+ assert.equal(request.reasoning.effort,'medium');
+});
+
+test('payment approval blocks photo narration and generic hooks before paid generation',()=>{
+ const description='Shampoo perfumado para impresionar a las mujeres con su aroma';
+ const unacceptable='¿Buscas una solución para tu día a día? Conoce NOIL. La fotografía muestra un envase. Pide NOIL hoy.';
+ const r=scriptReadiness(unacceptable,{seconds:12,style:'ugc',description});
+ assert.ok(r.qualityIssues.includes('image_narration'));
+ assert.ok(r.qualityIssues.includes('generic_hook'));
+ assert.ok(r.qualityIssues.includes('seller_desire_missing'));
+ const approval=readFileSync('app/api/realizo/ai-premium/[id]/approve/route.js','utf8');
+ assert.match(approval,/ugc_speech_quality_invalid/);
+ assert.match(approval,/timing\.qualityIssues\.length/);
+ const client=readFileSync('components/RealizoPremium.jsx','utf8');
+ assert.match(client,/ugc_speech_quality_invalid/);
 });
