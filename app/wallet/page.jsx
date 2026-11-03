@@ -37,7 +37,7 @@ export default function WalletPage(){
     try{await fetch('/api/auth/logout',{method:'POST',credentials:'same-origin'});}
     finally{window.location.assign('/login');}
   }
-  const entries={deposit:data?.environment==='sandbox'?'Recarga de prueba':'Recarga',reserve:'Generación reservada',capture:'Video completado',release:'Reserva devuelta'};
+  const entries={deposit:'Recarga',reserve:'Generación reservada',capture:'Video completado',release:'Reserva devuelta',adjustment:'Ajuste del saldo'};
   return <main className="realizo-wallet-page min-h-screen">
     <header className="border-b border-[#E8E0D9] bg-[#F7F3EE]">
       <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
