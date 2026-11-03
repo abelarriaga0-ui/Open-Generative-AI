@@ -145,10 +145,15 @@ jobs:
         run: |
           node --input-type=module <<'JS'
           const origin='https://realizo-auth-sandbox.abelarriaga0.workers.dev';
-          const paths=[['/studio',200],['/studio/images',200],['/login',200],['/api/auth/features',200],['/api/conversion-templates',200,['/api/realizo/images/config',200],['/api/realizo/images/presets',401],['/api/realizo/images/history',401]],['/api/wallet',401],['/api/wallet/paypal/config',401],['/api/realizo/template/luxury/prepare',405],['/api/realizo/user-templates',401]];
+          const paths=[['/studio',200],['/studio/images',200],['/login',200],['/api/auth/features',200],['/api/conversion-templates',200],['/api/realizo/images/config',200],['/api/realizo/images/presets',401],['/api/realizo/images/history',401],['/api/wallet',401],['/api/wallet/paypal/config',401],['/api/realizo/template/luxury/prepare',405],['/api/realizo/user-templates',401]];
           for(const [p,status] of paths){
             const r=await fetch(origin+p,{redirect:'manual',signal:AbortSignal.timeout(20000)});
             if(r.status!==status)throw Error('Route '+p+' failed HTTP '+r.status+'; expected '+status);
+            if(p==='/api/realizo/images/config'){
+              const config=await r.json();
+              if(!config.available || config.image_price_cents!==14 || config.research_price_cents!==0)
+                throw Error('Single-model image generation is not active or pricing is wrong');
+            }
             if(p==='/api/conversion-templates'){
               const j=await r.json();
               if(!Array.isArray(j.templates)||!j.templates.length||j.templates.some(t=>t.available&&(!Number.isInteger(t.price_cents)||t.price_cents<1)))
