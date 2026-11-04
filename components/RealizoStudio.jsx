@@ -12,6 +12,7 @@ import RealizoTemplateLibrary from '@/components/RealizoTemplateLibrary';
 import RealizoTemplateCreator from '@/components/RealizoTemplateCreator';
 import RealizoMotionHome from '@/components/RealizoMotionHome';
 import ConversionTemplatesStudio from '@/components/ConversionTemplatesStudio';
+import RealizoCreationsGallery from '@/components/RealizoCreationsGallery';
 import {getAdTemplate} from '@/lib/realizo-creative/ad-templates';
 
 function Mark() {
@@ -46,6 +47,9 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
  const [pilotAvailable,setPilotAvailable]=useState(false);
  const [pilotPrice,setPilotPrice]=useState(null);
  const [jobs,setJobs]=useState([]);
+ const [imageCreations,setImageCreations]=useState([]);
+ const [creationsWarning,setCreationsWarning]=useState('');
+ const [creationsRefresh,setCreationsRefresh]=useState(0);
  const [jobsLoading,setJobsLoading]=useState(false);
  const [downloadJob,setDownloadJob]=useState(null);
  const [savingTemplateJob,setSavingTemplateJob]=useState(null);
@@ -151,19 +155,24 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
    if(guest||page!=='videos')return;
    let cancelled=false;
    setJobsLoading(true);
-   // Videos generated and Premium research projects have separate histories.
    Promise.allSettled([
      fetch('/api/realizo/jobs',{credentials:'same-origin',cache:'no-store'})
        .then(r=>r.ok?r.json():Promise.reject(new Error('video_history_unavailable'))),
      fetch('/api/realizo/ai-premium',{credentials:'same-origin',cache:'no-store'})
-       .then(r=>r.ok?r.json():Promise.reject(new Error('premium_history_unavailable')))
-   ]).then(([videos,projects])=>{
+       .then(r=>r.ok?r.json():Promise.reject(new Error('premium_history_unavailable'))),
+     fetch('/api/realizo/images/history',{credentials:'same-origin',cache:'no-store'})
+       .then(r=>r.ok?r.json():Promise.reject(new Error('image_history_unavailable')))
+   ]).then(([videos,projects,images])=>{
      if(cancelled)return;
      setJobs(videos.status==='fulfilled'?(videos.value.jobs||[]):[]);
      setPremiumProjects(projects.status==='fulfilled'?(projects.value.projects||[]):[]);
+     setImageCreations(images.status==='fulfilled'?(images.value.creations||[]):[]);
+     setCreationsWarning(videos.status==='rejected'||images.status==='rejected'
+       ?'No se pudo cargar todo el historial. Pulsa Actualizar para volver a intentarlo.':'');
    }).finally(()=>{if(!cancelled)setJobsLoading(false)});
    return ()=>{cancelled=true};
- },[page,guest]);
+ },[page,guest,creationsRefresh]);
+
  async function exit(){
    try{await fetch('/api/auth/logout',{method:'POST',credentials:'same-origin'});}
    finally{window.location.assign('/login');}
@@ -226,7 +235,7 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
        <button type="button" aria-current={page==='templates'?'page':undefined} onClick={()=>{setTemplateId(null);setPage('templates')}}>Plantillas</button>
        <button type="button" aria-current={page==='images'?'page':undefined} onClick={()=>setPage('images')}>Imágenes</button>
        <button type="button" onClick={startNewVideo}>Crear video</button>
-       <button type="button" onClick={()=>setPage('videos')}>Mis videos</button>
+       <button type="button" onClick={()=>setPage('videos')}>Mis creaciones</button>
       </nav>
      <div className="flex items-center gap-3">
        {guest?<Link href={loginUrl} className="realizo-login-cta inline-flex items-center gap-2 rounded-full font-bold text-[13px] px-5 py-2.5 transition">
@@ -248,7 +257,7 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
        {nav('create','Crear video','video',startNewVideo)}
        {nav('templates','Plantillas','sliders',()=>setTemplateId(null))}
        {nav('images','Imágenes que venden','sliders')}
-       {nav('videos','Mis videos','folder')}
+       {nav('videos','Mis creaciones','folder')}
        <Link href={guest?loginUrl:'/wallet'} className={navBase+' text-[#756782] hover:bg-[#F7F0F7]'}><Icon name="wallet"/>Mis créditos{guest?<Icon name="chevron" size={14}/>:<Icon name="chevron" size={14}/>}</Link>
       </nav>
       <div className="hidden lg:block pt-7"><div className="rounded-[22px] realizo-sidebar-banner p-5 relative overflow-hidden">
@@ -263,7 +272,7 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
     <div className="realizo-content flex-1 min-w-0 px-4 sm:px-7 lg:px-10 py-8">
      <div className="realizo-contextbar max-w-[1420px] mx-auto" aria-label="Espacio actual">
       <span>WORKSPACE</span><span aria-hidden="true">/</span>
-      <strong>{page==='home'?'Inicio':page==='create'?'Crear anuncio':page==='templates'?(templateId?'Usar plantilla':'Plantillas'):page==='images'?'Imágenes que venden':'Mis videos'}</strong>
+      <strong>{page==='home'?'Inicio':page==='create'?'Crear anuncio':page==='templates'?(templateId?'Usar plantilla':'Plantillas'):page==='images'?'Imágenes que venden':'Mis creaciones'}</strong>
       <span className="realizo-contextbar-right">REALIZO AI STUDIO</span>
      </div>
      {page==='home'&&<RealizoMotionHome
@@ -365,76 +374,19 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
       {templateNotice&&<p role="status" className="rounded-xl bg-[#ECE4F8] px-4 py-3 text-[#694A9A] text-sm mb-3">{templateNotice}</p>}
       {downloadError&&<p role="alert" className="mb-3 text-sm text-red-600">{downloadError}</p>}
        <p className="uppercase tracking-[.19em] text-[#8A61B5] font-bold text-[11px] mb-2">Biblioteca</p>
-       <h1 className="text-[36px] tracking-tight font-extrabold">Tu biblioteca creativa<span className="text-[#EB8A87]">.</span></h1>
-       <p className="realizo-videos-intro">Todos tus anuncios y proyectos preparados, organizados en un mismo espacio.</p>
-       {guest?<div className="realizo-public-empty" role="region" aria-label="Videos para visitantes">
-         <div className="realizo-public-empty-icon"><Icon name="video" size={34}/></div>
-         <h2>Aún no tienes videos generados</h2>
-         <p>Explora los estilos de REALIZO y, cuando quieras crear tu primer anuncio, inicia sesión para guardar tus videos en un espacio propio.</p>
-         <button type="button" onClick={requireLogin}><Icon name="video" size={18}/> Generar video</button>
+       <h1 className="text-[36px] tracking-tight font-extrabold">Mis creaciones<span className="text-[#EB8A87]">.</span></h1>
+       <p className="realizo-videos-intro">Todas tus imágenes y videos, organizados en una sola biblioteca.</p>
+       {guest?<div className="realizo-public-empty" role="region" aria-label="Creaciones para visitantes">
+         <div className="realizo-public-empty-icon"><Icon name="folder" size={34}/></div>
+         <h2>Tus creaciones en un solo lugar</h2>
+         <p>Inicia sesión para acceder a todas tus imágenes y videos generados con Realizo.</p>
+         <button type="button" onClick={requireLogin}><Icon name="folder" size={18}/> Iniciar sesión</button>
        </div>:
-       <div className="rounded-[25px] bg-white border border-[#E8DEDA] p-6 sm:p-8 mt-7">
-         {jobsLoading?<p role="status" className="text-[#867A91]">Cargando tus videos…</p>:
-          jobs.length?<div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-            {jobs.map(job=><article key={job.id} className="rounded-2xl border border-[#E9DEE2] bg-[#FAF7F4] overflow-hidden">
-              <div className="h-32 bg-[#EBE1F6] flex items-center justify-center">
-                {job.video_url?<video src={job.video_url} controls
-            data-realizo-owned-video="true" controlsList="noremoteplayback noplaybackrate"
-            disablePictureInPicture preload="metadata" className="w-full h-full object-cover" />:
-                 <Icon name="video" size={39}/>}
-              </div>
-              <div className="p-4 space-y-2">
-               <p className="font-bold text-[13px] truncate">{job.model}</p>
-               <p className="text-xs text-[#8A7C90]">{new Date(job.created_at+'Z').toLocaleDateString('es-EC')}</p>
-               <span className="inline-flex text-[11px] rounded-full bg-[#EBE1F8] text-[#7155A1] px-3 py-1 font-semibold">
-                {job.status==='completed'?'Completado':job.status==='failed'?'No completado':job.status==='unknown'?'En revisión':'En proceso'}
-               </span>
-               {job.can_save_template&&<button type="button"
-                  disabled={Boolean(savingTemplateJob)}
-                  className="text-[#674A96] font-semibold underline text-sm disabled:opacity-40"
-                  onClick={async()=>{
-                    setSavingTemplateJob(job.id);setTemplateNotice('');
-                    try{
-                      const saved=await savePersonalTemplate({job_id:job.id});
-                      setTemplateNotice('✓ Guardada en Mis plantillas: '+saved.title);
-                    }catch(e){setTemplateNotice(e?.message||'No se pudo guardar la plantilla.');}
-                    finally{setSavingTemplateJob(null)}
-                  }}>{savingTemplateJob===job.id?'Guardando…':'☆ Guardar como plantilla'}</button>}
-                {job.video_url&&<div className="space-y-2">
-             <button type="button" disabled={Boolean(downloadJob)}
-              onClick={async()=>{
-               setDownloadJob(job.id);setDownloadError('');setDownloadReady(null);
-               setDownloadProgress('Conectando con tu video…');
-               try{
-                const ready=await downloadRealizoVideo(job.id,{onProgress:({loaded,total})=>{
-                 const size=(loaded/1048576).toFixed(1);
-                 setDownloadProgress(total?('Descargando '+Math.min(100,Math.round(loaded/total*100))+' % · '+size+' MB'):'Descargando '+size+' MB');
-                },directUrl:job.video_url});
-                setDownloadReady({...ready,jobId:job.id});
-                setDownloadProgress('Archivo listo. Si la descarga no comenzó, utiliza el enlace de abajo.');
-               }catch(e){setDownloadError(e?.message||'No se pudo descargar el video.');setDownloadProgress('');}
-               finally{setDownloadJob(null)}
-              }}
-              className="block text-[#6E4BD2] underline text-sm font-semibold disabled:opacity-50">
-              {downloadJob===job.id?'Preparando archivo…':'↓ Descargar con Realizo'}
-             </button>
-             {downloadJob===job.id&&<p role="status" className="text-xs text-[#7155A1]">{downloadProgress||'Preparando descarga…'}</p>}
-             {downloadReady?.jobId===job.id&&<div className="rounded-lg border border-[#C8B6E0] bg-[#F2EAFE] p-2 space-y-1">
-              <p role="status" className="text-xs text-[#674B8D]">{downloadProgress}</p>
-              <a href={downloadReady.url} download={downloadReady.filename} className="text-sm font-semibold underline text-[#6E4BD2]">Descargar MP4 ahora</a>
-             </div>}
-             {downloadError&&<p role="alert" className="text-xs text-red-700">{downloadError} Si se reproduce el video, abre su menú de tres puntos (⋮) y elige Descargar, o haz clic derecho y selecciona Guardar video como.</p>}
-            </div>}
-              </div>
-            </article>)}
-          </div>:
-          <div className="py-14 text-center">
-           <div className="inline-grid place-items-center w-16 h-16 bg-[#F0E6FB] rounded-2xl text-[#8057BC]"><Icon name="folder" size={29}/></div>
-           <h2 className="text-[23px] font-bold mt-5">Tu biblioteca empieza aquí</h2>
-           <p className="text-sm text-[#8E8294] mt-2">Tus videos aparecerán cuando completes una generación.</p>
-           <button onClick={startNewVideo} className="inline-flex gap-2 items-center mt-6 rounded-2xl bg-[#6E4BD2] text-white font-bold px-5 py-3"><Icon name="video"/>Crear un video</button>
-          </div>}
-       </div>}
+       <RealizoCreationsGallery videos={jobs} images={imageCreations} loading={jobsLoading}
+         warning={creationsWarning} onCreateVideo={startNewVideo}
+         onCreateImage={()=>setPage('images')}
+         onSaveVideoTemplate={async id=>savePersonalTemplate({job_id:id})}
+         onRefresh={()=>setCreationsRefresh(n=>n+1)}/>}
        {!guest&&premiumProjects.length>0&&<section className="rounded-[25px] bg-white border border-[#E8DEDA] p-6 sm:p-8 mt-6">
         <h2 className="text-xl font-extrabold">Proyectos Premium guardados</h2>
         <p className="text-sm text-[#8A7C90] mt-1 mb-4">Investigaciones y guiones anteriores, separados de los videos. Solo se reabren cuando tú lo decides.</p>
