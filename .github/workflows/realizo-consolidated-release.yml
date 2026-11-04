@@ -46,6 +46,9 @@ on:
       - "tests/realizo-user-templates.test.mjs"
       - "components/RealizoMotionHome.jsx"
       - "components/ConversionTemplatesStudio.jsx"
+      - "components/RealizoCreationsGallery.jsx"
+      - "app/studio/[[...slug]]/page.js"
+      - "tests/realizo-creations.test.mjs"
       - "app/realizo-motion-home.css"
       - "app/realizo-conversion-images.css"
       - "lib/realizo-images/**"
@@ -101,7 +104,7 @@ jobs:
       - name: Verify realistic video appearance across all director styles before deployment
         run: node --test tests/realizo-physical-realism.test.mjs tests/realizo-luxury-template.test.mjs tests/realizo-seedance-20-endpoint.test.mjs tests/realizo-user-templates.test.mjs tests/realizo-sales-director.test.mjs
       - name: Verify Image Studio creative rules, contracts and user privacy
-        run: node --test tests/realizo-images.test.mjs tests/realizo-image-recovery.test.mjs
+        run: node --test tests/realizo-images.test.mjs tests/realizo-image-recovery.test.mjs tests/realizo-creations.test.mjs
       - name: Compile current Realizo application, including studio and all user workflows
         run: |
           npm pkg set 'devDependencies.@tailwindcss/vite=4.3.3'
@@ -145,7 +148,7 @@ jobs:
         run: |
           node --input-type=module <<'JS'
           const origin='https://realizo-auth-sandbox.abelarriaga0.workers.dev';
-          const paths=[['/studio',200],['/studio/images',200],['/login',200],['/api/auth/features',200],['/api/conversion-templates',200],['/api/realizo/images/config',200],['/api/realizo/images/presets',401],['/api/realizo/images/history',401],['/api/wallet',401],['/api/wallet/paypal/config',401],['/api/realizo/template/luxury/prepare',405],['/api/realizo/user-templates',401]];
+          const paths=[['/studio',200],['/studio/images',200],['/studio/creations',200],['/login',200],['/api/auth/features',200],['/api/conversion-templates',200],['/api/realizo/images/config',200],['/api/realizo/images/presets',401],['/api/realizo/images/history',401],['/api/wallet',401],['/api/wallet/paypal/config',401],['/api/realizo/template/luxury/prepare',405],['/api/realizo/user-templates',401]];
           for(const [p,status] of paths){
             const r=await fetch(origin+p,{redirect:'manual',signal:AbortSignal.timeout(20000)});
             if(r.status!==status)throw Error('Route '+p+' failed HTTP '+r.status+'; expected '+status);
