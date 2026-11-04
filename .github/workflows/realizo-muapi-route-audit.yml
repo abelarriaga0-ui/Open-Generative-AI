@@ -1,0 +1,75 @@
+name: Realizo - Muapi live route audit (no credits)
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/realizo-muapi-route-audit.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  provider-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Audit public Muapi model catalog and OpenAPI, NO generation and NO API key
+        run: |
+          node - <<'JS'
+          const base='https://api.muapi.ai';
+          const ids=[
+            'seedance-2-omni-reference',
+            'seedance-2-omni-reference-no-video',
+            'seedance-2-omni-reference-no-video-fast',
+            'seedance-2.5-intl-omni-reference',
+            'kling-v3-image-to-video'
+          ];
+          async function get(path){
+            try{
+              const result=await fetch(base+path,{
+                headers:{Accept:'application/json'},
+                signal:AbortSignal.timeout(17000),
+                redirect:'manual'
+              });
+              let json=null;
+              if(result.ok)json=await result.json();
+              return {status:result.status,json};
+            }catch(e){return {status:'NETWORK',error:String(e.message).slice(0,120)}}
+          }
+          const openapi=await get('/openapi.json');
+          console.log('OPENAPI_STATUS',openapi.status);
+          const paths=Object.keys(openapi.json?.paths||{});
+          const relevant=paths.filter(x=>x.includes('seedance-2')&&x.includes('omni-reference'));
+          console.log('OPENAPI_SEEDANCE_OMNI_ROUTES',JSON.stringify(relevant.map(p=>({
+            path:p,post:!!openapi.json.paths[p].post
+          }))));
+          const catalog=await get('/api/v1/models');
+          console.log('CATALOG_STATUS',catalog.status,'TOTAL',Array.isArray(catalog.json?.models)?catalog.json.models.length:'none');
+          for(const id of ids){
+            const response=await get('/api/v1/models/'+encodeURIComponent(id));
+            const raw=response.json?.model||response.json||{};
+            const record=response.status===200?raw:
+              (Array.isArray(catalog.json?.models)?catalog.json.models.find(x=>x.id===id||x.name===id):null);
+            console.log('MODEL',JSON.stringify({
+              id,catalogStatus:response.status,
+              catalogName:record?.name,
+              catalogId:record?.id,
+              enabled:record?.is_enabled,
+              endpoint:record?.endpoint,
+              endpointUrl:record?.endpoint_url,
+              estimateEndpoint:record?.estimate_endpoint,
+              inOpenAPI:paths.includes('/api/v1/'+id),
+            }));
+          }
+          const slugs=['seedance-2.0-omni-reference','seedance-2-omni-reference-no-video','seedance-2-omni-reference'];
+          for(const slug of slugs){
+            try{
+              const r=await fetch(base+'/api/v1/'+slug,{
+                method:'GET',redirect:'manual',signal:AbortSignal.timeout(12000)
+              });
+              console.log('NONBILLING_GET_ROUTE',slug,'HTTP',r.status,'allow',r.headers.get('allow')||'');
+            }catch(e){console.log('NONBILLING_GET_ROUTE',slug,'NETWORK',String(e.message).slice(0,90))}
+          }
+          JS
