@@ -1,0 +1,25 @@
+name: Realizo - verified live research wallet balance
+on:
+  push:
+    branches: [main, fix/realizo-verified-wallet-ai-research-20261104]
+    paths:
+      - ".github/workflows/realizo-ai-premium-live-balance-guard.yml"
+      - "app/api/realizo/ai-premium/route.js"
+      - "lib/realizo-creative/ai-premium.js"
+      - "tests/realizo-ai-premium-live-wallet.test.mjs"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  wallet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Real research funds and reserve consistency, no API spend
+        run: node --test tests/realizo-ai-premium-live-wallet.test.mjs tests/realizo-ai-premium.test.mjs
+      - name: Provider-reconciled D1 trigger permits only real funds
+        run: python -m unittest discover -s tests -p test_realizo_sandbox_owner_shared_wallet.py -v
