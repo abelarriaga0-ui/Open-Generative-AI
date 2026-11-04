@@ -42,7 +42,7 @@ function Choice({value,options,onChange,className=''}) {
    })}
  </div>;
 }
-export default function ConversionTemplatesStudio({guest=false,onGenerationStart,onGenerationEnd,onGenerationComplete,onGenerationError}){
+export default function ConversionTemplatesStudio({guest=false,onViewCreations,onGenerationStart,onGenerationEnd,onGenerationComplete,onGenerationError}){
  const [mode,setMode]=useState('create');
  const [form,setForm]=useState(DEFAULT);
  const [file,setFile]=useState(null);
@@ -74,7 +74,7 @@ export default function ConversionTemplatesStudio({guest=false,onGenerationStart
  const phaseUploading=phase==='Subiendo producto';
  const progressPercent=resultUrl&&!busy?100:!busy?0:phaseUploading
   ?Math.min(14,Math.max(3,Math.round(elapsedSeconds*2.2)))
-  :Number.isFinite(providerProgress)?Math.min(97,Math.max(16,Math.round(15+providerProgress*.82)))
+  :Number.isFinite(providerProgress)?Math.min(99,Math.max(0,Math.round(providerProgress)))
   :Math.min(94,Math.round(17+76*(1-Math.exp(-Math.max(0,elapsedSeconds-3)/105))));
  const providerMeasured=Number.isFinite(providerProgress);
  const progressLabel=providerStatus==='processing'||providerStatus==='in_progress'
@@ -211,7 +211,7 @@ export default function ConversionTemplatesStudio({guest=false,onGenerationStart
    const url=outputURL(finished);
    if(!url)throw Error('La IA finalizó, pero no entregó una URL descargable.');
    setResultUrl(url);
-   setNotice('Tu creativo está listo.');
+   setNotice('Tu creativo está listo y guardado en Mis creaciones.');
    onGenerationComplete?.({url});
   }catch(e){setError(e.message||'Error al generar');onGenerationError?.(e.message);}
   finally{setBusy(false);setPhase('');onGenerationEnd?.();}
@@ -228,7 +228,7 @@ export default function ConversionTemplatesStudio({guest=false,onGenerationStart
   <div className="ri-tabs" role="tablist" aria-label="Estudio de imágenes">
    <button type="button" role="tab" aria-selected={mode==='create'} className={mode==='create'?'selected':''} onClick={()=>changeMode('create')}>✳ Crear imagen</button>
    <button type="button" role="tab" aria-selected={mode==='presets'} className={mode==='presets'?'selected':''} onClick={()=>changeMode('presets')}>▦ Mis plantillas</button>
-   <button type="button" role="tab" aria-selected={mode==='history'} className={mode==='history'?'selected':''} onClick={()=>changeMode('history')}>◫ Mis imágenes</button>
+   <button type="button" role="tab" aria-selected={mode==='history'} className={mode==='history'?'selected':''} onClick={()=>onViewCreations?onViewCreations():changeMode('history')}>◫ Mis creaciones</button>
   </div>
   {mode==='create'&&<div className="ri-grid">
    <div className="ri-form">
@@ -318,6 +318,7 @@ export default function ConversionTemplatesStudio({guest=false,onGenerationStart
     </div>
     {resultUrl&&<div className="ri-result"><h3>Imagen generada</h3><img src={resultUrl} alt="Anuncio generado"/>
      <a href={resultUrl} target="_blank" rel="noopener noreferrer">Abrir y descargar imagen ↗</a>
+     {onViewCreations&&<button type="button" onClick={onViewCreations}>Ver en Mis creaciones →</button>}
      <button type="button" onClick={()=>{setResultUrl('');setNotice('Listo para crear otra variación.');}}>Crear otra variación</button></div>}
    </div>
   </div>}
