@@ -1,9 +1,11 @@
 import {getWalletEnvironment,requireWalletUser,jsonError} from '@/lib/wallet/server';
 import {premiumVideoOptions} from '@/lib/realizo-creative/video-specs';
+import {getCloudflareContext} from '@opennextjs/cloudflare';
+import {launchPremiumResearch,reconcileExpiredPremiumLaunch} from '@/lib/realizo-creative/research-lifecycle';
 import {enforceSameOrigin} from '@/lib/wallet/access-auth';
 import {
   validatePremiumInput,premiumAccess,premiumPublicEnabled,ownedAsset,
-  startOpenAIResearch,safeResearchResponse,availableAIFunds,researchFingerprint,
+  safeResearchResponse,availableAIFunds,researchFingerprint,
   PREMIUM_PRICING_VERSION,premiumSandboxPaidOwner
 } from '@/lib/realizo-creative/ai-premium';
 
@@ -18,6 +20,18 @@ export async function GET(request){
   if(!user)return error('not_authenticated',401);
   if(env.PAYPAL_MODE!=='live')return error('real_billing_required',503);
   const access=await premiumAccess(env,user);
+  // A private, read-only lookup resolves an ambiguous HTTP 503 by the same
+  // idempotency key, without opening a second OpenAI request or reservation.
+  const key=new URL(request.url).searchParams.get('request_key');
+  if(key){
+    if(!/^[A-Za-z0-9_-]{12,128}$/.test(key))return error('invalid_request_key',400);
+    const existing=await env.WALLETS_DB.prepare(
+      'SELECT * FROM realizo_ai_projects WHERE user_id=? AND request_key=?'
+    ).bind(user.id,key).first();
+    if(!existing)return error('research_request_not_found',404);
+    const recovered=await reconcileExpiredPremiumLaunch(env.WALLETS_DB,existing);
+    return Response.json(safeResearchResponse(recovered),{headers});
+  }
   const list=await env.WALLETS_DB.prepare(
    'SELECT id,status,product_name,market_code,created_at FROM realizo_ai_projects WHERE user_id=? ORDER BY created_at DESC LIMIT 12'
   ).bind(user.id).all();
@@ -47,6 +61,12 @@ export async function POST(request){
   if(!user)return error('not_authenticated',401);
   const access=await premiumAccess(env,user);
   if(!access.enabled)return error('ai_premium_not_enabled',503);
+  // Return 202 before awaiting OpenAI. The provider's initial request can
+  // exceed the HTTP edge window; waitUntil holds work safely after response.
+  // Do not reserve a customer's money without a background execution context.
+  const ctx=getCloudflareContext().ctx;
+  if(typeof ctx?.waitUntil!=='function')
+    return error('research_background_unavailable',503);
   if(Number(request.headers.get('content-length')||0)>5000)return error('request_too_large',413);
   const body=await request.json();
   let data;
@@ -62,7 +82,10 @@ export async function POST(request){
   const existing=await db.prepare(
    'SELECT * FROM realizo_ai_projects WHERE user_id=? AND request_key=?'
   ).bind(user.id,data.requestKey).first();
-  if(existing)return Response.json(safeResearchResponse(existing),{headers});
+  if(existing){
+    const recovered=await reconcileExpiredPremiumLaunch(db,existing);
+    return Response.json(safeResearchResponse(recovered),{headers});
+  }
   const asset=await ownedAsset(env,user,data.assetId);
   if(!asset)return error('image_missing_or_expired',422);
   const fp=await researchFingerprint(data);
@@ -105,39 +128,24 @@ export async function POST(request){
    const collided=await db.prepare(
     'SELECT * FROM realizo_ai_projects WHERE user_id=? AND request_key=?'
    ).bind(user.id,data.requestKey).first();
-   if(collided)return Response.json(safeResearchResponse(collided),{headers});
+   if(collided){
+     const recovered=await reconcileExpiredPremiumLaunch(db,collided);
+     return Response.json(safeResearchResponse(recovered),{headers});
+   }
    const message=String(e);
    if(message.includes('ai_premium_daily_limit'))return error('ai_premium_daily_limit',429);
    if(message.includes('ai_insufficient_general_funds'))return error('insufficient_general_funds',402);
    return error('ai_premium_reservation_failed',409);
   }
-  // Mark intent before the paid provider call; ambiguous network errors never
-  // trigger a second attempt. Order remains RESERVED for reconciliation.
+  // Reserve atomically, then dispatch the provider in Cloudflare waitUntil.
+  // The front end receives its project ID immediately and polls it safely.
   await db.prepare(
     "UPDATE realizo_ai_projects SET status='researching',updated_at=datetime('now') WHERE id=? AND user_id=? AND status='created'"
   ).bind(projectId,user.id).run();
-  try{
-   const project=await db.prepare(
-     'SELECT * FROM realizo_ai_projects WHERE id=? AND user_id=?'
-   ).bind(projectId,user.id).first();
-   const launched=await startOpenAIResearch(env,{...project,expires_at:asset.expires_at});
-   await db.prepare(
-     "UPDATE realizo_ai_projects SET provider_response_id=?,updated_at=datetime('now') WHERE id=? AND user_id=? AND status='researching'"
-   ).bind(launched.id,projectId,user.id).run();
-  }catch(e){
-   const definitelyRejected=String(e?.message||'').startsWith('openai_start_rejected_');
-   const safeCode=definitelyRejected?String(e.message).replace('openai_start_rejected_','openai_rejected_'):null;
-   // 4xx/5xx provider rejection did not return a valid job: release paid
-   // reservation; an ambiguous network failure needs manual reconciliation.
-   await db.prepare(
-     "UPDATE realizo_ai_projects SET status=?,error_code=?,updated_at=datetime('now') WHERE id=? AND user_id=? AND status='researching'"
-   ).bind(definitelyRejected?'failed':'needs_review',
-     definitelyRejected?safeCode:'research_launch_unconfirmed',projectId,user.id).run();
-   if(definitelyRejected && access.mode==='paid')
-    await db.prepare(
-     "UPDATE realizo_ai_premium_orders SET status='released',updated_at=datetime('now') WHERE project_id=? AND user_id=? AND status='reserved'"
-    ).bind(projectId,user.id).run();
-  }
+  const task=launchPremiumResearch(env,{
+    projectId,userId:user.id,expiresAt:asset.expires_at,
+  });
+  ctx.waitUntil(task);
   const project=await db.prepare('SELECT * FROM realizo_ai_projects WHERE id=? AND user_id=?')
    .bind(projectId,user.id).first();
   return Response.json(safeResearchResponse(project),{status:202,headers});
