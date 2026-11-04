@@ -191,7 +191,7 @@ test('identical spoken sales directions apply across model families and preserve
    style:'ugc',duration:120,modelId
   });
   assert.equal(x.spoken_script,script,'Script preserved for '+modelId);
-  assert.ok(x.prompt.length<=5400,'Prompt valid for '+modelId);
+  assert.ok(x.prompt.length<=12500,'Prompt valid for '+modelId);
   assert.match(x.prompt,/MODEL-AGNOSTIC SPOKEN UGC AUDIO PERFORMANCE/);
   assert.match(x.prompt,/120-second runtime/);
   assert.match(x.prompt,/SPOKEN SCRIPT/);

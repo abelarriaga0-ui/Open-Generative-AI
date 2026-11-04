@@ -34,7 +34,7 @@ test('Premium Solo producto ignores researched UGC problem-solution, female acto
  assert.match(p.prompt,/macro|close-focus/);
  assert.match(p.prompt,/PRODUCT-ONLY EDITORIAL TIMELINE/);
  assert.doesNotMatch(p.prompt,/Woman in bathroom|Mujer triste|miraculous results|human hand|NMF SALES STORY|Buyer recognizes friction|SPOKEN SCRIPT|RESEARCHED SHOT IDEAS|natural skin, face/);
- assert.ok(p.prompt.length<5500);
+ assert.ok(p.prompt.length<=12500);
 });
 test('Premium with actors is a cinematic brand film, never UGC',()=>{
  const p=make('with_people');

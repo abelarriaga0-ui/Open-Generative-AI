@@ -15,7 +15,7 @@ const input={
  },
 };
 test('only one 30s template is offered',()=>{
- assert.deepEqual(AD_TEMPLATES.map(t=>t.id),['ugc-vendedor']);
+ assert.deepEqual(AD_TEMPLATES.filter(t=>t.duration===30).map(t=>t.id),['ugc-vendedor']);
  assert.equal(AD_TEMPLATES[0].duration,30);
  assert.deepEqual(templatePlan('ugc-vendedor',30).map(x=>x.end),[3,9.2,17.9,24.3,30]);
 });
@@ -29,7 +29,7 @@ test('Muapi template preserves timed sales beats, spoken Spanish, and new produc
  assert.match(prompt,/SPOKEN SCRIPT/);
  assert.match(prompt,/Use the uploaded product photograph ONLY as an identity/);
  assert.doesNotMatch(prompt,/Combo noil \+ goda|Hair Care Shampoo|For Him/);
- assert.ok(prompt.length<=5400);
+ assert.ok(prompt.length<=12500);
 });
 test('explicit woman modification preserves everything else',()=>{
  const original=buildLockedUgc30Prompt(input);

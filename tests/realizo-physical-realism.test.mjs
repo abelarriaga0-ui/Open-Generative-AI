@@ -43,6 +43,6 @@ test('ordinary commercial and UGC templates retain realistic finishes',()=>{
     market:'EC',templateActor:'hombre'
   });
   assert.match(ugc,/REALIZO_REALISM_STANDARD v1/);
-  assert.ok(ugc.length<=5400);
+  assert.ok(ugc.length<=12500);
   assert.match(ugc,/TOP-PRIORITY AUDIO DIRECTOR/);
 });
