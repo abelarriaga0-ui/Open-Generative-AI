@@ -1,0 +1,54 @@
+name: Realizo - one-time orphaned AI research reservation refund
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/realizo-ai-premium-503-refund-stale.yml"
+permissions:
+  contents: read
+jobs:
+  refund-orphans:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Return unused research holds only when OpenAI never issued a response ID
+        run: |
+          node --input-type=module <<'JS'
+          const root='https://api.cloudflare.com/client/v4/accounts/7e405c54c1a91abbdad537f7fec379a1/d1/database/2561f6c8-bfb2-4ea4-8527-7fec29188edf/query';
+          async function query(sql){
+            const r=await fetch(root,{method:'POST',headers:{
+              Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,'Content-Type':'application/json'
+            },body:JSON.stringify({sql}),signal:AbortSignal.timeout(20000)});
+            const j=await r.json();
+            if(!r.ok||!j.success)throw Error('D1 orphan research review failed HTTP '+r.status);
+            return {rows:j.result?.[0]?.results||[],changes:j.result?.[0]?.meta?.changes||0};
+          }
+          const eligible="p.provider_response_id IS NULL AND p.updated_at<=datetime('now','-90 seconds') AND (p.status='researching' OR (p.status='needs_review' AND p.error_code='research_launch_unconfirmed'))";
+          const before=await query("SELECT COUNT(*) AS n FROM realizo_ai_projects p JOIN realizo_ai_premium_orders o ON o.project_id=p.id AND o.status='reserved' WHERE "+eligible);
+          const count=Number(before.rows[0]?.n||0);
+          console.log('STALE_AI_RESEARCH_RESERVATIONS_BEFORE',count);
+          if(count>10)throw Error('Aborting: more than 10 orphaned reservations require manual audit');
+          if(count===0){console.log('NO_STALE_RESEARCH_RESERVATIONS_TO_REFUND');process.exit(0)}
+          // No provider_response_id exists and no valid deliverable was issued.
+          // Release customer money first. The existing D1 trigger is the ONLY
+          // component that changes wallet balances and ledger.
+          const released=await query(
+            "UPDATE realizo_ai_premium_orders SET status='released',updated_at=datetime('now') "+
+            "WHERE status='reserved' AND EXISTS (SELECT 1 FROM realizo_ai_projects p "+
+            "WHERE p.id=realizo_ai_premium_orders.project_id AND p.user_id=realizo_ai_premium_orders.user_id "+
+            "AND "+eligible+")"
+          );
+          console.log('STALE_AI_RESEARCH_RESERVATIONS_RELEASED',released.changes);
+          const failed=await query(
+            "UPDATE realizo_ai_projects SET status='failed',error_code='research_launch_unconfirmed',updated_at=datetime('now') "+
+            "WHERE provider_response_id IS NULL AND updated_at<=datetime('now','-90 seconds') "+
+            "AND (status='researching' OR (status='needs_review' AND error_code='research_launch_unconfirmed'))"
+          );
+          console.log('ORPHANED_RESEARCH_MARKED_FAILED',failed.changes);
+          const after=await query("SELECT COUNT(*) AS n FROM realizo_ai_projects p JOIN realizo_ai_premium_orders o ON o.project_id=p.id AND o.status='reserved' WHERE "+eligible);
+          const remaining=Number(after.rows[0]?.n||0);
+          console.log('STALE_RESERVATIONS_REMAINING',remaining);
+          if(remaining!==0)throw Error('Research reservation reconciliation incomplete');
+          JS
