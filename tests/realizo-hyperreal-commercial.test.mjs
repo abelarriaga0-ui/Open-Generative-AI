@@ -75,7 +75,7 @@ test('Cinematic becomes a motivated real-life story with true microexpression an
 test('Premium product-only includes real materials and no humans or fake speech',()=>{
  const x=directed('premium','GODA perfume masculino esencia concentrada');
  assert.match(x.prompt,/ZERO HUMAN PIXELS/);
- assert.match(x.prompt,/physically plausible 65–90mm/);
+ assert.match(x.prompt,/Physically plausible 65–90mm/);
  assert.match(x.prompt,/no spoken dialogue is requested/i);
  assert.match(x.prompt,/29–30s/);
  assert.ok(x.prompt.length<=12500);
