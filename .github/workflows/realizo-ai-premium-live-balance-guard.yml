@@ -1,0 +1,45 @@
+name: Realizo - verified live research wallet balance
+on:
+  push:
+    branches: [main, fix/realizo-verified-wallet-ai-research-20261104]
+    paths:
+      - ".github/workflows/realizo-ai-premium-live-balance-guard.yml"
+      - "app/api/realizo/ai-premium/route.js"
+      - "lib/realizo-creative/ai-premium.js"
+      - "tests/realizo-ai-premium-live-wallet.test.mjs"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  wallet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Real research funds and reserve consistency, no API spend
+        run: node --test tests/realizo-ai-premium-live-wallet.test.mjs tests/realizo-ai-premium.test.mjs
+      - name: Provider-reconciled D1 trigger permits only real funds
+        run: python -m unittest discover -s tests -p test_realizo_sandbox_owner_shared_wallet.py -v
+      - name: Verify the live D1 historical real-owner reconciliation exists (read-only)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node --input-type=module <<'JS'
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          if(!token)throw Error('Cloudflare audit credentials missing');
+          const sql="SELECT count(*) AS verified_accounts,MAX(CASE WHEN w.available_cents>=49 THEN 1 ELSE 0 END) AS can_pay_research FROM realizo_muapi_provider_balance_reconciliations r JOIN realizo_prepaid_muapi_imports i ON i.user_id=r.user_id AND i.slot=1 JOIN wallets w ON w.user_id=r.user_id WHERE r.slot=1 AND r.credited_cents=3000 AND r.provider_verified_cents>=3027 AND i.amount_cents=775";
+          const url='https://api.cloudflare.com/client/v4/accounts/7e405c54c1a91abbdad537f7fec379a1/d1/database/2561f6c8-bfb2-4ea4-8527-7fec29188edf/query';
+          const response=await fetch(url,{method:'POST',
+            headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+            body:JSON.stringify({sql}),signal:AbortSignal.timeout(16000)});
+          const data=await response.json();
+          if(!response.ok||!data.success)throw Error('D1 reconciliation metadata unavailable');
+          const row=data.result?.[0]?.results?.[0]||{};
+          const verified=Number(row.verified_accounts||0)===1;
+          console.log('EXACTLY_ONE_RECONCILED_REAL_OWNER',verified);
+          console.log('RECONCILED_REAL_OWNER_HAS_FUNDS_FOR_49_CENTS',Number(row.can_pay_research||0)===1);
+          if(!verified)throw Error('No uniquely reconciled owner in live D1: refusing to loosen billing checks');
+          JS
