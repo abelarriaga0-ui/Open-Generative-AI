@@ -7,6 +7,7 @@ test('official Wan 2.2 endpoint with version dot is allowed',()=>{
  assert.equal(isAllowedMuapiEndpoint('wan2.2-image-to-video'),true);
  assert.equal(isAllowedMuapiEndpoint('wan2.2-text-to-video'),true);
  assert.equal(isAllowedMuapiEndpoint('seedance-v1.5'),true);
+ assert.equal(isAllowedMuapiEndpoint('mmaudio-v2/video-to-video'),true);
 });
 test('remote URLs, path traversal, header delimiters and invalid slugs are blocked',()=>{
  for(const value of [
@@ -20,4 +21,11 @@ test('generation handler uses safely validated provider slug',()=>{
  const handler=readFileSync('app/api/wallet/generate/route.js','utf8');
  assert.match(handler,/isAllowedMuapiEndpoint\(model\.muapi_endpoint\)/);
  assert.doesNotMatch(handler,/\/\^\[A-Za-z0-9_-\]\+\$\//);
+});
+
+test('only Muapi documented nested endpoint is allowed, never arbitrary paths',()=>{
+ for(const s of ['mmaudio-v2/../../secret','mmaudio-v2/other',
+  'seedance-2-omni-reference/no-video','mmaudio-v2/video-to-video?key=1',
+  'mmaudio-v2/video-to-video/', 'https://api.muapi.ai/api/v1/mmaudio-v2/video-to-video'])
+  assert.equal(isAllowedMuapiEndpoint(s),false,s);
 });

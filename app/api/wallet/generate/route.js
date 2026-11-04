@@ -97,7 +97,7 @@ export async function POST(request) {
       let quote;
       try {
         await ensureOwnedMedia(env,user,renderInput);
-        quote=await quoteLiveVideo(body.model_id,renderInput,env.MUAPI_API_KEY);
+        quote=await quoteLiveVideo(body.model_id,renderInput,env.MUAPI_API_KEY,{requireLivePostRoute:true});
       } catch(err) {
         return Response.json({error:userFacingQuoteError(err)},{status:422});
       }
