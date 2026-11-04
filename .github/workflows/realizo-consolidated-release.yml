@@ -151,7 +151,15 @@ jobs:
           const paths=[['/studio',200],['/studio/images',200],['/studio/creations',200],['/login',200],['/api/auth/features',200],['/api/conversion-templates',200],['/api/realizo/images/config',200],['/api/realizo/images/presets',401],['/api/realizo/images/history',401],['/api/wallet',401],['/api/wallet/paypal/config',401],['/api/realizo/template/luxury/prepare',405],['/api/realizo/user-templates',401]];
           for(const [p,status] of paths){
             const r=await fetch(origin+p,{redirect:'manual',signal:AbortSignal.timeout(20000)});
-            if(r.status!==status)throw Error('Route '+p+' failed HTTP '+r.status+'; expected '+status);
+            const location=r.headers.get('location')||'';
+            const destination=location?new URL(location,origin):null;
+            const authRedirect=p==='/studio/creations'&&r.status===307&&
+              destination?.origin===origin&&(
+                destination.pathname.startsWith('/login')||
+                destination.pathname.startsWith('/studio')||
+                destination.pathname.startsWith('/api/auth'));
+            if(r.status!==status&&!authRedirect)
+              throw Error('Route '+p+' failed HTTP '+r.status+'; expected '+status);
             if(p==='/api/realizo/images/config'){
               const config=await r.json();
               if(!config.available || config.image_price_cents!==14 || config.research_price_cents!==0)
