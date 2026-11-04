@@ -7,6 +7,10 @@ on:
       - "lib/realizo-images/**"
       - "app/api/realizo/images/**"
       - "components/ConversionTemplatesStudio.jsx"
+      - "components/RealizoCreationsGallery.jsx"
+      - "components/RealizoStudio.jsx"
+      - "app/studio/[[...slug]]/page.js"
+      - "tests/realizo-creations.test.mjs"
       - "tests/realizo-images.test.mjs"
       - "tests/realizo-image-recovery.test.mjs"
       - "app/api/wallet/jobs/[id]/route.js"
@@ -34,7 +38,7 @@ jobs:
           node --check app/api/realizo/images/presets/route.js
           node --check app/api/realizo/images/presets/'[id]'/route.js
           node --check app/api/realizo/images/history/route.js
-          node --test tests/realizo-images.test.mjs tests/realizo-image-recovery.test.mjs
+          node --test tests/realizo-images.test.mjs tests/realizo-image-recovery.test.mjs tests/realizo-creations.test.mjs
 
       - name: Verificación de producción sin consumir créditos
         run: |
@@ -60,4 +64,7 @@ jobs:
           console.log('REALIZO_NEW_IMAGE_STUDIO_READY=true');
           JS
       - name: Validación de interfaz JSX
-        run: npx --yes esbuild@0.25.12 components/ConversionTemplatesStudio.jsx --loader:.jsx=jsx --outfile=/tmp/realizo-images-ui.js
+        run: |
+          npx --yes esbuild@0.25.12 components/ConversionTemplatesStudio.jsx --loader:.jsx=jsx --outfile=/tmp/realizo-images-ui.js
+          npx --yes esbuild@0.25.12 components/RealizoCreationsGallery.jsx --loader:.jsx=jsx --outfile=/tmp/realizo-creations-ui.js
+          npx --yes esbuild@0.25.12 components/RealizoStudio.jsx --loader:.jsx=jsx --outfile=/tmp/realizo-studio-ui.js
