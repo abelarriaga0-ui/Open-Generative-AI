@@ -338,3 +338,87 @@ test('seller typos in attraction language retain the true aroma selling angle',(
  assert.match(copy,/aroma|hueles/i);
  assert.doesNotMatch(copy,/fotograf[ií]a|publicaci[oó]n/i);
 });
+
+test('Candela 10-second UGC is rewritten from the merchant skin concern, not the photographed label',()=>{
+ const description='Candela crema corporal para el cuidado de la apariencia de las estrías, se utiliza mediante masajes';
+ const bad='¿Tu rutina se olvida Candela para la foto identifica la marca visible como candela y muestra las menciones estrías. Así puedes completar tu rutina de forma sencilla. Escríbenos para pedir información.';
+ const badQuality=scriptReadiness(bad,{seconds:10,style:'ugc',description});
+ assert.ok(badQuality.qualityIssues.includes('image_narration'));
+ assert.equal(badQuality.tooLong,false,'The bad script fits the time but MUST still fail content review');
+ const concept={
+  name:'Un masaje sin complicarlo',creative_style:'ugc',
+  hook:'¿Tu rutina se olvida Candela para la foto identifica la marca visible?',
+  spoken_script:bad,cta:'Escríbenos para pedir información',
+  buyer_motive:'Incluir una crema corporal en un momento cotidiano de masaje',
+  shots:['La foto identifica la marca y envase'],
+  video_prompt:'Una toma estática del envase y su texto'
+ };
+ const project={
+  id:'candela-old',product_name:'Candela',description,video_language:'es',
+  video_duration_seconds:10,video_model_id:'seedance-2.5-intl-omni-reference',
+  creative_style:'ugc',market_code:'EC',status:'ready',
+  findings_json:JSON.stringify({selected_sales_angle:'Cuidado de las estrías mediante una rutina de masaje',
+   product_dossier:{actual_category:'Crema corporal',
+    features:['La foto identifica la marca visible y menciones estrías']}}),
+  concepts_json:JSON.stringify([concept,concept,concept])
+ };
+ const recovered=safeResearchResponse(project),chosen=recovered.concepts[1];
+ const quality=scriptReadiness(chosen.spoken_script,{seconds:10,style:'ugc',description});
+ assert.equal(quality.tooShort,false);
+ assert.equal(quality.tooLong,false);
+ assert.deepEqual(quality.qualityIssues,[]);
+ assert.match(chosen.spoken_script,/¿Te incomoda mostrar tus estrías\?/i);
+ assert.match(chosen.spoken_script,/masaje corporal/i);
+ assert.match(chosen.spoken_script,/Candela, crema corporal/i);
+ assert.match(chosen.spoken_script,/Escríbenos para pedir información\.$/);
+ assert.doesNotMatch(chosen.spoken_script,/la foto|marca visible|envase|menciones|fotograf[ií]a|promete eliminar/i);
+ assert.equal(chosen.hook,spokenHook(chosen.spoken_script));
+ assert.equal(chosen.shots.length,2);
+ assert.match(chosen.shots[0],/estrías en su piel/i);
+ assert.match(chosen.shots[1],/aplicación corporal/i);
+ assert.doesNotMatch(chosen.video_prompt,/foto identifica|envase y su texto|toma estática/i);
+ const director=buildCommercialDirectorPackage({
+  concept:chosen,productName:'Candela',description,duration:10,
+  style:'ugc',modelId:'seedance-2.5-intl-omni-reference'
+ });
+ assert.match(director.prompt,/VOICE\/VISUAL STRIAE BUYER-PAIN LOCK/);
+ assert.match(director.prompt,/SPOKEN SCRIPT/);
+ assert.ok(director.prompt.includes(chosen.spoken_script));
+ assert.match(director.prompt,/CTA: Escríbenos para pedir información/);
+});
+
+test('all short Candela runtimes avoid photo metadata and false stretch-mark claims',()=>{
+ const description='Crema corporal Candela para el cuidado de la apariencia de las estrías mediante masaje';
+ const bad='¿Tu rutina se olvida Candela para la foto identifica la marca visible como Candela y muestra las menciones estrías. Así puedes completar tu rutina de forma sencilla. Escríbenos para pedir información.';
+ for(const seconds of [5,8,10,12,15,20,30]){
+  for(const style of ['ugc','demo']){
+   const spoken=improveSalesScript(bad,{seconds,style,productName:'Candela',
+    description,concept:{cta:'Escríbenos para pedir información',
+     buyer_motive:'Cuidado corporal mediante una rutina de masaje'},
+    report:{product_dossier:{actual_category:'Crema corporal',
+     features:['La foto identifica la marca visible como Candela']}},
+    language:'es'});
+   const quality=scriptReadiness(spoken,{seconds,style,description});
+   assert.equal(quality.tooShort,false,style+' '+seconds+' too short');
+   assert.equal(quality.tooLong,false,style+' '+seconds+' too long');
+   assert.deepEqual(quality.qualityIssues,[],style+' '+seconds+' spoken quality');
+   assert.match(spoken,/estrías/i);
+   assert.match(spoken,/Candela/);
+   assert.doesNotMatch(spoken,/la foto|fotograf[ií]a|marca visible|envase|borrará|elimina las estrías/i);
+  }
+ }
+});
+
+test('one paid research request explicitly excludes photographed label metadata from speech',()=>{
+ const request=buildResearchRequest({OPENAI_PREMIUM_MODEL:'gpt-6-luna'},{
+  product_name:'Candela',description:'Crema corporal para masaje de la piel con estrías',
+  video_duration_seconds:10,creative_style:'ugc',video_language:'es',
+  video_model_id:'seedance-2.5-intl-omni-reference',market_code:'EC'
+ });
+ assert.match(request.instructions,/CONTROL ANTI-NARRACIÓN/);
+ assert.match(request.instructions,/marca visible/);
+ assert.match(request.instructions,/si el producto es una crema corporal para estrías/);
+ assert.match(request.instructions,/REVISIÓN DE COPY ANTES DEL JSON/);
+ const aiSource=readFileSync('lib/realizo-creative/ai-premium.js','utf8');
+ assert.match(aiSource,/quality\.billable=false;quality\.needsReview=true/);
+});
