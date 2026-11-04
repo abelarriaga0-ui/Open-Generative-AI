@@ -130,7 +130,7 @@ export default function RealizoMotionHome({onCreate,onTemplates,onUseTemplate,on
   <section className="realizo-motion-footer-action" data-reveal>
    <div><span className="realizo-motion-kicker">EMPIEZA AQUÍ</span><h2>La siguiente idea es tuya<span>.</span></h2></div>
    <div><button type="button" className="realizo-motion-cta" onClick={onCreate}>Crear video <span aria-hidden="true">↗</span></button>
-   <button type="button" className="realizo-motion-footer-link" onClick={onViewVideos}>Mis videos →</button></div>
+   <button type="button" className="realizo-motion-footer-link" onClick={onViewVideos}>Mis creaciones →</button></div>
   </section>
  </div>;
 }
