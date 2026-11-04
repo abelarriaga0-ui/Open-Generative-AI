@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {getLiveVideoModel,quoteLiveVideo} from '../lib/wallet/live-video-models.js';
+import {getLiveVideoModel,quoteLiveVideo,verifyLiveVideoPostRoute,resolveLiveVideoPostRoute} from '../lib/wallet/live-video-models.js';
 
 test('Seedance 2.0 Omni Reference uses Muapi current endpoint slug, never old model-id alias', async(t)=>{
  const old=globalThis.fetch;
@@ -41,7 +41,7 @@ test('Seedance 2.0 Omni Reference uses Muapi current endpoint slug, never old mo
 test('The producer refreshes stale provider endpoint only after trusted quote, before reserving credits',()=>{
  const source=readFileSync('app/api/wallet/generate/route.js','utf8');
  const update=source.indexOf('UPDATE model_prices SET muapi_endpoint=');
- const quote=source.indexOf('quote=await quoteLiveVideo(body.model_id,renderInput,env.MUAPI_API_KEY)');
+ const quote=source.indexOf('quote=await quoteLiveVideo(body.model_id,renderInput,env.MUAPI_API_KEY,{requireLivePostRoute:true})');
  const reservation=source.indexOf("phase='wallet-reservation'");
  assert.ok(quote>=0 && update>quote && reservation>update);
  assert.match(source,/bind\(quote\.endpoint,quote\.model_id,quote\.endpoint\)/);
@@ -187,4 +187,102 @@ test('publisher carries the exact quoted Muapi slug to the POST request without 
  assert.match(backend,/model=\{model_id:quote.model_id,muapi_endpoint:quote.endpoint/);
  assert.match(backend,/fetch\('https:\/\/api.muapi.ai\/api\/v1\/' \+ model.muapi_endpoint/);
  assert.match(backend,/response.status >= 400 && response.status < 500/);
+});
+
+test('REAL production regression: legacy Seedance 2 Omni model uses endpoint_url instead of HTTP 404 catalog endpoint',async(t)=>{
+ const old=globalThis.fetch;t.after(()=>{globalThis.fetch=old});
+ const events=[];
+ const modelId='seedance-2-omni-reference';
+ globalThis.fetch=async(url,opts={})=>{
+  const pathname=new URL(String(url)).pathname;
+  const method=opts.method||'GET';
+  events.push({pathname,method,headers:opts.headers});
+  if(pathname==='/api/v1/models/'+modelId)return Response.json({
+   name:modelId,category:'Image to Video',is_enabled:1,
+   dynamic_pricing:true,cost_currency:'USD',
+   // Exact live Muapi catalog behavior audited Nov 4, 2026:
+   endpoint:'/api/v1/seedance-2-omni-reference', // 404
+   endpoint_url:'seedance-2.0-omni-reference', // 405 Allow: POST
+   estimate_endpoint:'/api/v1/models/'+modelId+'/estimate-cost'
+  });
+  if(pathname==='/api/v1/seedance-2.0-omni-reference' && method==='GET')
+   return new Response('',{status:405,headers:{Allow:'POST'}});
+  if(pathname==='/api/v1/models/'+modelId+'/estimate-cost' && method==='POST'){
+   const input=JSON.parse(opts.body);
+   assert.equal(input.duration,15);
+   assert.deepEqual(input.images_list,['https://realizo.example/candela.png']);
+   return Response.json({cost:{amount_usd:4.25},currency:'USD'});
+  }
+  if(pathname==='/api/v1/seedance-2-omni-reference')return new Response('',{status:404});
+  throw Error('unrecognized probe '+method+' '+pathname);
+ };
+ const resolved=await getLiveVideoModel(modelId);
+ assert.equal(resolved.endpoint,'seedance-2.0-omni-reference');
+ const quote=await quoteLiveVideo(modelId,{
+  prompt:'@image1 Candela UGC, authentic real-life skincare commercial',
+  images_list:['https://realizo.example/candela.png'],
+  duration:15,aspect_ratio:'9:16'
+ },'',{requireLivePostRoute:true});
+ assert.equal(quote.model_id,modelId,'never switch selected model');
+ assert.equal(quote.endpoint,'seedance-2.0-omni-reference');
+ assert.equal(quote.provider_cost_cents,425);
+ assert.ok(events.some(e=>e.pathname==='/api/v1/seedance-2.0-omni-reference'&&e.method==='GET'));
+ assert.ok(!events.some(e=>e.pathname==='/api/v1/seedance-2-omni-reference'));
+ assert.ok(!events.some(e=>e.method==='POST'&&!e.pathname.includes('/estimate-cost')),
+  'the preflight and tests MUST NOT perform a paid provider generation');
+ assert.ok(!events.some(e=>Object.keys(e.headers||{}).some(k=>k.toLowerCase()==='x-api-key')),
+  'public GET probes and estimators must never receive the platform API key');
+});
+
+test('every model validates the real POST route by non-billing GET, not by a model alias',async(t)=>{
+ const old=globalThis.fetch;t.after(()=>{globalThis.fetch=old});
+ const routes=[];
+ globalThis.fetch=async(url,opts={})=>{
+  const pathname=new URL(String(url)).pathname;
+  assert.equal(opts.method,'GET');
+  routes.push(pathname);
+  if(pathname==='/api/v1/deprecated-catalog-alias')return new Response('',{status:404});
+  if(pathname==='/api/v1/verified-model-route')
+   return new Response('',{status:405,headers:{Allow:'POST'}});
+  throw Error('Unexpected route '+pathname);
+ };
+ assert.equal(await verifyLiveVideoPostRoute('verified-model-route'),true);
+ assert.equal(await verifyLiveVideoPostRoute('deprecated-catalog-alias'),false);
+ const route=await resolveLiveVideoPostRoute({
+  endpoint_url:'deprecated-catalog-alias',
+  endpoint:'/api/v1/verified-model-route',
+ },'some-video-model');
+ assert.equal(route,'verified-model-route');
+ assert.ok(routes.includes('/api/v1/deprecated-catalog-alias'));
+ assert.ok(routes.includes('/api/v1/verified-model-route'));
+});
+
+test('dead or ambiguous routes stop all 400+ video families before wallet reservation',async(t)=>{
+ const old=globalThis.fetch;t.after(()=>{globalThis.fetch=old});
+ globalThis.fetch=async(url,opts={})=>{
+  const p=new URL(String(url)).pathname;
+  if(p==='/api/v1/models/missing-video')return Response.json({
+   name:'missing-video',category:'Image to Video',is_enabled:1,
+   endpoint_url:'retired-route',endpoint:'/api/v1/retired-alias',
+   dynamic_pricing:true,estimate_endpoint:'/api/v1/models/missing-video/estimate-cost'
+  });
+  if(opts.method==='GET'&&p.startsWith('/api/v1/retired'))
+   return new Response('',{status:404});
+  throw Error('The preflight must not submit a paid generation or even estimate its price');
+ };
+ await assert.rejects(quoteLiveVideo('missing-video',{
+  prompt:'video',duration:15
+ },'',{requireLivePostRoute:true}),/muapi_generation_route_not_found/);
+ globalThis.fetch=async()=>new Response('',{status:403});
+ await assert.rejects(verifyLiveVideoPostRoute('unverifiable-video-route'),/muapi_generation_route_unverifiable/);
+});
+
+test('quote and paid generate both require live POST routing before any reservation',()=>{
+ const quote=readFileSync('app/api/wallet/quote/route.js','utf8');
+ const generate=readFileSync('app/api/wallet/generate/route.js','utf8');
+ assert.match(quote,/quoteLiveVideo\(body\.model_id,renderInput,env\.MUAPI_API_KEY,\{requireLivePostRoute:true\}\)/);
+ assert.match(generate,/quoteLiveVideo\(body\.model_id,renderInput,env\.MUAPI_API_KEY,\{requireLivePostRoute:true\}\)/);
+ assert.ok(generate.indexOf('requireLivePostRoute:true')<generate.indexOf("phase='wallet-reservation'"));
+ const client=readFileSync('lib/realizo-creative/wallet-generation.js','utf8');
+ assert.match(client,/No se reservaron créditos/);
 });
