@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
+import {walletPilotAction} from '../lib/wallet/request-policy.js';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 
 test('Mis creaciones sustituye Mis videos en navegación y conserva acceso desde inicio',()=>{
@@ -50,4 +51,11 @@ test('progreso de imagen crece con el tiempo sin afirmar porcentaje exacto falso
   assert.match(generator,/Límite:/);
   assert.match(generator,/onViewCreations/);
   assert.match(jobs,/provider_progress_percent/);
+});
+
+test('proxy permite Mis creaciones sin abrir endpoints de otros clientes',()=>{
+ assert.equal(walletPilotAction('/studio/creations',true,true),'allow');
+ assert.equal(walletPilotAction('/studio/videos',true,true),'allow');
+ assert.equal(walletPilotAction('/studio/creations',true,false),'redirect');
+ assert.equal(walletPilotAction('/api/realizo/creations/admin',true,true),'deny');
 });
