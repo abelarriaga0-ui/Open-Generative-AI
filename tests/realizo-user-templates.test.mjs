@@ -62,7 +62,9 @@ test('private templates migrate without modifying wallet balances or generation 
  const video=readFileSync('packages/studio/src/components/VideoStudio.jsx','utf8');
  const library=readFileSync('components/RealizoTemplateLibrary.jsx','utf8');
  const history=readFileSync('components/RealizoStudio.jsx','utf8');
+ const creations=readFileSync('components/RealizoCreationsGallery.jsx','utf8');
  assert.match(video,/Guardar plantilla/);
  assert.match(library,/Mis plantillas/);
- assert.match(history,/Guardar como plantilla/);
+ assert.match(history,/onSaveVideoTemplate/);
+ assert.match(creations,/Guardar plantilla/);
 });
