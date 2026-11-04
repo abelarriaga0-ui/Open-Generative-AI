@@ -109,7 +109,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
   return()=>{active=false};
  },[initialProjectId]);
  useEffect(()=>{
-  if(!project?.id || !['created','researching'].includes(project.status))return;
+  if(!project?.id || (!['created','researching'].includes(project.status)&&!(project.status==='needs_review'&&project.error==='research_launch_unconfirmed')))return;
   let active=true;
   const poll=async()=>{
    try{
@@ -187,6 +187,20 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
    setImage({id:json.id,url:json.url});keyRef.current=null;
   }catch(e){setError(e.message)}finally{setBusy(false)}
  };
+ const recoverStartedResearch=async(requestKey)=>{
+   // A failing edge response can occur after atomic reservation. Recover the
+   // SAME request by key; never repeat a paid OpenAI POST.
+   try{
+     const r=await fetch('/api/realizo/ai-premium?request_key='+encodeURIComponent(requestKey),{
+       credentials:'same-origin',cache:'no-store'
+     });
+     if(r.ok){
+       const saved=await r.json();
+       if(saved?.id){setProject(saved);onWalletRefresh?.();return true;}
+     }
+   }catch{}
+   return false;
+ };
  const start=async()=>{
   if(!config?.enabled)return setError('Realizo AI Premium necesita una conexión autorizada y saldo real cuando corresponde.');
   if(!image?.id || product.description.trim().length<15)
@@ -211,12 +225,17 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
       max_price_cents:price,pricing_version:config.pricing_version}),
    });
    const json=await r.json().catch(()=>({}));
+   if(!r.ok && [502,503,504].includes(r.status)){
+     if(await recoverStartedResearch(keyRef.current))return;
+     throw Error('No se pudo confirmar el inicio. Conservamos la misma solicitud para evitar cobros duplicados; inténtalo nuevamente desde esta pantalla.');
+   }
    if(!r.ok)throw Error(json.error==='ai_premium_daily_limit'?
      'Has alcanzado el límite de investigaciones del día.':
      json.error==='insufficient_general_funds'||json.error==='verified_real_topup_required'?
      'Necesitas saldo de una recarga real verificada.':
      json.error==='price_changed_confirm_again'?'El precio cambió. Actualiza y confírmalo nuevamente.':
      json.error==='invalid_video_configuration'?'El modelo o duración elegidos ya no están disponibles. Selecciona otra combinación.':
+     json.error==='research_background_unavailable'?'El motor de investigación está temporalmente indisponible. No se reservó ningún crédito.':
      'No se pudo iniciar la investigación: '+(json.error||r.status));
    setProject(json);
    onWalletRefresh?.();
