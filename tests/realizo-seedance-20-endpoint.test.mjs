@@ -126,3 +126,65 @@ test('provider 404 is a failed request releasing the reservation without retryin
  assert.match(ledger,/CREATE TRIGGER IF NOT EXISTS generation_release_after_failure/);
  assert.match(ledger,/available_cents = available_cents \+ NEW.price_cents/);
 });
+
+test('Seedance 2.0 Standard References 15s uses official no-video route, not a stale catalog alias',async(t)=>{
+ const original=globalThis.fetch;
+ t.after(()=>{globalThis.fetch=original});
+ const modelId='seedance-2-omni-reference-no-video';
+ const seen=[];
+ globalThis.fetch=async(url,options={})=>{
+  const pathname=new URL(String(url)).pathname;
+  seen.push(pathname);
+  if(pathname==='/api/v1/models/'+modelId)return Response.json({
+   id:modelId,category:'Image to Video',group_of:'video',
+   is_enabled:true,dynamic_pricing:true,cost_currency:'USD',
+   // Reproduce a stale Muapi catalog alias: both returned endpoints are wrong.
+   endpoint:'seedance-2.0-omni-reference',
+   endpoint_url:'https://api.muapi.ai/api/v1/seedance-2-omni-reference',
+   estimate_endpoint:'/api/v1/models/'+modelId+'/estimate-cost'
+  });
+  if(pathname==='/api/v1/models/'+modelId+'/estimate-cost'){
+   assert.equal(options.method,'POST');
+   const input=JSON.parse(options.body);
+   assert.equal(input.duration,15);
+   assert.equal(input.aspect_ratio,'9:16');
+   assert.deepEqual(input.images_list,['https://realizo.example/candela.png']);
+   assert.equal(input.video_files,undefined,'No video required for this workflow');
+   return Response.json({cost:{amount_usd:4.35},currency:'USD'});
+  }
+  throw Error('unexpected_public_muapi_endpoint_'+pathname);
+ };
+ const model=await getLiveVideoModel(modelId);
+ assert.equal(model.endpoint,'seedance-2-omni-reference-no-video');
+ const quote=await quoteLiveVideo(modelId,{
+  prompt:'@image1 authentic Candela UGC commercial with spoken dialogue',
+  images_list:['https://realizo.example/candela.png'],
+  duration:15,aspect_ratio:'9:16'
+ });
+ assert.equal(quote.model_id,modelId);
+ assert.equal(quote.endpoint,'seedance-2-omni-reference-no-video');
+ assert.equal(quote.provider_cost_cents,435);
+ assert.ok(seen.every(path=>path.startsWith('/api/v1/models/')),
+  'Quote preflight must never submit a paid generation');
+});
+
+test('Seedance 2.0 legacy Omni (supports input videos) stays distinct from no-video References',async(t)=>{
+ const original=globalThis.fetch;t.after(()=>{globalThis.fetch=original});
+ globalThis.fetch=async()=>Response.json({
+  name:'seedance-2-omni-reference',
+  category:'Image to Video',is_enabled:true,
+  endpoint:'seedance-2.0-omni-reference',
+  endpoint_url:'https://api.muapi.ai/api/v1/seedance-2-omni-reference'
+ });
+ const legacy=await getLiveVideoModel('seedance-2-omni-reference');
+ assert.equal(legacy.endpoint,'seedance-2.0-omni-reference');
+ assert.notEqual(legacy.endpoint,'seedance-2-omni-reference-no-video');
+});
+
+test('publisher carries the exact quoted Muapi slug to the POST request without mutating user selection',()=>{
+ const backend=readFileSync('app/api/wallet/generate/route.js','utf8');
+ assert.match(backend,/quote=await quoteLiveVideo\(body.model_id,renderInput,env.MUAPI_API_KEY\)/);
+ assert.match(backend,/model=\{model_id:quote.model_id,muapi_endpoint:quote.endpoint/);
+ assert.match(backend,/fetch\('https:\/\/api.muapi.ai\/api\/v1\/' \+ model.muapi_endpoint/);
+ assert.match(backend,/response.status >= 400 && response.status < 500/);
+});
