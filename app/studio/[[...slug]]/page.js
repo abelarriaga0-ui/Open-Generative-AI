@@ -12,10 +12,10 @@ export default async function StudioPage({ params }) {
   if (process.env.REALIZO_AUTH_PROVIDER !== 'native') return <StandaloneShell />;
   const route = await params;
   const slug = route?.slug || [];
-  if (slug.length > 1 || (slug.length === 1 && !['video','images'].includes(slug[0]))) redirect('/studio');
+  if (slug.length > 1 || (slug.length === 1 && !['video','images','creations','videos'].includes(slug[0]))) redirect('/studio');
   const env = await getWalletEnvironment();
   const user = await getOwnSession(env);
   // Public creative showroom: visitors can browse styles and the empty library.
   // All wallet, video generation and project endpoints still require auth.
-  return <RealizoStudio accountId={user?.id||null} guest={!user} initialPage={slug[0] === 'images' ? 'images' : 'home'} />;
+  return <RealizoStudio accountId={user?.id||null} guest={!user} initialPage={['creations','videos'].includes(slug[0]) ? 'videos' : slug[0] === 'images' ? 'images' : 'home'} />;
 }
