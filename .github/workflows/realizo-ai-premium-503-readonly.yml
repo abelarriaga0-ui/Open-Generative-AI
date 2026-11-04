@@ -1,0 +1,58 @@
+name: Realizo - AI Premium production 503 diagnosis (read only)
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/realizo-ai-premium-503-readonly.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Inspect production Worker bindings and anonymously probe GET and POST (no billable calls)
+        run: |
+          node --input-type=module <<'JS'
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          if(!token)throw Error('Cloudflare audit token unavailable');
+          const root='https://api.cloudflare.com/client/v4/accounts/7e405c54c1a91abbdad537f7fec379a1/workers/scripts/realizo-auth-sandbox';
+          async function cf(path){
+            const res=await fetch(root+path,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(17000)});
+            const json=await res.json().catch(()=>({}));
+            if(!res.ok||!json.success)throw Error('Cloudflare metadata not readable '+path+' HTTP '+res.status);
+            return json.result;
+          }
+          const secrets=await cf('/secrets');
+          const allowed=['OPENAI_API_KEY','MUAPI_API_KEY','PAYPAL_CLIENT_SECRET','REALIZO_OPERATOR_PREFLIGHT_TOKEN'];
+          console.log('SECRET_PRESENT_FLAGS',JSON.stringify(Object.fromEntries(allowed.map(k=>[k,secrets.some(x=>x.name===k)]))));
+          const settings=await cf('/settings');
+          const b=settings?.bindings||[];
+          const relevant=['REALIZO_ENV','REALIZO_AI_PREMIUM_ENABLED','REALIZO_AI_PREMIUM_PUBLIC_ENABLED','OPENAI_PREMIUM_MODEL','PAYPAL_MODE','REALIZO_AUTH_PROVIDER','WALLETS_DB'];
+          console.log('WORKER_SETTINGS',JSON.stringify(relevant.map(k=>{
+            const v=b.find(x=>x.name===k);
+            return {key:k,bindingType:v?.type||null,value:v?.type==='plain_text'?v.text:null};
+          })));
+          const origin='https://realizo-auth-sandbox.abelarriaga0.workers.dev';
+          async function probe(method,path,body){
+            const r=await fetch(origin+path,{
+              method,headers:{Accept:'application/json',Origin:origin,'Content-Type':'application/json'},
+              ...(body?{body:JSON.stringify(body)}:{}),
+              redirect:'manual',cache:'no-store',signal:AbortSignal.timeout(15000)
+            });
+            const contentType=r.headers.get('content-type')||'';
+            const response=await r.text();
+            let payload=null;try{payload=JSON.parse(response)}catch{}
+            return {status:r.status,contentType,code:payload?.error||null,
+              cfRay:r.headers.get('cf-ray')?.split('-').at(-1)||null,
+              looksHTML:response.startsWith('<!DOCTYPE html>')||response.startsWith('<html')};
+          }
+          for(let i=0;i<3;i++){
+            console.log('ANONYMOUS_PREMIUM_GET_'+i,JSON.stringify(await probe('GET','/api/realizo/ai-premium')));
+            console.log('ANONYMOUS_PREMIUM_POST_'+i,JSON.stringify(await probe('POST','/api/realizo/ai-premium',{product_name:'read-only probe'})));
+          }
+          JS
