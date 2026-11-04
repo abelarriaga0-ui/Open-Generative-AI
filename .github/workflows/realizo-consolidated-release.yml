@@ -47,7 +47,7 @@ on:
       - "components/RealizoMotionHome.jsx"
       - "components/ConversionTemplatesStudio.jsx"
       - "components/RealizoCreationsGallery.jsx"
-      - "app/studio/[[...slug]]/page.js"
+      - "app/studio/**"
       - "tests/realizo-creations.test.mjs"
       - "app/realizo-motion-home.css"
       - "app/realizo-conversion-images.css"
