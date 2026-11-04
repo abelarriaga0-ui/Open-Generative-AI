@@ -95,7 +95,12 @@ export async function GET(request, { params }) {
         timeout_refunded: expired.status === 'failed',
         customer_price_cents: expired.price_cents }, { headers: { 'Cache-Control':'no-store' } });
     }
-    return Response.json({ job_id: job.id, status: job.status, provider_status: status },
+    const progressRaw=result.progress ?? result.data?.progress ?? result.metrics?.progress;
+    const progressNumeric=typeof progressRaw==='number'?progressRaw:Number(progressRaw);
+    const progressPercent=progressRaw!=null && Number.isFinite(progressNumeric) && progressNumeric>=0 && progressNumeric<=100
+      ?Math.round(progressNumeric<=1?progressNumeric*100:progressNumeric):null;
+    return Response.json({ job_id: job.id, status: job.status, provider_status: status,
+      provider_progress_percent:progressPercent },
       { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     return jsonError(error);
