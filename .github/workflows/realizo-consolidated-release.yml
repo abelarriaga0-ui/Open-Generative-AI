@@ -34,6 +34,9 @@ on:
       - "tests/realizo-product-identity-voice.test.mjs"
       - "tests/realizo-hyperreal-commercial.test.mjs"
       - "tests/realizo-ai-premium-live-wallet.test.mjs"
+      - "tests/realizo-ai-research-complimentary.test.mjs"
+      - "tests/test_realizo_complimentary_research_sql.py"
+      - "migrations/0029_realizo_complimentary_research_public.sql"
       - "tests/realizo-muapi-master-ugc30.test.mjs"
       - "lib/realizo-creative/research-lifecycle.js"
       - "app/api/realizo/ai-premium/route.js"
@@ -109,7 +112,8 @@ jobs:
             cfg.vars.REALIZO_MEDIA_D1_FALLBACK!=='true'||
             cfg.vars.REALIZO_TEMPLATE_IMAGES_ENABLED!=='true'||
             cfg.vars.REALIZO_AI_PREMIUM_ENABLED!=='true'||
-            cfg.vars.REALIZO_AI_PREMIUM_PUBLIC_ENABLED!=='true')
+            cfg.vars.REALIZO_AI_PREMIUM_PUBLIC_ENABLED!=='true'||
+             cfg.vars.REALIZO_AI_RESEARCH_COMPLIMENTARY!=='true')
               throw Error('Unexpected or unsafe canonical worker configuration');
           if(!process.env.CLOUDFLARE_API_TOKEN)throw Error('Cloudflare token missing');
           console.log('Verified public video, images, premium and Live checkout. Auto-topup remains consent-only and not implemented.');
@@ -124,6 +128,10 @@ jobs:
         run: |
           node --test tests/realizo-ai-premium-live-wallet.test.mjs tests/realizo-ai-premium.test.mjs
           python -m unittest discover -s tests -p test_realizo_sandbox_owner_shared_wallet.py -v
+      - name: Verify complimentary public research has zero customer debit and globally capped use
+        run: |
+          node --test tests/realizo-ai-research-complimentary.test.mjs tests/realizo-ai-premium.test.mjs tests/realizo-ai-premium-live-wallet.test.mjs
+          python -m unittest discover -s tests -p test_realizo_complimentary_research_sql.py -v
       - name: Verify AI Premium 503 recovery, idempotent paid research and full refund
         run: node --test tests/realizo-research-503-recovery.test.mjs tests/realizo-ai-premium.test.mjs tests/realizo-premium-recovery.test.mjs
       - name: Verify Image Studio creative rules, contracts and user privacy
