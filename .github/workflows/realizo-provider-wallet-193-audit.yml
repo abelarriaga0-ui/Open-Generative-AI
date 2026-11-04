@@ -1,0 +1,53 @@
+name: Realizo - verify provider USD 1.93 and wallet liability (read only)
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/realizo-provider-wallet-193-audit.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      REALIZO_MUAPI_API_KEY: ${{ secrets.REALIZO_MUAPI_API_KEY }}
+    steps:
+      - name: Read live provider account balance and aggregated D1 ledger only
+        run: |
+          node --input-type=module <<'JS'
+          const key=process.env.REALIZO_MUAPI_API_KEY,token=process.env.CLOUDFLARE_API_TOKEN;
+          if(!key||!token)throw Error('Required credentials missing');
+          const p=await fetch('https://api.muapi.ai/api/v1/account/balance',{
+            headers:{'x-api-key':key},signal:AbortSignal.timeout(18000)});
+          if(!p.ok)throw Error('Provider returned HTTP '+p.status);
+          const data=await p.json();const usd=Number(data.balance);
+          if(!Number.isFinite(usd)||usd<0)throw Error('Invalid provider balance');
+          console.log('MUAPI_PROVIDER_USD',(Math.round(usd*100)/100).toFixed(2));
+          const url='https://api.cloudflare.com/client/v4/accounts/7e405c54c1a91abbdad537f7fec379a1/d1/database/2561f6c8-bfb2-4ea4-8527-7fec29188edf/query';
+          async function query(sql){
+            const r=await fetch(url,{method:'POST',headers:{Authorization:'Bearer '+token,
+              'Content-Type':'application/json'},body:JSON.stringify({sql}),
+              signal:AbortSignal.timeout(16000)});
+            const out=await r.json().catch(()=>({}));
+            if(!r.ok||!out.success||!out.result?.[0]?.success)throw Error('D1 read failed HTTP '+r.status);
+            return out.result[0].results||[];
+          }
+          const owner=await query("SELECT w.available_cents,w.reserved_cents,i.amount_cents AS historic_import FROM realizo_muapi_provider_balance_reconciliations r JOIN realizo_prepaid_muapi_imports i ON i.user_id=r.user_id AND i.slot=1 JOIN wallets w ON w.user_id=r.user_id WHERE r.slot=1 AND r.credited_cents=3000 AND r.provider_verified_cents>=3027 AND i.amount_cents=775");
+          if(owner.length!==1)throw Error('Exactly one reconciled account not found');
+          console.log('RECONCILED_WALLET_AVAILABLE_USD',(Number(owner[0].available_cents)/100).toFixed(2));
+          console.log('RECONCILED_WALLET_RESERVED_USD',(Number(owner[0].reserved_cents)/100).toFixed(2));
+          const liability=await query("SELECT COUNT(*) AS n,COALESCE(SUM(available_cents),0) AS available,COALESCE(SUM(reserved_cents),0) AS reserved FROM wallets");
+          console.log('TOTAL_WALLET_ACCOUNTS',Number(liability[0]?.n||0));
+          console.log('TOTAL_WALLET_LIABILITY_USD',((Number(liability[0]?.available||0)+Number(liability[0]?.reserved||0))/100).toFixed(2));
+          const pending=await query("SELECT status,COUNT(*) AS n FROM generation_jobs WHERE status IN ('reserved','submitted','unknown') GROUP BY status");
+          console.log('PENDING_VIDEO_JOB_COUNTS',JSON.stringify(pending));
+          const research=await query("SELECT status,COUNT(*) AS n FROM realizo_ai_premium_orders WHERE status='reserved' GROUP BY status");
+          console.log('PENDING_RESEARCH_ORDER_COUNTS',JSON.stringify(research));
+          const sources=await query("SELECT provider_environment,COUNT(*) AS n,COALESCE(SUM(amount_cents),0) AS cents FROM verified_deposits GROUP BY provider_environment");
+          console.log('VERIFIED_PAYMENT_AGGREGATES',JSON.stringify(sources));
+          console.log('AUDIT_NO_WRITES_NO_CHARGES',true);
+          JS
