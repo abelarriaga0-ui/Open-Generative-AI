@@ -57,3 +57,72 @@ test('Muapi endpoint cannot redirect to external host',async(t)=>{
  });
  await assert.rejects(getLiveVideoModel('seedance-2-omni-reference'),/unsupported_model_endpoint/);
 });
+
+test('Seedance 2.5 International Omni Reference uses the published POST route, never stale catalog slugs',async(t)=>{
+ const original=globalThis.fetch;t.after(()=>{globalThis.fetch=original});
+ const modelId='seedance-2.5-intl-omni-reference';
+ const seen=[];
+ globalThis.fetch=async(url,options={})=>{
+  const path=new URL(String(url)).pathname;seen.push(path);
+  if(path==='/api/v1/models/'+modelId)return Response.json({
+   name:modelId,category:'Image to Video',is_enabled:true,
+   dynamic_pricing:true,cost_currency:'USD',
+   endpoint:'seedance-2.0-omni-reference',
+   endpoint_url:'https://api.muapi.ai/api/v1/seedance-2.5-intl-omni-reference',
+   estimate_endpoint:'/api/v1/models/'+modelId+'/estimate-cost'
+  });
+  if(path==='/api/v1/models/'+modelId+'/estimate-cost'){
+   assert.equal(options.method,'POST');
+   return Response.json({cost:{amount_usd:3.74},currency:'USD'});
+  }
+  throw Error('Unexpected URL '+url);
+ };
+ const fetched=await getLiveVideoModel(modelId);
+ assert.equal(fetched.endpoint,'seedance-2.5-intl-omni-reference');
+ const quoted=await quoteLiveVideo(modelId,{
+  prompt:'Commercial live action product',duration:10,
+  images_list:['https://realizo.example/candela.png'],
+  resolution:'720p',aspect_ratio:'9:16'
+ });
+ assert.equal(quoted.endpoint,modelId);
+ assert.equal(quoted.provider_cost_cents,374);
+ assert.ok(seen.every(x=>x.startsWith('/api/v1/models/')));
+});
+
+test('all documented Seedance 2.5 variant routes override stale aliases without changing user choice',async(t)=>{
+ const old=globalThis.fetch;t.after(()=>{globalThis.fetch=old});
+ for(const id of [
+  'seedance-2.5-omni-reference',
+  'seedance-2.5-intl-image-to-video',
+  'seedance-2.5-intl-text-to-video'
+ ]){
+  globalThis.fetch=async()=>Response.json({
+   id,category:'Text to Video',is_enabled:true,
+   endpoint:'old-retired-2-0-route',
+   endpoint_url:'https://api.muapi.ai/api/v1/obsolete-route'
+  });
+  const result=await getLiveVideoModel(id);
+  assert.equal(result.endpoint,id);
+ }
+});
+
+test('non-Seedance models use a safe canonical endpoint_url before old legacy slug',async(t)=>{
+ const old=globalThis.fetch;t.after(()=>{globalThis.fetch=old});
+ globalThis.fetch=async()=>Response.json({
+  name:'kling-live',category:'Image to Video',is_enabled:true,
+  endpoint:'kling-retired',
+  endpoint_url:'https://api.muapi.ai/api/v1/kling-live',
+ });
+ const model=await getLiveVideoModel('kling-live');
+ assert.equal(model.endpoint,'kling-live');
+});
+
+test('provider 404 is a failed request releasing the reservation without retrying paid generation',()=>{
+ const route=readFileSync('app/api/wallet/generate/route.js','utf8');
+ const status=route.indexOf("if (response.status >= 400 && response.status < 500)");
+ const release=route.indexOf("await updateJobStatus(env.WALLETS_DB, user.id, job.id, 'failed', null, failure);");
+ assert.ok(status>=0 && release>status,'release the wallet reservation on upstream model rejection');
+ const ledger=readFileSync('migrations/0001_wallet.sql','utf8');
+ assert.match(ledger,/CREATE TRIGGER IF NOT EXISTS generation_release_after_failure/);
+ assert.match(ledger,/available_cents = available_cents \+ NEW.price_cents/);
+});

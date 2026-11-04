@@ -17,6 +17,9 @@ on:
       - "app/api/internal/paypal-preflight/route.js"
       - "lib/wallet/request-policy.js"
       - "lib/wallet/live-video-models.js"
+      - "lib/realizo-creative/wallet-generation.js"
+      - "tests/realizo-live-models.test.mjs"
+      - "tests/realizo-muapi-endpoint.test.mjs"
       - "tests/realizo-seedance-20-endpoint.test.mjs"
       - "components/wallet/PaypalTopup.jsx"
       - "migrations/0026_wallet_operator_adjustments.sql"
@@ -102,7 +105,7 @@ jobs:
           console.log('Verified public video, images, premium and Live checkout. Auto-topup remains consent-only and not implemented.');
           JS
       - name: Verify realistic video appearance across all director styles before deployment
-        run: node --test tests/realizo-physical-realism.test.mjs tests/realizo-luxury-template.test.mjs tests/realizo-seedance-20-endpoint.test.mjs tests/realizo-user-templates.test.mjs tests/realizo-sales-director.test.mjs
+        run: node --test tests/realizo-physical-realism.test.mjs tests/realizo-luxury-template.test.mjs tests/realizo-seedance-20-endpoint.test.mjs tests/realizo-live-models.test.mjs tests/realizo-muapi-endpoint.test.mjs tests/realizo-user-templates.test.mjs tests/realizo-sales-director.test.mjs
       - name: Verify Image Studio creative rules, contracts and user privacy
         run: node --test tests/realizo-images.test.mjs tests/realizo-image-recovery.test.mjs tests/realizo-creations.test.mjs
       - name: Compile current Realizo application, including studio and all user workflows
