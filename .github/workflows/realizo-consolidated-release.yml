@@ -29,6 +29,10 @@ on:
       - "lib/realizo-creative/sales-storyboard.js"
       - "lib/realizo-creative/format-guides.js"
       - "lib/realizo-creative/ai-premium.js"
+      - "lib/realizo-creative/research-lifecycle.js"
+      - "app/api/realizo/ai-premium/route.js"
+      - "app/api/realizo/ai-premium/[id]/route.js"
+      - "tests/realizo-research-503-recovery.test.mjs"
       - "app/api/realizo/ai-premium/[id]/approve/route.js"
       - "components/RealizoPremium.jsx"
       - "tests/realizo-sales-director.test.mjs"
@@ -106,6 +110,8 @@ jobs:
           JS
       - name: Verify realistic video appearance across all director styles before deployment
         run: node --test tests/realizo-physical-realism.test.mjs tests/realizo-luxury-template.test.mjs tests/realizo-seedance-20-endpoint.test.mjs tests/realizo-live-models.test.mjs tests/realizo-muapi-endpoint.test.mjs tests/realizo-user-templates.test.mjs tests/realizo-sales-director.test.mjs
+      - name: Verify AI Premium 503 recovery, idempotent paid research and full refund
+        run: node --test tests/realizo-research-503-recovery.test.mjs tests/realizo-ai-premium.test.mjs tests/realizo-premium-recovery.test.mjs
       - name: Verify Image Studio creative rules, contracts and user privacy
         run: node --test tests/realizo-images.test.mjs tests/realizo-image-recovery.test.mjs tests/realizo-creations.test.mjs
       - name: Compile current Realizo application, including studio and all user workflows

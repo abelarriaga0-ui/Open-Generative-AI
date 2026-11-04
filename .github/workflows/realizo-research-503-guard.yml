@@ -1,0 +1,26 @@
+name: Realizo - AI research 503 and wallet reconciliation guard
+on:
+  push:
+    branches: [main, fix/ai-premium-503-async-recovery-20261104]
+    paths:
+      - ".github/workflows/realizo-research-503-guard.yml"
+      - "app/api/realizo/ai-premium/route.js"
+      - "app/api/realizo/ai-premium/[id]/route.js"
+      - "lib/realizo-creative/research-lifecycle.js"
+      - "components/RealizoPremium.jsx"
+      - "tests/realizo-research-503-recovery.test.mjs"
+      - "tests/realizo-premium-recovery.test.mjs"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Simulate orphaned Premium research, ambiguous API reply and wallet release
+        run: node --test tests/realizo-research-503-recovery.test.mjs tests/realizo-ai-premium.test.mjs tests/realizo-premium-recovery.test.mjs

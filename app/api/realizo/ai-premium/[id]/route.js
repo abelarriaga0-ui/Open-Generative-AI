@@ -4,6 +4,7 @@ import {
 } from '@/lib/realizo-creative/ai-premium';
 
 import {estimateOpenAIResearchCost} from '@/lib/realizo-creative/openai-costs';
+import {reconcileExpiredPremiumLaunch} from '@/lib/realizo-creative/research-lifecycle';
 
 export const dynamic='force-dynamic';
 const headers={'Cache-Control':'private, no-store'};
@@ -18,6 +19,9 @@ export async function GET(request,{params}){
   let project=await db.prepare('SELECT * FROM realizo_ai_projects WHERE id=? AND user_id=?')
     .bind(id,user.id).first();
   if(!project)return Response.json({error:'not_found'},{status:404});
+  // Recover research left in 'researching' with no provider response ID
+  // after a Cloudflare 503. Refund the 49-cent reservation atomically.
+  project=await reconcileExpiredPremiumLaunch(db,project);
   // A previous completed response can be re-read by its existing ID.
   // Do this automatically once when opening an old failed project;
   // the customer should not see a separate recovery action.
