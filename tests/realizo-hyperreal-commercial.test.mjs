@@ -65,7 +65,7 @@ test('Demo is precise product usage, not perfume cinema, with spoken stages thro
 });
 test('Cinematic becomes a motivated real-life story with true microexpression and no UGC',()=>{
  const x=directed('cinematic','GODA perfume para hombres uso antes de salir');
- assert.match(x.prompt,/CINEMATOGRAPHIC PROFESSIONAL COMMERCIAL/);
+ assert.match(x.prompt,/CINEMATOGRAPHIC PROFESSIONAL CINEMA COMMERCIAL/);
  assert.match(x.prompt,/micro-behavior/);
  assert.match(x.prompt,/180-degree screen direction/);
  assert.match(x.prompt,/ONE-SECOND DIRECTOR TIMELINE/);
