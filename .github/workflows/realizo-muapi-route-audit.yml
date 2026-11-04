@@ -47,6 +47,33 @@ jobs:
           }))));
           const catalog=await get('/api/v1/models');
           console.log('CATALOG_STATUS',catalog.status,'TOTAL',Array.isArray(catalog.json?.models)?catalog.json.models.length:'none');
+          function slugOf(value){
+            if(typeof value!=='string')return '';
+            try{
+              if(value.startsWith('https://')){
+                const url=new URL(value);
+                if(url.origin!==base||url.search||url.hash)return '';
+                value=url.pathname;
+              }
+              return value.startsWith('/api/v1/')?value.slice(8):value;
+            }catch{return ''}
+          }
+          const routeSet=new Set(paths.filter(p=>openapi.json.paths[p]?.post).map(p=>p.slice('/api/v1/'.length)));
+          const videoModels=(catalog.json?.models||[]).filter(m=>/video/i.test(String(m.category||'')+' '+String(m.group_of||'')));
+          const stats={total:videoModels.length,canonicalFound:0,legacyFound:0,neither:0,canonicalOnly:0,legacyOnly:0,bothDifferent:0};
+          const cases=[];
+          for(const m of videoModels){
+            const urlSlug=slugOf(m.endpoint_url),oldSlug=slugOf(m.endpoint);
+            const urlOk=routeSet.has(urlSlug),oldOk=routeSet.has(oldSlug);
+            if(urlOk)stats.canonicalFound++;
+            if(oldOk)stats.legacyFound++;
+            if(!urlOk&&!oldOk){stats.neither++;if(cases.length<50)cases.push({name:m.name,urlSlug,oldSlug,kind:'neither'})}
+            else if(urlOk&&!oldOk){stats.canonicalOnly++;if(cases.length<50)cases.push({name:m.name,urlSlug,oldSlug,kind:'canonical_only'})}
+            else if(!urlOk&&oldOk){stats.legacyOnly++;if(cases.length<50)cases.push({name:m.name,urlSlug,oldSlug,kind:'legacy_only'})}
+            else if(urlSlug!==oldSlug){stats.bothDifferent++}
+          }
+          console.log('VIDEO_MODEL_ROUTE_AUDIT',JSON.stringify(stats));
+          console.log('VIDEO_MODEL_ROUTE_SAMPLES',JSON.stringify(cases.slice(0,30)));
           for(const id of ids){
             const response=await get('/api/v1/models/'+encodeURIComponent(id));
             const raw=response.json?.model||response.json||{};
