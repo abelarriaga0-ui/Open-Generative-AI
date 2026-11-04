@@ -53,6 +53,10 @@ export default function ConversionTemplatesStudio({guest=false,onGenerationStart
  const [presetTitle,setPresetTitle]=useState('');
  const [busy,setBusy]=useState(false);
  const [phase,setPhase]=useState('');
+ const [elapsedSeconds,setElapsedSeconds]=useState(0);
+ const [providerProgress,setProviderProgress]=useState(null);
+ const [providerStatus,setProviderStatus]=useState('');
+ const timerOrigin=useRef(0);
  const [error,setError]=useState('');
  const [notice,setNotice]=useState('');
  const [resultUrl,setResultUrl]=useState('');
@@ -67,6 +71,20 @@ export default function ConversionTemplatesStudio({guest=false,onGenerationStart
  const currentType=TYPES.find(t=>t.id===form.creative_type)||TYPES[0];
  const aspect=form.aspect_ratio.replace(':',' / ');
  const titleText=form.product_name.trim()||'Tu producto aquí';
+ const phaseUploading=phase==='Subiendo producto';
+ const progressPercent=resultUrl&&!busy?100:!busy?0:phaseUploading
+  ?Math.min(14,Math.max(3,Math.round(elapsedSeconds*2.2)))
+  :Number.isFinite(providerProgress)?Math.min(97,Math.max(16,Math.round(15+providerProgress*.82)))
+  :Math.min(94,Math.round(17+76*(1-Math.exp(-Math.max(0,elapsedSeconds-3)/105))));
+ const providerMeasured=Number.isFinite(providerProgress);
+ const progressLabel=providerStatus==='processing'||providerStatus==='in_progress'
+  ?'Muapi está procesando tu imagen'
+  :providerStatus==='queued'||providerStatus==='pending'
+   ?'Muapi recibió tu imagen y está en cola'
+   :phaseUploading?'Recibiendo tu fotografía':'Generando tu anuncio con IA';
+ const elapsedLabel=seconds=>String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');
+ const limitRemaining=Math.max(0,600-elapsedSeconds);
+
 
  useEffect(()=>{
   let active=true;
@@ -75,6 +93,13 @@ export default function ConversionTemplatesStudio({guest=false,onGenerationStart
    .then(data=>{if(active)setRuntime(data);}).catch(e=>{if(active)setError(e.message);});
   return ()=>{active=false};
  },[]);
+ useEffect(()=>{
+  if(!busy || !timerOrigin.current)return;
+  const update=()=>setElapsedSeconds(Math.floor((Date.now()-timerOrigin.current)/1000));
+  update();
+  const interval=setInterval(update,1000);
+  return ()=>clearInterval(interval);
+ },[busy]);
  useEffect(()=>{
   if(!file){setPreview(null);return;}
   const url=URL.createObjectURL(file);
@@ -148,7 +173,10 @@ export default function ConversionTemplatesStudio({guest=false,onGenerationStart
    const r=await fetch('/api/wallet/jobs/'+encodeURIComponent(id),{cache:'no-store'});
    const job=await r.json().catch(()=>({}));
    if(!r.ok)throw Error(job.error||'No se pudo consultar el resultado.');
-   if(job.status==='completed')return job;
+   if(job.status==='completed'){setProviderProgress(100);setProviderStatus('completed');return job;}
+   if(typeof job.provider_progress_percent==='number' && job.provider_progress_percent>=0 && job.provider_progress_percent<=100)
+    setProviderProgress(job.provider_progress_percent);
+   if(typeof job.provider_status==='string')setProviderStatus(job.provider_status);
    if(job.status==='failed')throw Error(job.timeout_refunded ? 'Se alcanzó el límite de 10 minutos. Liberamos la reserva de esta imagen.' : 'Muapi no pudo crear la imagen. Liberamos la reserva; puedes volver a intentarlo.');
    if(job.status==='unknown')continue;
   }
@@ -161,6 +189,7 @@ export default function ConversionTemplatesStudio({guest=false,onGenerationStart
   if(mustPrice){setError('Introduce el precio que quieres mostrar en el anuncio.');return;}
   const brief={...form,product_name:form.product_name.trim(),product_benefit:form.product_benefit.trim(),
    price:form.show_price?form.price.trim():'',extra_instruction:form.extra_instruction.trim()};
+  timerOrigin.current=Date.now();setElapsedSeconds(0);setProviderProgress(null);setProviderStatus('');
   setError('');setNotice('');setResultUrl('');setBusy(true);setCurrentJob('');
   onGenerationStart?.();
   try{
@@ -176,6 +205,7 @@ export default function ConversionTemplatesStudio({guest=false,onGenerationStart
    const created=await generation.json().catch(()=>({}));
    if(!generation.ok||!created.job_id)throw Error(created.error||'No se pudo generar la imagen.');
    setCurrentJob(created.job_id);
+   if(created.status==='submitted')setProviderStatus('queued');
    if(created.status==='unknown')setNotice('Consultando el estado de la imagen, sin crear otro cobro…');
    const finished=await poll(created.job_id,'image');
    const url=outputURL(finished);
@@ -261,6 +291,23 @@ export default function ConversionTemplatesStudio({guest=false,onGenerationStart
       <small>Se descontará de tu saldo al generar; sin selección de modelo.</small></div>
      <button className="ri-generate" type="button" disabled={busy||!ready||(!guest&&!file)||mustPrice}
       onClick={run}>{busy?phase:(guest?'Iniciar sesión para crear':'Generar imagen')} <span>↗</span></button>
+     {busy&&<div className="ri-progress" role="status" aria-live="polite" aria-atomic="true">
+      <div className="ri-progress-top"><span className="ri-progress-signal"><i/> EN PROCESO</span>
+       <strong>{progressPercent}% <small>{providerMeasured?'informado por Muapi':'estimado'}</small></strong></div>
+      <div className="ri-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100}
+       aria-valuenow={progressPercent} aria-label="Progreso de generación de imagen">
+       <div className="ri-progress-fill" style={{width:progressPercent+'%'}}/>
+      </div>
+      <p className="ri-progress-stage">{progressLabel}</p>
+      <div className="ri-progress-steps">
+       <span className="done">✓ Foto del producto</span>
+       <span className={currentJob?'done':'active'}>{currentJob?'✓':'◉'} Solicitud a Muapi</span>
+       <span className={currentJob?'active':''}>✳ Imagen en 4K</span>
+      </div>
+      <div className="ri-progress-meta"><span>Transcurrido: {elapsedLabel(elapsedSeconds)}</span>
+       <span>Límite: {elapsedLabel(limitRemaining)} restantes</span></div>
+      <p className="ri-progress-caption">Si Muapi no informa un porcentaje, el avance es orientativo. La generación se confirma al recibir el archivo.</p>
+     </div>}
      {!ready&&<p className="ri-small-warning">El motor no está disponible en este momento.</p>}
      <div className="ri-save">
       <input type="text" maxLength={70} value={presetTitle} onChange={e=>setPresetTitle(e.target.value)}
