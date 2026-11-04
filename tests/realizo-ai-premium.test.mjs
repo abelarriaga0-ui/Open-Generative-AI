@@ -26,7 +26,7 @@ test('premium stays disabled without explicit sandbox approval and a protected O
  assert.equal(premiumBetaEnabled({...base,REALIZO_AI_PREMIUM_ENABLED:'false'}),false);
  assert.equal(premiumBetaEnabled({...base,OPENAI_API_KEY:''}),false);
  assert.equal(premiumBetaEnabled({...base,REALIZO_ENV:'production'}),false);
- const env={...base,WALLETS_DB:{prepare(){return {bind(){return {first:async()=>({user_id:'owner'})}}}}}};
+ const env={...base,WALLETS_DB:{prepare(){return {bind(){return {first:async()=>({verified:1})}}}}}};
  assert.equal(await premiumBetaOwner(env,{id:'owner'}),true);
  assert.equal(await premiumBetaOwner({...env,REALIZO_ENV:'production'},{id:'owner'}),false);
 });

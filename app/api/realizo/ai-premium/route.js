@@ -48,8 +48,10 @@ export async function GET(request){
    research_scope:'Foto y mercado + tres propuestas de venta. Video aparte.',
    projects:list.results??[],
    message:access.enabled?
-      'Investigación de pago: USD 0.49 por tres conceptos. Se reserva antes y se cobra si la investigación se completa correctamente. Video aparte.':
-      'La investigación requiere saldo real verificado; PayPal Sandbox no crea fondos reales.',
+      (access.mode==='sponsored'
+        ?'Investigación de IA gratis por ahora: tres propuestas de venta. El video se cobra por separado.'
+        :'Investigación de pago: USD 0.49 por tres conceptos. El video se cobra por separado.'):
+      'La investigación de IA no está disponible en este momento.',
   },{headers});
  }catch(e){return jsonError(e)}
 }

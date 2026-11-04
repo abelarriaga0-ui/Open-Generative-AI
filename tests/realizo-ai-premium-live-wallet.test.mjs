@@ -14,10 +14,10 @@ function mockDB({verified=false,available=116,legacy=775}={}){
         return {async first(){
           assert.equal(userId,'account-1');
           if(sql.includes('realizo_muapi_provider_balance_reconciliations r')){
-            assert.match(sql,/JOIN realizo_prepaid_muapi_imports i/);
-            assert.match(sql,/r\.credited_cents=3000/);
-            assert.match(sql,/r\.provider_verified_cents>=3027/);
-            assert.match(sql,/i\.amount_cents=775/);
+            assert.match(sql,/WHERE r\.slot=1 AND r\.user_id=\?/);
+            assert.match(sql,/r\.provider_verified_cents>=r\.credited_cents/);
+            assert.doesNotMatch(sql,/amount_cents=775/);
+            assert.match(sql,/realizo_muapi_provider_balance_reconciliations/);
             return verified?{verified:1}:null;
           }
           if(sql.includes('SELECT available_cents AS amount'))

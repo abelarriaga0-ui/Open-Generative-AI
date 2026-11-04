@@ -1,0 +1,33 @@
+name: Realizo - temporarily free public AI research guard
+on:
+  push:
+    branches: [main, feature/ai-research-free-temporary-20261104]
+    paths:
+      - ".github/workflows/realizo-complimentary-research-guard.yml"
+      - "lib/realizo-creative/ai-premium.js"
+      - "app/api/realizo/ai-premium/route.js"
+      - "components/RealizoPremium.jsx"
+      - "wrangler.consolidated.jsonc"
+      - "migrations/0029_realizo_complimentary_research_public.sql"
+      - "tests/realizo-ai-research-complimentary.test.mjs"
+      - "tests/realizo-ai-premium.test.mjs"
+      - "tests/realizo-ai-premium-live-wallet.test.mjs"
+      - "tests/test_realizo_complimentary_research_sql.py"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  free-research-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Audit free research and existing paid safeguards without calling a provider
+        run: node --test tests/realizo-ai-research-complimentary.test.mjs tests/realizo-ai-premium.test.mjs tests/realizo-ai-premium-live-wallet.test.mjs tests/realizo-research-503-recovery.test.mjs
+      - name: Simulate public quota and wallet preservation using SQLite
+        run: |
+          python -m unittest discover -s tests -p test_realizo_complimentary_research_sql.py -v
+          python -m unittest discover -s tests -p test_realizo_sandbox_owner_shared_wallet.py -v
