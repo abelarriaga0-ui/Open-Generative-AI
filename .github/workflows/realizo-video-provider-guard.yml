@@ -1,0 +1,50 @@
+name: Realizo - video provider billing safety (no paid generation)
+on:
+  push:
+    branches:
+      - main
+      - fix/muapi-catalog-canonical-preflight-all-video-20261104
+    paths:
+      - ".github/workflows/realizo-video-provider-guard.yml"
+      - "lib/wallet/live-video-models.js"
+      - "lib/wallet/muapi-endpoint.js"
+      - "app/api/wallet/quote/route.js"
+      - "app/api/wallet/generate/route.js"
+      - "lib/realizo-creative/wallet-generation.js"
+      - "tests/realizo-seedance-20-endpoint.test.mjs"
+      - "tests/realizo-live-models.test.mjs"
+      - "tests/realizo-muapi-endpoint.test.mjs"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  route-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify provider route, exact model and refund protections
+        run: |
+          node --test tests/realizo-seedance-20-endpoint.test.mjs tests/realizo-live-models.test.mjs tests/realizo-muapi-endpoint.test.mjs
+      - name: Verify real Muapi public canonical route without API key or charge
+        run: |
+          node - <<'JS'
+          const base='https://api.muapi.ai';
+          async function get(path) {
+            const r=await fetch(base+path,{method:'GET',redirect:'manual',signal:AbortSignal.timeout(14000)});
+            return r;
+          }
+          const live=await get('/api/v1/seedance-2.0-omni-reference');
+          const alias=await get('/api/v1/seedance-2-omni-reference');
+          const noVideo=await get('/api/v1/seedance-2-omni-reference-no-video');
+          console.log('Muon canonical GET',live.status,'deprecated catalog alias GET',alias.status,'no-video GET',noVideo.status);
+          if(live.status!==405||noVideo.status!==405)
+            throw Error('Muapi did not confirm the canonical Seedance 2 video POST routes');
+          if(alias.status===405)
+            console.log('The old catalog-ID alias now also exists; continue preferring canonical documented endpoint');
+          JS
