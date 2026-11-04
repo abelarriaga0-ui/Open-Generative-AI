@@ -51,11 +51,11 @@ test('The producer refreshes stale provider endpoint only after trusted quote, b
 test('Muapi endpoint cannot redirect to external host',async(t)=>{
  const old=globalThis.fetch;t.after(()=>{globalThis.fetch=old});
  globalThis.fetch=async()=>Response.json({
-  name:'seedance-2-omni-reference',
+  name:'untrusted-video-model',
   category:'Image to Video',group_of:'video',is_enabled:1,
-  endpoint:'https://bad.example/api/v1/seedance-2.0-omni-reference'
+  endpoint:'https://bad.example/api/v1/untrusted-video-model'
  });
- await assert.rejects(getLiveVideoModel('seedance-2-omni-reference'),/unsupported_model_endpoint/);
+ await assert.rejects(getLiveVideoModel('untrusted-video-model'),/unsupported_model_endpoint/);
 });
 
 test('Seedance 2.5 International Omni Reference uses the published POST route, never stale catalog slugs',async(t)=>{
@@ -183,7 +183,7 @@ test('Seedance 2.0 legacy Omni (supports input videos) stays distinct from no-vi
 
 test('publisher carries the exact quoted Muapi slug to the POST request without mutating user selection',()=>{
  const backend=readFileSync('app/api/wallet/generate/route.js','utf8');
- assert.match(backend,/quote=await quoteLiveVideo\(body.model_id,renderInput,env.MUAPI_API_KEY\)/);
+ assert.match(backend,/quote=await quoteLiveVideo\(body.model_id,renderInput,env.MUAPI_API_KEY,\{requireLivePostRoute:true\}\)/);
  assert.match(backend,/model=\{model_id:quote.model_id,muapi_endpoint:quote.endpoint/);
  assert.match(backend,/fetch\('https:\/\/api.muapi.ai\/api\/v1\/' \+ model.muapi_endpoint/);
  assert.match(backend,/response.status >= 400 && response.status < 500/);
