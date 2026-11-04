@@ -9,6 +9,7 @@ on:
       - "lib/realizo-creative/research-lifecycle.js"
       - "components/RealizoPremium.jsx"
       - "tests/realizo-research-503-recovery.test.mjs"
+      - "tests/realizo-premium-recovery.test.mjs"
   workflow_dispatch:
 permissions:
   contents: read
