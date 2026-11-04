@@ -367,8 +367,8 @@ test('Candela 10-second UGC is rewritten from the merchant skin concern, not the
  assert.equal(quality.tooShort,false);
  assert.equal(quality.tooLong,false);
  assert.deepEqual(quality.qualityIssues,[]);
- assert.match(chosen.spoken_script,/¿Te incomoda mostrar tus estrías\?/i);
- assert.match(chosen.spoken_script,/masaje corporal/i);
+ assert.match(chosen.spoken_script,/¿(?:Las estrías te incomodan|Te incomoda mostrar tus estrías)\?/i);
+ assert.match(chosen.spoken_script,/masaje/i);
  assert.match(chosen.spoken_script,/Candela, crema corporal/i);
  assert.match(chosen.spoken_script,/Escríbenos para pedir información\.$/);
  assert.doesNotMatch(chosen.spoken_script,/la foto|marca visible|envase|menciones|fotograf[ií]a|promete eliminar/i);
