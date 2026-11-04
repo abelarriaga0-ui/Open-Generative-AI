@@ -30,6 +30,8 @@ on:
       - "lib/realizo-creative/format-guides.js"
       - "lib/realizo-creative/ai-premium.js"
       - "lib/realizo-creative/hyperreal-commercial.js"
+      - "lib/realizo-creative/creative-prompt-contracts.js"
+      - "tests/realizo-product-identity-voice.test.mjs"
       - "tests/realizo-hyperreal-commercial.test.mjs"
       - "tests/realizo-ai-premium-live-wallet.test.mjs"
       - "tests/realizo-muapi-master-ugc30.test.mjs"
