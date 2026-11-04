@@ -17,7 +17,7 @@ test('three researched concepts are delivered without extra recovery buttons',()
  assert.doesNotMatch(ui,/Recuperar respuesta existente|onClick=\{recover\}/);
  assert.doesNotMatch(ui,/acknowledged_responsibility:acknowledged/);
  const approval=readFileSync('app/api/realizo/ai-premium/[id]/approve/route.js','utf8');
- assert.doesNotMatch(approval,/review_product_responsibility|ugc_speech_timing_invalid/);
+ assert.match(approval,/ugc_speech_timing_invalid/); // Safety checks do not create extra paid recovery screens.
 });
 test('strict web research checks actual tool usage but limited results remain honest and unbilled',()=>{
  const partial={
