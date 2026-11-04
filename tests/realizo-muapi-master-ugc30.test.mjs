@@ -15,7 +15,7 @@ const input={
  },
 };
 test('only one 30s template is offered',()=>{
- assert.deepEqual(AD_TEMPLATES.map(t=>t.id),['ugc-vendedor']);
+ assert.deepEqual(AD_TEMPLATES.filter(t=>t.duration===30).map(t=>t.id),['ugc-vendedor']);
  assert.equal(AD_TEMPLATES[0].duration,30);
  assert.deepEqual(templatePlan('ugc-vendedor',30).map(x=>x.end),[3,9.2,17.9,24.3,30]);
 });
