@@ -1,0 +1,25 @@
+name: Realizo - reference SKU and spoken CTA guard
+on:
+  push:
+    branches: [main, fix/realizo-product-identity-voice-director-v10-20261104]
+    paths:
+      - ".github/workflows/realizo-identity-voice-guard.yml"
+      - "lib/realizo-creative/creative-prompt-contracts.js"
+      - "lib/realizo-creative/sales-director.js"
+      - "lib/realizo-creative/ai-premium.js"
+      - "lib/realizo-creative/ugc-master-30.js"
+      - "tests/realizo-product-identity-voice.test.mjs"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check original product design, dialogue and user-selected formats without costs
+        run: node --test tests/realizo-product-identity-voice.test.mjs tests/realizo-ai-premium.test.mjs tests/realizo-sales-director.test.mjs tests/realizo-hyperreal-commercial.test.mjs tests/realizo-muapi-master-ugc30.test.mjs tests/realizo-physical-realism.test.mjs tests/realizo-premium-film-contract.test.mjs
