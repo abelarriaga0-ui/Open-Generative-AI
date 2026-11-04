@@ -9,7 +9,7 @@ on:
       - "components/ConversionTemplatesStudio.jsx"
       - "components/RealizoCreationsGallery.jsx"
       - "components/RealizoStudio.jsx"
-      - "app/studio/[[...slug]]/page.js"
+      - "app/studio/**"
       - "tests/realizo-creations.test.mjs"
       - "tests/realizo-images.test.mjs"
       - "tests/realizo-image-recovery.test.mjs"
