@@ -527,7 +527,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
      <button type="button" disabled={busy||researchConfirm||!config?.enabled||!image||!selectedModel||!product.video_duration_seconds}
       onClick={start} className="rounded-2xl bg-[#704CD4] disabled:opacity-45 text-white px-6 py-3 font-bold">
       {busy?'Investigando…':config?.billing_mode==='sponsored'&&config?.customer_charge_cents===0?
-       '✦ Investigar gratis':'✦ Investigar y pagar 
+       '✦ Investigar gratis':'✦ Investigar y pagar USD '+((config?.customer_charge_cents||0)/100).toFixed(2)}
      </button>
      <button type="button" onClick={onUseAutomatic}
       className="rounded-2xl border border-[#DCCEE9] px-5 py-3 text-[#684C98] font-bold">Modo automático</button>
