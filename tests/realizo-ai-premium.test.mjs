@@ -38,7 +38,7 @@ test('vision and web research are bounded and never use a Muapi customer balance
  assert.ok(request.max_output_tokens<=14000);
  assert.equal(request.background,true);
  assert.equal(request.store,true);
- assert.equal(request.reasoning.effort,'medium');
+ assert.equal(request.reasoning.effort,'high');
  assert.equal(request.tool_choice,'required');
  assert.equal(request.tools[0].search_context_size,'medium');
  assert.equal(request.input[0].content[1].type,'input_image');
