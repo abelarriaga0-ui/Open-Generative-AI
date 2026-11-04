@@ -5,7 +5,7 @@ import {launchPremiumResearch,reconcileExpiredPremiumLaunch} from '@/lib/realizo
 import {enforceSameOrigin} from '@/lib/wallet/access-auth';
 import {
   validatePremiumInput,premiumAccess,premiumPublicEnabled,ownedAsset,
-  safeResearchResponse,availableAIFunds,researchFingerprint,
+  safeResearchResponse,availableAIFunds,verifiedRealOwnerBalance,researchFingerprint,
   PREMIUM_PRICING_VERSION,premiumSandboxPaidOwner
 } from '@/lib/realizo-creative/ai-premium';
 
@@ -97,8 +97,12 @@ export async function POST(request){
    // Verified funding is mandatory. Sandbox test money is excluded; only
    // live PayPal deposits or the owner's independently reconciled real funds qualify.
    const sandboxOwner=await premiumSandboxPaidOwner(env,user);
+   const reconciledRealOwner=await verifiedRealOwnerBalance(env,user.id);
    if(!premiumPublicEnabled(env) && !sandboxOwner)return error('real_billing_required',503);
-   if(!sandboxOwner){
+   // The provider-verified, historically imported owner account owns real
+   // spendable funds even if there was no separate PayPal Live deposit.
+   // All other users still require a verified PayPal Live payment.
+   if(!reconciledRealOwner){
      const deposits=await db.prepare(
       "SELECT COUNT(*) AS n FROM verified_deposits WHERE user_id=? AND payment_provider='paypal' AND status='paid' AND provider_environment='live'"
      ).bind(user.id).first();
