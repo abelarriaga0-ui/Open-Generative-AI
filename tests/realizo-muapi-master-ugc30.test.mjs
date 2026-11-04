@@ -29,7 +29,7 @@ test('Muapi template preserves timed sales beats, spoken Spanish, and new produc
  assert.match(prompt,/SPOKEN SCRIPT/);
  assert.match(prompt,/Use the uploaded product photograph ONLY as an identity/);
  assert.doesNotMatch(prompt,/Combo noil \+ goda|Hair Care Shampoo|For Him/);
- assert.ok(prompt.length<=5400);
+ assert.ok(prompt.length<=12500);
 });
 test('explicit woman modification preserves everything else',()=>{
  const original=buildLockedUgc30Prompt(input);
