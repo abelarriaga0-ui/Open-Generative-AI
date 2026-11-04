@@ -1,0 +1,27 @@
+name: Realizo - hiperrealismo publicitario por segundo
+on:
+  push:
+    branches: [main, feature/hyperreal-commercial-director-20261104]
+    paths:
+      - ".github/workflows/realizo-hyperreal-commercial-guard.yml"
+      - "lib/realizo-creative/hyperreal-commercial.js"
+      - "lib/realizo-creative/sales-director.js"
+      - "lib/realizo-creative/ugc-master-30.js"
+      - "lib/realizo-creative/ai-premium.js"
+      - "tests/realizo-hyperreal-commercial.test.mjs"
+      - "tests/realizo-muapi-master-ugc30.test.mjs"
+      - "tests/realizo-sales-director.test.mjs"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify UGC Demo Cinema Premium and 30s master without provider spend
+        run: node --test tests/realizo-hyperreal-commercial.test.mjs tests/realizo-sales-director.test.mjs tests/realizo-muapi-master-ugc30.test.mjs tests/realizo-physical-realism.test.mjs tests/realizo-ai-premium.test.mjs tests/realizo-premium-film-contract.test.mjs tests/realizo-premium-audio-choice.test.mjs
