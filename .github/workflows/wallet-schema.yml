@@ -59,7 +59,7 @@ jobs:
       - name: Billeteras, Sandbox y sintaxis ESM (sin secretos ni servicios externos)
         run: |
           npm run test:wallet
-          node --test tests/realizo-direct-premium-generation.test.mjs tests/realizo-funded-usage-muapi-failures.test.mjs tests/realizo-ai-research-complimentary.test.mjs
+          node --test tests/realizo-direct-premium-generation.test.mjs tests/realizo-funded-usage-muapi-failures.test.mjs tests/realizo-ai-research-complimentary.test.mjs tests/realizo-universal-angle-director.test.mjs
           node --test tests/realizo-paypal-live-preflight.test.mjs tests/realizo-paypal-inline-checkout.test.mjs
 
   deploy-realizo-sandbox:

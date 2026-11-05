@@ -83,6 +83,7 @@ export async function POST(request,{params}){
     return Response.json({error:'premium_audio_script_required'},{status:422});
   const directorConcept={...concept,video_prompt:userPrompt,
     requested_sales_angle:salesAngleDirective(project.sales_angle),
+    sales_angle_code:project.sales_angle||'auto',
     spoken_script:isFilmStyle(finalStyle)&&audioMode==='no_voice'?'':userSpeech};
   // Verify spoken dialogue fills the chosen runtime BEFORE any video charge.
   // A short, sparse script should be edited, not stretched with silent shots.

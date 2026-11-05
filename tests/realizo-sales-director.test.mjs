@@ -304,7 +304,7 @@ test('research prompt makes seller buyer desire and audio-visual action the prio
  assert.match(request.instructions,/DESCRIPCI[ÓO]N Y OBJETIVO COMERCIAL/);
  assert.match(request.instructions,/SINCRONIZACI[ÓO]N VIDEO Y VOZ/);
  assert.match(request.instructions,/PRIMER FOTOGRAMA/);
- assert.match(request.instructions,/NUNCA asegurar atraer mujeres/);
+ assert.match(request.instructions,/ni garantizar atracción causada por un producto/);
  assert.equal(request.reasoning.effort,'high');
 });
 
@@ -417,7 +417,7 @@ test('one paid research request explicitly excludes photographed label metadata 
  });
  assert.match(request.instructions,/CONTROL ANTI-NARRACIÓN/);
  assert.match(request.instructions,/marca visible/);
- assert.match(request.instructions,/si el producto es una crema corporal para estrías/);
+ assert.match(request.instructions,/GENERALIZACIÓN COMERCIAL/);
  assert.match(request.instructions,/REVISIÓN DE COPY ANTES DEL JSON/);
  const aiSource=readFileSync('lib/realizo-creative/ai-premium.js','utf8');
  assert.match(aiSource,/quality\.billable=false;quality\.needsReview=true/);
