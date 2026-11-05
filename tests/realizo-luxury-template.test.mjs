@@ -5,7 +5,8 @@ import {makeLuxuryProductOnlyInput,LUXURY_TEMPLATE_MODEL_ID,LUXURY_TEMPLATE_ID} 
 import {walletPilotAction} from '../lib/wallet/request-policy.js';
 
 test('Luxury is a distinct reusable template visible beside UGC',()=>{
-  assert.equal(AD_TEMPLATES.length,2);
+  assert.equal(AD_TEMPLATES.length,3);
+  assert.ok(getAdTemplate('ugc-15-omni-voz-continua'));
   assert.ok(getAdTemplate('ugc-vendedor'));
   const t=getAdTemplate(LUXURY_TEMPLATE_ID);
   assert.equal(t.style,'premium');
