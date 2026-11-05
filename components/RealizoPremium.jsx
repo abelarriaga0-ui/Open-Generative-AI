@@ -50,17 +50,18 @@ const fmt=status=>({
  approved:'Concepto aprobado',failed:'Investigación no completada',
 })[status]||status;
 
-export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,onCreateNew,onWalletRefresh,initialStyle='ugc',initialProjectId=null,initialTemplateId=null}){
+export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,onCreateNew,onWalletRefresh,onWalletGenerate,onGenerationComplete,onViewCreations,initialStyle='ugc',initialProjectId=null,initialTemplateId=null}){
  const [config,setConfig]=useState(null),[image,setImage]=useState(null);
  const template=getAdTemplate(initialTemplateId);
  const [templateActor,setTemplateActor]=useState('hombre');
  const [templateChangeRequest,setTemplateChangeRequest]=useState('');
  const [templateSetting,setTemplateSetting]=useState('auto');
  const [product,setProduct]=useState({product_name:'',description:'',audience:'',
-  angle:template?.angle||'auto',custom_angle:'',market:'EC',video_language:'es',cta:'',creative_style:template?.style||initialStyle,cast_mode:'with_people',audio_mode:'no_voice',video_model_id:'',video_duration_seconds:''});
+  angle:template?.angle||'auto',custom_angle:'',market:'EC',video_language:'es',cta:'',creative_style:template?.style||initialStyle,cast_mode:'with_people',audio_mode:'no_voice',video_model_id:'',video_duration_seconds:'',video_aspect_ratio:'',video_resolution:'',video_quality:''});
  const [project,setProject]=useState(null),[selection,setSelection]=useState(0);
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
  const [researchConfirm,setResearchConfirm]=useState(false);
+ const [speechEdits,setSpeechEdits]=useState({}),[jobId,setJobId]=useState(null),[completed,setCompleted]=useState(false);
  const fileRef=useRef(null),keyRef=useRef(null);
  useEffect(()=>{
   let active=true;
@@ -74,6 +75,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
      if(recommended)setProduct(prev=>prev.video_model_id?prev:{
       ...prev,video_model_id:recommended.id,
       video_duration_seconds:template?30:preferredDuration(recommended,prev.video_duration_seconds),
+      video_aspect_ratio:recommended.aspect_ratios?.[0]||'',video_resolution:recommended.resolutions?.[0]||'',video_quality:recommended.qualities?.[0]||'',
      });
      // Fresh creation is the default. Only restore a previous investigation
      // after the owner explicitly selects it from "Mis videos".
@@ -230,6 +232,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
  const videoOptions=config?.video_options||[];
  const selectedModel=videoOptions.find(m=>m.id===product.video_model_id);
  const availableDurations=selectedModel?.durations||[];
+ const videoSettingsOptions=selectedModel?.settings_by_duration?.[product.video_duration_seconds]||selectedModel||{};
  const selectedProvider=selectedModel?.provider||'';
  const selectedFamily=selectedModel?.family_id||'';
  const providerOptions=Array.from(new Map(videoOptions.map(m=>[
@@ -248,6 +251,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
    setProduct(prev=>({
     ...prev,video_model_id:next.id,
     video_duration_seconds:preferredDuration(next,prev.video_duration_seconds),
+    video_aspect_ratio:next.aspect_ratios?.[0]||'',video_resolution:next.resolutions?.[0]||'',video_quality:next.qualities?.[0]||'',
    }));
    keyRef.current=null;
  };
@@ -447,10 +451,28 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
      {selectedModel&&<>
       <label className="block text-sm font-bold">Duración disponible
        <select className={field+' mt-2'} disabled={Boolean(template)} value={product.video_duration_seconds}
-        onChange={e=>change('video_duration_seconds',Number(e.target.value))}>
+        onChange={e=>{const duration=Number(e.target.value);const opts=selectedModel.settings_by_duration?.[duration]||{};
+         setProduct(p=>({...p,video_duration_seconds:duration,video_aspect_ratio:opts.aspect_ratios?.[0]||'',video_resolution:opts.resolutions?.[0]||'',video_quality:opts.qualities?.[0]||''}));keyRef.current=null;}}>
         {availableDurations.map(n=><option key={n} value={n}>{n} segundos</option>)}
        </select>
       </label>
+      <div className="grid sm:grid-cols-3 gap-3">
+       {(videoSettingsOptions.aspect_ratios||[]).length>0&&<label className="text-sm font-bold">Formato de pantalla
+        <select className={field+' mt-2'} value={product.video_aspect_ratio||videoSettingsOptions.aspect_ratios[0]}
+         onChange={e=>change('video_aspect_ratio',e.target.value)}>
+         {videoSettingsOptions.aspect_ratios.map(v=><option key={v} value={v}>{v}</option>)}
+        </select></label>}
+       {(videoSettingsOptions.resolutions||[]).length>0&&<label className="text-sm font-bold">Resolución
+        <select className={field+' mt-2'} value={product.video_resolution||videoSettingsOptions.resolutions[0]}
+         onChange={e=>change('video_resolution',e.target.value)}>
+         {videoSettingsOptions.resolutions.map(v=><option key={v} value={v}>{v}</option>)}
+        </select></label>}
+       {(videoSettingsOptions.qualities||[]).length>0&&<label className="text-sm font-bold">Calidad
+        <select className={field+' mt-2'} value={product.video_quality||videoSettingsOptions.qualities[0]}
+         onChange={e=>change('video_quality',e.target.value)}>
+         {videoSettingsOptions.qualities.map(v=><option key={v} value={v}>{v}</option>)}
+        </select></label>}
+      </div>
       <p className="text-xs text-[#71588B]">
        Seleccionado: <strong>{selectedModel.family}</strong> · {videoModes[selectedModel.image_role]?.[1]||selectedModel.name} · {product.video_duration_seconds} s.
        {' '}{selectedModel.note}
