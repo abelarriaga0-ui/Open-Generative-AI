@@ -35,6 +35,8 @@ on:
       - "tests/realizo-hyperreal-commercial.test.mjs"
       - "tests/realizo-ai-premium-live-wallet.test.mjs"
       - "tests/realizo-ai-research-complimentary.test.mjs"
+      - "tests/realizo-funded-usage-muapi-failures.test.mjs"
+      - "lib/wallet/muapi-task-failure.js"
       - "tests/test_realizo_complimentary_research_sql.py"
       - "migrations/0029_realizo_complimentary_research_public.sql"
       - "migrations/0030_realizo_video_settings.sql"
@@ -133,7 +135,7 @@ jobs:
           python -m unittest discover -s tests -p test_realizo_sandbox_owner_shared_wallet.py -v
       - name: Verify wallet-funded research has no count quotas and charges only with confirmation
         run: |
-          node --test tests/realizo-ai-research-complimentary.test.mjs tests/realizo-ai-premium.test.mjs tests/realizo-ai-premium-live-wallet.test.mjs
+          node --test tests/realizo-ai-research-complimentary.test.mjs tests/realizo-funded-usage-muapi-failures.test.mjs tests/realizo-ai-premium.test.mjs tests/realizo-ai-premium-live-wallet.test.mjs
           python -m unittest discover -s tests -p test_realizo_complimentary_research_sql.py -v
       - name: Verify AI Premium 503 recovery, idempotent paid research and full refund
         run: node --test tests/realizo-research-503-recovery.test.mjs tests/realizo-ai-premium.test.mjs tests/realizo-premium-recovery.test.mjs
