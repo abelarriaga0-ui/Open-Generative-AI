@@ -61,8 +61,8 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
  const [project,setProject]=useState(null),[selection,setSelection]=useState(0);
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
  const [researchConfirm,setResearchConfirm]=useState(false);
- const [speechEdits,setSpeechEdits]=useState({}),[jobId,setJobId]=useState(null),[completed,setCompleted]=useState(false);
- useEffect(()=>{setSpeechEdits({});setJobId(null);setCompleted(false)},[project?.id]);
+ const [speechEdits,setSpeechEdits]=useState({}),[jobId,setJobId]=useState(null),[completed,setCompleted]=useState(false),[generationFailed,setGenerationFailed]=useState(false);
+ useEffect(()=>{setSpeechEdits({});setJobId(null);setCompleted(false);setGenerationFailed(false)},[project?.id]);
  const fileRef=useRef(null),keyRef=useRef(null);
  useEffect(()=>{
   let active=true;
@@ -208,7 +208,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
  // The customer already chose the model, duration, cast and audio.
  // Submit only the concept index; the server owns all prior choices.
  const approve=async()=>{
-  setBusy(true);setError('');
+  setBusy(true);setError('');setGenerationFailed(false);
   try{
    const r=await fetch('/api/realizo/ai-premium/'+encodeURIComponent(project.id)+'/approve',{
     method:'POST',credentials:'same-origin',
@@ -236,7 +236,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
    if(result?.job_id){setCompleted(true);onWalletRefresh?.();
      onGenerationComplete?.(result);}
    else throw Error('La generación no devolvió un identificador de video.');
-  }catch(e){setError(e.message)}
+  }catch(e){setError(e.message);setGenerationFailed(true)}
   finally{setBusy(false)}
  };
  const concepts=project?.concepts||[];
@@ -598,7 +598,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
         onChange={e=>setSpeechEdits(d=>({...d,[selection]:e.target.value}))}/>
        <span className="block text-xs font-normal text-[#806D90] mt-1">Puedes cambiar las frases de este concepto. Cada propuesta conserva su propio guion, sin repetir la investigación.</span>
       </label>}
-      {jobId&&<p role="status" className="text-sm text-[#6B4B8C]">Video registrado en Mis creaciones. Solicitud: {jobId}. {completed?'Generación completada.':'El proveedor está procesando el video.'}</p>}
+      {jobId&&<p role="status" className="text-sm text-[#6B4B8C]">Video registrado en Mis creaciones. Solicitud: {jobId}. {completed?'Generación completada.':generationFailed?'El proveedor no completó el video; revisa el motivo indicado arriba.':'El proveedor está procesando el video.'}</p>}
       {jobId&&<button type="button" onClick={onViewCreations} className="text-sm font-bold text-[#6D48CB] underline">Ver Mis creaciones</button>}
       <button type="button" onClick={approve} disabled={busy||completed}
        className="rounded-2xl bg-[#6D48CB] text-white font-bold py-3.5 px-6 disabled:opacity-50">
