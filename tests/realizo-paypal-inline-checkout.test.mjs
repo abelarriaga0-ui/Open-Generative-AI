@@ -28,15 +28,15 @@ test('order funding is not forced to a PayPal wallet and credits only after capt
 });
 test('auto-reload setup checkbox defaults selected and stays editable without creating a payment mandate',()=>{
  const wallet=read('components/wallet/PaypalTopup.jsx');
- assert.match(wallet,/Quiero configurar una recarga automática de/);
+ assert.match(wallet,/Recarga automática \(opcional\)/);
  assert.match(wallet,/\$20/);
  assert.match(wallet,/\$5/);
  assert.match(wallet,/const \[autoTopupPreferred,setAutoTopupPreferred\]=useState\(true\)/);
  assert.match(wallet,/type="checkbox" checked=\{autoTopupPreferred\}/);
  assert.match(wallet,/onChange=\{event=>setAutoTopupPreferred\(event.target.checked\)\}/);
  assert.doesNotMatch(wallet,/type="checkbox" disabled checked=\{false\}/);
- assert.match(wallet,/Actualmente no se ejecutan cargos automáticos/);
- assert.match(wallet,/autorizar por separado un método de pago/);
+ assert.match(wallet,/Las recargas automáticas todavía no están habilitadas/);
+ assert.match(wallet,/aprobar por separado un acuerdo con PayPal/);
  assert.doesNotMatch(wallet,/\/api\/wallet\/auto-topup\/charge/);
 });
 test('Sandbox stays isolated; Live requires production credentials and explicit release',()=>{
