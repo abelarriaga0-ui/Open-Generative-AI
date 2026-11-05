@@ -44,7 +44,8 @@ test('dynamic quote must be accepted by user before creating an expense',()=>{
  assert.doesNotMatch(bridge,/MUAPI_API_KEY/);
  const server=readFileSync('app/api/wallet/generate/route.js','utf8');
  assert.match(server,/quoteLiveVideo/);
- assert.match(server,/quote\.provider_cost_cents>body\.max_price_cents/);
+ // Realizo checks the FULL customer quote (including its margin) before reserving.
+ assert.match(server,/customerPriceCents>body\.max_price_cents/);
  assert.match(server,/isOwnerMultiModelSandbox/);
  assert.match(server,/!multiModel/);
 });
