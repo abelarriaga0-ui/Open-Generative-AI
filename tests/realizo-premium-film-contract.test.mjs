@@ -73,3 +73,30 @@ test('client sends cast context in quote and generate, server checks it before c
  assert.match(g,/verifyPremiumGeneration/);
  assert.ok(g.indexOf('const premiumError=await verifyPremiumGeneration')<g.indexOf("phase='wallet-reservation'"));
 });
+
+
+test('Goda Premium voiceover preserves full audio contract when approved and sent to quote',async()=>{
+ const voice=buildCommercialDirectorPackage({
+  concept:adversarial,productName:'Goda',
+  description:'Esencia de perfume concentrada para uso personal',
+  modelId:model,workflowId:'references',style:'premium',
+  castMode:'with_people',audioMode:'voiceover',duration:8,imageProvided:true,
+ });
+ const approved=voice.prompt;
+ assert.match(approved,/REALIZO LUXURY FILM CONTRACT v2/);
+ assert.match(approved,/AUDIO VOICEOVER/);
+ assert.match(approved,/MANDATORY NARRATION MODE/);
+ assert.ok(approved.length>5500,'Old 5,500-char approval cap would lose part of the film contract');
+ const context={project_id:id,creative_style:'premium',cast_mode:'with_people',audio_mode:'voiceover'};
+ const project={...mockProject(approved,'with_people'),audio_mode:'voiceover'};
+ assert.equal(await verifyPremiumGeneration(dbFor(project),id,model,{prompt:approved,duration:8},context),null);
+ assert.notEqual(approved.slice(0,5500),approved,'Do not truncate original approved direction');
+});
+test('approval and client editor keep the exact server-built Premium film prompt',()=>{
+ const approval=readFileSync('app/api/realizo/ai-premium/[id]/approve/route.js','utf8');
+ const studio=readFileSync('packages/studio/src/components/VideoStudio.jsx','utf8');
+ assert.match(approval,/const finalPrompt=director\.prompt;/);
+ assert.doesNotMatch(approval,/finalPrompt=director\.prompt\.slice/);
+ assert.match(studio,/setPrompt\(String\(preparedBrief\.prompt\|\|""\)\)/);
+ assert.match(studio,/!\['premium','cinematic'\]\.includes\(preparedBrief\.creative_style\)/);
+});

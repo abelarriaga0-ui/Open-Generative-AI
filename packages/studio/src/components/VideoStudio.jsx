@@ -1448,7 +1448,9 @@ export default function VideoStudio({
     setAllowAnimationInsteadOfReference(false);
     const images=Array.isArray(preparedBrief.images)?
       preparedBrief.images.filter(url=>typeof url==="string" && /^https:\/\//.test(url)).slice(0,4):[];
-    setPrompt(String(preparedBrief.prompt||"").slice(0,6000));
+    // Use the full server-approved director prompt. Any truncation creates a
+    // different contract and is rejected by the pre-charge Premium gate.
+    setPrompt(String(preparedBrief.prompt||""));
     // A Premium investigation is already tailored to this exact provider variant
     // and duration. Apply it instead of silently reverting to another motor.
     const researchedModel=preparedBrief.video_model_id;
@@ -2264,7 +2266,11 @@ export default function VideoStudio({
     const isExtendMode = currentModel?.requiresRequestId;
     const capabilities = getModelMediaCapabilities(currentModel);
     const requestSource = selectedVeoTool ? selectedVeoSource : generationSources[selectedFamily.id];
+    // Approved film prompts are locked by the server. Never regenerate an
+    // alternative film prompt in the client after approval: it can differ in
+    // narration, cast or product direction and fail the payment-safe gate.
     const dynamicDirection=preparedBrief?.media_role==='reference_only' &&
+      !['premium','cinematic'].includes(preparedBrief.creative_style) &&
       preparedBrief.creative_concept &&
       prompt.trim()===String(preparedBrief.prompt||'').trim()
       ?buildCommercialDirectorPackage({

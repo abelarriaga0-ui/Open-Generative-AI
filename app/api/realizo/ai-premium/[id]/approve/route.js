@@ -110,7 +110,12 @@ export async function POST(request,{params}){
   });
   // Preserve the seller's commercial intent while keeping unverified product
   // statements visibly distinguishable from claims substantiated by sources.
-  const finalPrompt=director.prompt.slice(0,5500);
+  // The research concept input is capped above, but the final film director
+  // includes immutable cast, product and audio clauses beyond 5,500 chars.
+  // Truncating its tail silently stripped mandatory voice/actor clauses and
+  // caused the quote gate to reject an otherwise correctly approved project.
+  // Keep the exact validated director prompt for pricing AND generation.
+  const finalPrompt=director.prompt;
   await db.prepare(
     "UPDATE realizo_ai_projects SET status='approved',video_model_id=?,video_workflow_id=?,video_duration_seconds=?,selected_concept=?,approved_prompt=?,creative_style=?,cast_mode=?,audio_mode=?,updated_at=datetime('now') WHERE id=? AND user_id=?"
   ).bind(modelId,workflowId,duration,selection,finalPrompt,finalStyle,castMode,audioMode,id,user.id).run();
