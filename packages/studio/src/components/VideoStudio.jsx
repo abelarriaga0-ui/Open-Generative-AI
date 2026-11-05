@@ -2521,8 +2521,11 @@ export default function VideoStudio({
     } catch (e) {
       console.error("[VideoStudio]", e);
       const errMsg = formatErrorMessage(e, copy.errors.videoGenerationFailed);
+      // Keep the full job failure visible in the editor; temporary toast
+      // notifications were truncating the reference and refund explanation.
+      setGenerateError(errMsg);
       if (onGenerationError) onGenerationError(errMsg);
-      else toast.error(errMsg);
+      else toast.error('No se completó el video. Revisa el detalle debajo del editor.');
     } finally {
       setGenerating(false);
       onGenerationEnd?.();
@@ -3679,6 +3682,15 @@ export default function VideoStudio({
             </PromptAction>
           </PromptFooter>
       </PromptComposer>
+
+      {realizoBrand&&generateError&&<section role="alert" className="mx-auto mt-3 max-w-[1100px] rounded-2xl border border-[#F2A6A6] bg-[#2B2026] p-4 text-sm text-white">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <strong className="font-bold">No se pudo completar el video</strong>
+          <button type="button" onClick={()=>setGenerateError(null)}
+           className="rounded-lg border border-white/30 px-3 py-1 text-xs font-semibold">Cerrar</button>
+        </div>
+        <p className="whitespace-pre-wrap break-words leading-6">{generateError}</p>
+      </section>}
 
       {realizoBrand&&subtitleTarget&&<RealizoSubtitleEditor
         videoUrl={subtitleTarget.url}
