@@ -1,0 +1,22 @@
+name: Realizo - complimentary research live runtime regression
+on:
+  push:
+    branches: [main, fix/realizo-research-complimentary-live-runtime-20261105]
+    paths:
+      - ".github/workflows/realizo-complimentary-runtime-hotfix.yml"
+      - "lib/realizo-creative/ai-premium.js"
+      - "tests/realizo-ai-research-complimentary.test.mjs"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Guarantee no wallet debit when Cloudflare omits new env variable
+        run: node --test tests/realizo-ai-research-complimentary.test.mjs tests/realizo-ai-premium.test.mjs tests/realizo-ai-premium-live-wallet.test.mjs tests/realizo-research-503-recovery.test.mjs
