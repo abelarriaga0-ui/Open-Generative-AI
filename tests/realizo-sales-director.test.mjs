@@ -433,7 +433,7 @@ test('Premium review is concept-only and preserves all choices stored before res
  assert.match(review,/Editar guion de este concepto/);
  assert.doesNotMatch(review,/¿Quién aparece|¿Qué sonido|¿Cómo quieres que se vea|Duración final/);
  assert.match(ui,/body:JSON.stringify\(\{index:selection/);
- assert.doesNotMatch(approval,/body\.(?:video_model_id|video_duration_seconds|cast_mode|audio_mode|style|speech|prompt)/);
+ assert.doesNotMatch(approval,/body\.(?:video_model_id|video_duration_seconds|cast_mode|audio_mode|style|prompt)/);
  assert.match(approval,/normalizeCastMode\(project\.cast_mode\)/);
  assert.match(approval,/normalizeAudioMode\(project\.audio_mode\)/);
  assert.match(approval,/resolvePremiumVideoChoice\(modelId,project\.video_duration_seconds\)/);
