@@ -59,6 +59,9 @@ on:
       - "lib/realizo-creative/ad-templates.js"
       - "components/RealizoTemplateLibrary.jsx"
       - "components/RealizoTemplateCreator.jsx"
+      - "lib/realizo-creative/ugc15-omni-template.js"
+      - "app/api/realizo/template/ugc15/prepare/route.js"
+      - "tests/realizo-ugc15-omni-template.test.mjs"
       - "app/api/realizo/template/luxury/prepare/route.js"
       - "app/api/realizo/user-templates/route.js"
       - "app/api/realizo/user-templates/[id]/route.js"
@@ -126,7 +129,7 @@ jobs:
           console.log('Verified public video, images, premium and Live checkout. Auto-topup remains consent-only and not implemented.');
           JS
       - name: Verify realistic video appearance across all director styles before deployment
-        run: node --test tests/realizo-physical-realism.test.mjs tests/realizo-luxury-template.test.mjs tests/realizo-seedance-20-endpoint.test.mjs tests/realizo-live-models.test.mjs tests/realizo-muapi-endpoint.test.mjs tests/realizo-user-templates.test.mjs tests/realizo-sales-director.test.mjs
+        run: node --test tests/realizo-ugc15-omni-template.test.mjs tests/realizo-physical-realism.test.mjs tests/realizo-luxury-template.test.mjs tests/realizo-seedance-20-endpoint.test.mjs tests/realizo-live-models.test.mjs tests/realizo-muapi-endpoint.test.mjs tests/realizo-user-templates.test.mjs tests/realizo-sales-director.test.mjs
       - name: Check product identity and spoken-script integrity
         run: node --test tests/realizo-product-identity-voice.test.mjs tests/realizo-direct-premium-generation.test.mjs tests/realizo-universal-angle-director.test.mjs
       - name: Verify hyperreal commercial storyboards across all styles before shipping
