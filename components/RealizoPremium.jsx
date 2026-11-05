@@ -50,17 +50,19 @@ const fmt=status=>({
  approved:'Concepto aprobado',failed:'Investigación no completada',
 })[status]||status;
 
-export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,onCreateNew,onWalletRefresh,initialStyle='ugc',initialProjectId=null,initialTemplateId=null}){
+export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,onCreateNew,onWalletRefresh,onWalletGenerate,onGenerationComplete,onViewCreations,initialStyle='ugc',initialProjectId=null,initialTemplateId=null}){
  const [config,setConfig]=useState(null),[image,setImage]=useState(null);
  const template=getAdTemplate(initialTemplateId);
  const [templateActor,setTemplateActor]=useState('hombre');
  const [templateChangeRequest,setTemplateChangeRequest]=useState('');
  const [templateSetting,setTemplateSetting]=useState('auto');
  const [product,setProduct]=useState({product_name:'',description:'',audience:'',
-  angle:template?.angle||'auto',custom_angle:'',market:'EC',video_language:'es',cta:'',creative_style:template?.style||initialStyle,cast_mode:'with_people',audio_mode:'no_voice',video_model_id:'',video_duration_seconds:''});
+  angle:template?.angle||'auto',custom_angle:'',market:'EC',video_language:'es',cta:'',creative_style:template?.style||initialStyle,cast_mode:'with_people',audio_mode:'no_voice',video_model_id:'',video_duration_seconds:'',video_aspect_ratio:'',video_resolution:'',video_quality:''});
  const [project,setProject]=useState(null),[selection,setSelection]=useState(0);
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
  const [researchConfirm,setResearchConfirm]=useState(false);
+ const [speechEdits,setSpeechEdits]=useState({}),[jobId,setJobId]=useState(null),[completed,setCompleted]=useState(false),[generationFailed,setGenerationFailed]=useState(false);
+ useEffect(()=>{setSpeechEdits({});setJobId(null);setCompleted(false);setGenerationFailed(false)},[project?.id]);
  const fileRef=useRef(null),keyRef=useRef(null);
  useEffect(()=>{
   let active=true;
@@ -74,6 +76,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
      if(recommended)setProduct(prev=>prev.video_model_id?prev:{
       ...prev,video_model_id:recommended.id,
       video_duration_seconds:template?30:preferredDuration(recommended,prev.video_duration_seconds),
+      video_aspect_ratio:recommended.aspect_ratios?.[0]||'',video_resolution:recommended.resolutions?.[0]||'',video_quality:recommended.qualities?.[0]||'',
      });
      // Fresh creation is the default. Only restore a previous investigation
      // after the owner explicitly selects it from "Mis videos".
@@ -205,12 +208,12 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
  // The customer already chose the model, duration, cast and audio.
  // Submit only the concept index; the server owns all prior choices.
  const approve=async()=>{
-  setBusy(true);setError('');
+  setBusy(true);setError('');setGenerationFailed(false);
   try{
    const r=await fetch('/api/realizo/ai-premium/'+encodeURIComponent(project.id)+'/approve',{
     method:'POST',credentials:'same-origin',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({index:selection}),
+    body:JSON.stringify({index:selection,...(hasSpokenAudio?{speech:activeSpeech}:{})}),
    });
    const json=await r.json().catch(()=>({}));
    if(!r.ok)throw Error(
@@ -221,15 +224,30 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
     json.error==='invalid_video_configuration'?
       'El modelo o duración que seleccionaste ya no están disponibles.':
     'No se pudo aprobar: '+(json.error||r.status));
-   if(!json.ready_for_editor)throw Error('El editor no recibió el proyecto.');
-   setProject(json);onPrepare(json.ready_for_editor);onOpenAdvanced();
-  }catch(e){setError(e.message)}
+   const prepared=json.ready_for_editor;
+   if(!prepared?.ready_for_generation)throw Error('El proyecto no contiene una configuración de video válida.');
+   setProject(json);
+   if(typeof onWalletGenerate!=='function')throw Error('El servicio de generación no está disponible.');
+   const result=await onWalletGenerate(prepared.ready_for_generation,{
+    creativeContext:{project_id:prepared.project_id,cast_mode:prepared.cast_mode,
+      audio_mode:prepared.audio_mode,creative_style:prepared.creative_style},
+    onSubmitted:id=>{setJobId(id);onWalletRefresh?.()},
+   });
+   if(result?.job_id){setCompleted(true);onWalletRefresh?.();
+     onGenerationComplete?.(result);}
+   else throw Error('La generación no devolvió un identificador de video.');
+  }catch(e){setError(e.message);setGenerationFailed(true)}
   finally{setBusy(false)}
  };
  const concepts=project?.concepts||[];
+ const chosenConcept=concepts[selection];
+ const activeStyle=project?.creative_style==='auto'?chosenConcept?.creative_style:project?.creative_style;
+ const hasSpokenAudio=Boolean(chosenConcept)&&(!['premium','cinematic'].includes(activeStyle)||project?.audio_mode!=='no_voice');
+ const activeSpeech=Object.hasOwn(speechEdits,selection)?speechEdits[selection]:String(chosenConcept?.spoken_script||chosenConcept?.script||'');
  const videoOptions=config?.video_options||[];
  const selectedModel=videoOptions.find(m=>m.id===product.video_model_id);
  const availableDurations=selectedModel?.durations||[];
+ const videoSettingsOptions=selectedModel?.settings_by_duration?.[product.video_duration_seconds]||selectedModel||{};
  const selectedProvider=selectedModel?.provider||'';
  const selectedFamily=selectedModel?.family_id||'';
  const providerOptions=Array.from(new Map(videoOptions.map(m=>[
@@ -248,6 +266,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
    setProduct(prev=>({
     ...prev,video_model_id:next.id,
     video_duration_seconds:preferredDuration(next,prev.video_duration_seconds),
+    video_aspect_ratio:next.aspect_ratios?.[0]||'',video_resolution:next.resolutions?.[0]||'',video_quality:next.qualities?.[0]||'',
    }));
    keyRef.current=null;
  };
@@ -447,10 +466,28 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
      {selectedModel&&<>
       <label className="block text-sm font-bold">Duración disponible
        <select className={field+' mt-2'} disabled={Boolean(template)} value={product.video_duration_seconds}
-        onChange={e=>change('video_duration_seconds',Number(e.target.value))}>
+        onChange={e=>{const duration=Number(e.target.value);const opts=selectedModel.settings_by_duration?.[duration]||{};
+         setProduct(p=>({...p,video_duration_seconds:duration,video_aspect_ratio:opts.aspect_ratios?.[0]||'',video_resolution:opts.resolutions?.[0]||'',video_quality:opts.qualities?.[0]||''}));keyRef.current=null;}}>
         {availableDurations.map(n=><option key={n} value={n}>{n} segundos</option>)}
        </select>
       </label>
+      <div className="grid sm:grid-cols-3 gap-3">
+       {(videoSettingsOptions.aspect_ratios||[]).length>0&&<label className="text-sm font-bold">Formato de pantalla
+        <select className={field+' mt-2'} value={product.video_aspect_ratio||videoSettingsOptions.aspect_ratios[0]}
+         onChange={e=>change('video_aspect_ratio',e.target.value)}>
+         {videoSettingsOptions.aspect_ratios.map(v=><option key={v} value={v}>{v}</option>)}
+        </select></label>}
+       {(videoSettingsOptions.resolutions||[]).length>0&&<label className="text-sm font-bold">Resolución
+        <select className={field+' mt-2'} value={product.video_resolution||videoSettingsOptions.resolutions[0]}
+         onChange={e=>change('video_resolution',e.target.value)}>
+         {videoSettingsOptions.resolutions.map(v=><option key={v} value={v}>{v}</option>)}
+        </select></label>}
+       {(videoSettingsOptions.qualities||[]).length>0&&<label className="text-sm font-bold">Calidad
+        <select className={field+' mt-2'} value={product.video_quality||videoSettingsOptions.qualities[0]}
+         onChange={e=>change('video_quality',e.target.value)}>
+         {videoSettingsOptions.qualities.map(v=><option key={v} value={v}>{v}</option>)}
+        </select></label>}
+      </div>
       <p className="text-xs text-[#71588B]">
        Seleccionado: <strong>{selectedModel.family}</strong> · {videoModes[selectedModel.image_role]?.[1]||selectedModel.name} · {product.video_duration_seconds} s.
        {' '}{selectedModel.note}
@@ -555,11 +592,19 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
         </button>;
        })}
       </div>
-      <button type="button" onClick={approve} disabled={busy}
+      {hasSpokenAudio&&<label className="block text-sm font-bold">Guion hablado del concepto seleccionado
+       <textarea className={field+' mt-2 min-h-[100px] text-sm'} aria-label="Editar guion de este concepto"
+        value={activeSpeech} maxLength={3200} disabled={busy}
+        onChange={e=>setSpeechEdits(d=>({...d,[selection]:e.target.value}))}/>
+       <span className="block text-xs font-normal text-[#806D90] mt-1">Puedes cambiar las frases de este concepto. Cada propuesta conserva su propio guion, sin repetir la investigación.</span>
+      </label>}
+      {jobId&&<p role="status" className="text-sm text-[#6B4B8C]">Video registrado en Mis creaciones. Solicitud: {jobId}. {completed?'Generación completada.':generationFailed?'El proveedor no completó el video; revisa el motivo indicado arriba.':'El proveedor está procesando el video.'}</p>}
+      {jobId&&<button type="button" onClick={onViewCreations} className="text-sm font-bold text-[#6D48CB] underline">Ver Mis creaciones</button>}
+      <button type="button" onClick={approve} disabled={busy||completed}
        className="rounded-2xl bg-[#6D48CB] text-white font-bold py-3.5 px-6 disabled:opacity-50">
-       {busy?'Preparando video…':'Aprobar concepto y continuar'}
+       {busy?'Preparando o generando…':'Aprobar concepto y generar'}
       </button>
-      <p className="text-xs text-[#86788F]">Al aprobar autorizas el concepto y sus afirmaciones comerciales. Se mostrará el precio antes de generar o cobrar el video.</p>
+      <p className="text-xs text-[#86788F]">Al aprobar autorizas el concepto y sus afirmaciones comerciales. Confirmarás el precio aquí mismo, sin pasar por otro editor. No se cobrarán créditos sin tu confirmación.</p>
     </>}
   </section>}
  </div>;

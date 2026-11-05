@@ -3,6 +3,7 @@ import {enforceSameOrigin} from '@/lib/wallet/access-auth';
 import {safeResearchResponse} from '@/lib/realizo-creative/ai-premium';
 import {salesAngleDirective} from '@/lib/realizo-creative/sales-angle';
 import {resolvePremiumVideoChoice} from '@/lib/realizo-creative/video-specs';
+import {buildPremiumGenerationParams} from '@/lib/realizo-creative/premium-video-settings';
 import {signedMediaUrl} from '@/lib/realizo-creative/media';
 import {buildCommercialDirectorPackage,normalizeProductCopy} from '@/lib/realizo-creative/sales-director';
 import {acceptsSellerConfirmation} from '@/lib/realizo-creative/approval-consent';
@@ -66,7 +67,10 @@ export async function POST(request,{params}){
   const spokenStyle=selectedStyle(finalStyle,concept.creative_style);
   // Reuse and improve the already-researched sales speech with no new AI call.
   const originalSpeech=String(concept.spoken_script??concept.script??'').trim();
-  const userSpeech=(project.sales_angle||'auto')==='auto'&&(spokenStyle==='ugc'||spokenStyle==='demo')
+  // Buyer may customize speech, without changing the earlier approved model/settings.
+  const userEditedSpeech=Object.hasOwn(body,'speech')?String(body.speech||'').trim():null;
+  const userSpeech=userEditedSpeech!==null?userEditedSpeech:
+    (project.sales_angle||'auto')==='auto'&&(spokenStyle==='ugc'||spokenStyle==='demo')
     ?improveSalesScript(originalSpeech,{
       seconds:duration,style:spokenStyle,productName:project.product_name||'',
       description:project.description||'',concept,report:findings,
@@ -126,6 +130,15 @@ export async function POST(request,{params}){
     return Response.json({error:'image_expired_reupload'},{status:409});
   const image=await signedMediaUrl(env,project.primary_asset_id,Math.min(
     Number(asset.expires_at),Math.floor(Date.now()/1000)+3600));
+  let readyForGeneration;
+  try{
+   readyForGeneration=buildPremiumGenerationParams({modelId,duration,
+    prompt:finalPrompt,imageUrl:image,workflowId,imageRole:videoChoice.imageRole,
+    settings:project.video_settings_json?JSON.parse(project.video_settings_json):{},
+   });
+  }catch{
+   return Response.json({error:'invalid_video_configuration'},{status:422});
+  }
   return Response.json({
     ...safeResearchResponse(project),ready_for_editor:{
       prompt:finalPrompt,images:director.model_capabilities.imageRole==='none'?[]:[image],
@@ -134,6 +147,8 @@ export async function POST(request,{params}){
       market:project.market_code,video_language:project.video_language||'es',
       video_model_id:modelId,video_duration_seconds:duration,video_workflow_id:workflowId,
       revision:crypto.randomUUID(),project_id:id,approved_concept:selection,
+      ready_for_generation:readyForGeneration,
+      video_settings:project.video_settings_json?JSON.parse(project.video_settings_json):{},
       media_role:director.model_capabilities.imageRole==='product_reference'?'reference_only':
         director.model_capabilities.imageRole==='start_frame'?'start_frame':'none',creative_style:finalStyle,
       shot_preference:shotPreference,cast_mode:castMode,audio_mode:audioMode,creative_concept:directorConcept,
