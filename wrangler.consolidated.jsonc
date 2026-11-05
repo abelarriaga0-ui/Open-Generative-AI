@@ -27,7 +27,7 @@
     "REALIZO_MULTI_MODEL_SANDBOX": "false",
     "REALIZO_AI_PREMIUM_ENABLED": "true",
     "REALIZO_AI_PREMIUM_PUBLIC_ENABLED": "true",
-    "REALIZO_AI_RESEARCH_COMPLIMENTARY": "true",
+    "REALIZO_AI_RESEARCH_COMPLIMENTARY": "false",
     "REALIZO_TEMPLATE_EXPLOSION_URL": "https://realizo-auth-sandbox.abelarriaga0.workers.dev/templates/explosion-premium-azul.webp",
     "REALIZO_TEMPLATE_IMAGE_MODEL_ID": "realizo_nano_banana_2_1_edit_4k",
     "REALIZO_TEMPLATE_ANALYZER_MODEL_ID": "realizo_gemini_2_5_flash",

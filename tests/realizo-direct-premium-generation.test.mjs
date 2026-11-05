@@ -78,7 +78,7 @@ test('failed video responses disclose only controlled category and verified ledg
  assert.match(jobs,/failure_code/);
  assert.match(jobs,/release_confirmed/);
  assert.match(jobs,/wallet_ledger WHERE user_id=/);
- assert.match(jobs,/providerFailureCode/);
+ assert.match(jobs,/classifyMuapiTaskFailure/);
  assert.match(front,/status.release_confirmed===true/);
  assert.match(front,/status.failure_code/);
  assert.doesNotMatch(front,/La generación falló; revisa la devolución de la reserva/);
