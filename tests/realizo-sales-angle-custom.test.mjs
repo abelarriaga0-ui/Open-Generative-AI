@@ -35,7 +35,7 @@ test('free-angle is validated, stored in one existing field and never silently t
  const persisted=normalizeSalesAngle('custom',raw);
  assert.equal(persisted,'custom:'+raw.trim());
  assert.equal(salesAngleDirective(persisted),raw.trim());
- assert.equal(normalizeSalesAngle('custom','muy corto'),null);
+ assert.equal(normalizeSalesAngle('custom','corto'),null);
  assert.equal(normalizeSalesAngle('custom','x'.repeat(241)),null);
  assert.equal(normalizeSalesAngle('unknown','texto válido'),null);
  assert.equal(normalizeSalesAngle('seduction'),'seduction');
