@@ -304,7 +304,7 @@ test('research prompt makes seller buyer desire and audio-visual action the prio
  assert.match(request.instructions,/DESCRIPCI[ÓO]N Y OBJETIVO COMERCIAL/);
  assert.match(request.instructions,/SINCRONIZACI[ÓO]N VIDEO Y VOZ/);
  assert.match(request.instructions,/PRIMER FOTOGRAMA/);
- assert.match(request.instructions,/sin garantizar atracción causada por un producto/);
+ assert.match(request.instructions,/ni garantizar atracción causada por un producto/);
  assert.equal(request.reasoning.effort,'high');
 });
 
