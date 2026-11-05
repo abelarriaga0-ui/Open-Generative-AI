@@ -5,6 +5,7 @@ import {optimizeImage} from '@/lib/realizo-creative/optimize-image';
 import {extractGeneratedVideoUrl} from '@/lib/realizo-creative/wallet-generation';
 import {TEMPLATE_MODEL_ID} from '@/lib/realizo-creative/template-video-input';
 import {LUXURY_TEMPLATE_ID,LUXURY_TEMPLATE_MODEL_ID} from '@/lib/realizo-creative/luxury-product-only-template';
+import {UGC15_TEMPLATE_ID,UGC15_TEMPLATE_MODEL_ID,UGC15_TEMPLATE_DURATION,UGC15_TEMPLATE_RESOLUTION,UGC15_TEMPLATE_QUALITY,UGC15_TEMPLATE_ASPECT_RATIO} from '@/lib/realizo-creative/ugc15-omni-template';
 import {downloadRealizoVideo} from '@/lib/realizo-creative/download-video';
 
 const money=c=>new Intl.NumberFormat('es-EC',{style:'currency',currency:'USD'}).format(Number(c||0)/100);
@@ -13,7 +14,9 @@ const errorMap={
  invalid_product_or_image:'Sube una fotografía válida y escribe qué producto vendes.',
  template_ai_unavailable:'No fue posible adaptar el guion en este momento.',
  template_ai_incomplete:'No fue posible completar la adaptación. Inténtalo otra vez.',
- template_script_needs_review:'El diálogo no tiene una duración natural de 30 segundos. Vuelve a prepararlo.',
+ template_script_needs_review:'El diálogo no se ajustó al tiempo de la plantilla. Revisa la descripción e inténtalo de nuevo.',
+ invalid_ugc15_template_payload:'La información del producto o el diálogo generado no son válidos.',
+ invalid_ugc15_template_prompt:'El prompt excede lo que admite esta plantilla de 15 segundos.',
  locked_template_prompt_too_long:'La información es demasiado extensa para esta plantilla. Reduce la descripción.',
  invalid_media_reference:'Tu fotografía caducó. Vuelve a subirla.',
  unsupported_model:'Este modelo no está disponible en este momento.',
@@ -47,6 +50,7 @@ async function pause(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
 
 export default function RealizoTemplateCreator({templateId='ugc-vendedor',onBack,onWalletRefresh,onViewVideos}){
  const luxury=templateId===LUXURY_TEMPLATE_ID;
+ const ugc15=templateId===UGC15_TEMPLATE_ID;
  const [photo,setPhoto]=useState(null);
  const [productName,setProductName]=useState('');
  const [description,setDescription]=useState('');
@@ -88,7 +92,7 @@ export default function RealizoTemplateCreator({templateId='ugc-vendedor',onBack
    }
    setError('');setPhase('preparing');
    try{
-     const preparedVideo=await read(await fetch(luxury?'/api/realizo/template/luxury/prepare':'/api/realizo/template/prepare',{
+     const preparedVideo=await read(await fetch(luxury?'/api/realizo/template/luxury/prepare':ugc15?'/api/realizo/template/ugc15/prepare':'/api/realizo/template/prepare',{
        method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
        body:JSON.stringify({
          product_name:productName,description,image_url:photo.url,
@@ -106,6 +110,20 @@ export default function RealizoTemplateCreator({templateId='ugc-vendedor',onBack
          !preparedVideo.input?.prompt?.includes('ABSOLUTE NO-VOICE AUDIO LOCK') ||
          !preparedVideo.input?.prompt?.includes('PRODUCT_ONLY: ZERO HUMAN PIXELS'))
          throw Error('La plantilla Premium no pudo verificarse.');
+     }else if(ugc15){
+       if(preparedVideo.template_id!==UGC15_TEMPLATE_ID ||
+         preparedVideo.model_id!==UGC15_TEMPLATE_MODEL_ID ||
+         preparedVideo.input?.duration!==UGC15_TEMPLATE_DURATION ||
+         preparedVideo.input?.resolution!==UGC15_TEMPLATE_RESOLUTION ||
+         preparedVideo.input?.quality!==UGC15_TEMPLATE_QUALITY ||
+         preparedVideo.input?.aspect_ratio!==UGC15_TEMPLATE_ASPECT_RATIO ||
+         !Array.isArray(preparedVideo.input?.images_list) ||
+         preparedVideo.input.images_list.length!==1 ||
+         preparedVideo.input?.video_files!==null ||
+         preparedVideo.input?.audio_files!==null ||
+         !preparedVideo.input?.prompt?.includes('SPOKEN SCRIPT (Spanish') ||
+         !preparedVideo.input?.prompt?.includes('UGC VISUAL LOCK'))
+         throw Error('La plantilla UGC 15 segundos no pudo verificarse.');
      }else if(preparedVideo.model_id!==TEMPLATE_MODEL_ID||preparedVideo.input?.duration!==30||
        preparedVideo.input?.videos_list!==null)throw Error('La plantilla no pudo verificarse.');
      setPrepared(preparedVideo);setPhase('quoting');
@@ -157,9 +175,10 @@ export default function RealizoTemplateCreator({templateId='ugc-vendedor',onBack
    <button type="button" className="realizo-template-back" onClick={onBack}>← Volver a plantillas</button>
    <div className="realizo-template-creator-head">
      <span className="realizo-v11-eyebrow">CREAR DESDE PLANTILLA</span>
-     <h1>{luxury?'Tu producto.':'Tu producto.'} <em>{luxury?'Cine premium.':'Este video.'}</em></h1>
+     <h1>Tu producto. <em>{luxury?'Cine premium.':ugc15?'UGC vendedor 15s.':'Este video.'}</em></h1>
      <div className="realizo-template-chips">{luxury?
       <><span>Veo 3.1 · Referencias</span><span>8 s</span><span>720p</span><span>Sin voz</span><span>3 tomas</span></>:
+      ugc15?<><span>Seedance 2 Omni</span><span>15 s</span><span>720p · High</span><span>9:16 · Español</span></>:
       <><span>Realizo · Seedance 2.5</span><span>30 s</span><span>9:16</span><span>Español</span></>}</div>
    </div>
    <div className="realizo-template-creator-grid">
