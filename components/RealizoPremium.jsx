@@ -556,7 +556,8 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
     {project.status==='failed'&&<div className="text-sm text-[#9A6257] space-y-1">
       <p><strong>No se completó la investigación.</strong> {({
        research_web_not_performed:'OpenAI no llegó a consultar internet.',
-       research_output_incomplete:'OpenAI no entregó el informe completo.',
+       research_output_incomplete:'OpenAI terminó sin entregar el informe completo.',
+       research_output_token_limit:'OpenAI alcanzó su límite de respuesta antes de completar el informe.',
        research_provider_failed:'El proveedor interrumpió la investigación.',
        unusable_research:'OpenAI devolvió datos que no permiten validar los anuncios.',
        openai_rejected:'El proveedor rechazó la configuración de investigación.',
@@ -572,7 +573,10 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
        project.research_payment_status==='reserved'?
        'El cobro está en revisión; no se volverá a intentar automáticamente.':
        'No se capturó ningún cobro de esta investigación.'}</p>
-      <p>Si la respuesta anterior todavía existe, REALIZO la recuperará automáticamente al abrir el proyecto, sin otra consulta ni pago.</p>
+      {project.error==='unusable_research'&&
+       <p>REALIZO intentará recuperar la respuesta ya existente al reabrir el proyecto, sin generar otra investigación ni cobrar de nuevo.</p>}
+      {['research_output_incomplete','research_output_token_limit'].includes(project.error)&&
+       <p>La respuesta quedó incompleta y no puede tratarse como un informe terminado. Puedes iniciar otra investigación; este intento fallido no se cobró.</p>}
      </div>}
     {project.status==='needs_review'&&!ready&&<p className="text-sm text-[#9A6257]">La investigación necesita revisión técnica antes de volver a intentarse. No se volverá a cobrar automáticamente.</p>}
     {ready&&<>
