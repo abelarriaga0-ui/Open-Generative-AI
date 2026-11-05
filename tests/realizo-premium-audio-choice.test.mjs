@@ -71,7 +71,8 @@ test('audio choice persists from creation and approval through all studio genera
  assert.match(ui,/Sin voces/);
  assert.match(ui,/Voz en off/);
  assert.match(ui,/Con diálogo/);
- assert.match(ui,/audio_mode:reviewAudioMode/);
+ assert.match(approve,/normalizeAudioMode\(project\.audio_mode\)/);
+ assert.match(ui,/body:JSON.stringify\(\{index:selection\}\)/);
  assert.match(studio,/audioMode:preparedBrief.audio_mode/);
  assert.equal((studio.match(/audio_mode:preparedBrief.audio_mode/g)||[]).length,3);
  assert.match(gate,/context.audio_mode!==project.audio_mode/);
