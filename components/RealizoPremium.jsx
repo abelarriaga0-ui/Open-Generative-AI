@@ -62,6 +62,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
  const [researchConfirm,setResearchConfirm]=useState(false);
  const [speechEdits,setSpeechEdits]=useState({}),[jobId,setJobId]=useState(null),[completed,setCompleted]=useState(false);
+ useEffect(()=>{setSpeechEdits({});setJobId(null);setCompleted(false)},[project?.id]);
  const fileRef=useRef(null),keyRef=useRef(null);
  useEffect(()=>{
   let active=true;
@@ -212,7 +213,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
    const r=await fetch('/api/realizo/ai-premium/'+encodeURIComponent(project.id)+'/approve',{
     method:'POST',credentials:'same-origin',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({index:selection}),
+    body:JSON.stringify({index:selection,...(hasSpokenAudio?{speech:activeSpeech}:{})}),
    });
    const json=await r.json().catch(()=>({}));
    if(!r.ok)throw Error(
@@ -223,12 +224,26 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
     json.error==='invalid_video_configuration'?
       'El modelo o duración que seleccionaste ya no están disponibles.':
     'No se pudo aprobar: '+(json.error||r.status));
-   if(!json.ready_for_editor)throw Error('El editor no recibió el proyecto.');
-   setProject(json);onPrepare(json.ready_for_editor);onOpenAdvanced();
+   const prepared=json.ready_for_editor;
+   if(!prepared?.ready_for_generation)throw Error('El proyecto no contiene una configuración de video válida.');
+   setProject(json);
+   if(typeof onWalletGenerate!=='function')throw Error('El servicio de generación no está disponible.');
+   const result=await onWalletGenerate(prepared.ready_for_generation,{
+    creativeContext:{project_id:prepared.project_id,cast_mode:prepared.cast_mode,
+      audio_mode:prepared.audio_mode,creative_style:prepared.creative_style},
+    onSubmitted:id=>{setJobId(id);onWalletRefresh?.()},
+   });
+   if(result?.job_id){setCompleted(true);onWalletRefresh?.();
+     onGenerationComplete?.(result);}
+   else throw Error('La generación no devolvió un identificador de video.');
   }catch(e){setError(e.message)}
   finally{setBusy(false)}
  };
  const concepts=project?.concepts||[];
+ const chosenConcept=concepts[selection];
+ const activeStyle=project?.creative_style==='auto'?chosenConcept?.creative_style:project?.creative_style;
+ const hasSpokenAudio=Boolean(chosenConcept)&&(!['premium','cinematic'].includes(activeStyle)||project?.audio_mode!=='no_voice');
+ const activeSpeech=Object.hasOwn(speechEdits,selection)?speechEdits[selection]:String(chosenConcept?.spoken_script||chosenConcept?.script||'');
  const videoOptions=config?.video_options||[];
  const selectedModel=videoOptions.find(m=>m.id===product.video_model_id);
  const availableDurations=selectedModel?.durations||[];
@@ -577,11 +592,19 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
         </button>;
        })}
       </div>
-      <button type="button" onClick={approve} disabled={busy}
+      {hasSpokenAudio&&<label className="block text-sm font-bold">Guion hablado del concepto seleccionado
+       <textarea className={field+' mt-2 min-h-[100px] text-sm'} aria-label="Editar guion de este concepto"
+        value={activeSpeech} maxLength={3200} disabled={busy}
+        onChange={e=>setSpeechEdits(d=>({...d,[selection]:e.target.value}))}/>
+       <span className="block text-xs font-normal text-[#806D90] mt-1">Puedes cambiar las frases de este concepto. Cada propuesta conserva su propio guion, sin repetir la investigación.</span>
+      </label>}
+      {jobId&&<p role="status" className="text-sm text-[#6B4B8C]">Video registrado en Mis creaciones. Solicitud: {jobId}. {completed?'Generación completada.':'El proveedor está procesando el video.'}</p>}
+      {jobId&&<button type="button" onClick={onViewCreations} className="text-sm font-bold text-[#6D48CB] underline">Ver Mis creaciones</button>}
+      <button type="button" onClick={approve} disabled={busy||completed}
        className="rounded-2xl bg-[#6D48CB] text-white font-bold py-3.5 px-6 disabled:opacity-50">
-       {busy?'Preparando video…':'Aprobar concepto y continuar'}
+       {busy?'Preparando o generando…':'Aprobar concepto y generar'}
       </button>
-      <p className="text-xs text-[#86788F]">Al aprobar autorizas el concepto y sus afirmaciones comerciales. Se mostrará el precio antes de generar o cobrar el video.</p>
+      <p className="text-xs text-[#86788F]">Al aprobar autorizas el concepto y sus afirmaciones comerciales. Confirmarás el precio aquí mismo, sin pasar por otro editor. No se cobrarán créditos sin tu confirmación.</p>
     </>}
   </section>}
  </div>;
