@@ -79,7 +79,7 @@ test('only the new specialized API prepares this recipe without exposing video f
  const creator=text('components/RealizoTemplateCreator.jsx');
  assert.match(source,/requireWalletUser/);
  const policy=text('lib/wallet/request-policy.js');
- assert.match(policy,/template\\/ugc15\\/prepare/);
+ assert.ok(policy.includes("'/api/realizo/template/ugc15/prepare'"));
  assert.match(source,/isOwnedSignedProductImage/);
  assert.match(source,/makeUgc15ReferenceInput/);
  assert.match(source,/spoken_script/);
