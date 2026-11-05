@@ -1,6 +1,7 @@
 import {getWalletEnvironment,requireWalletUser,jsonError} from '@/lib/wallet/server';
 import {enforceSameOrigin} from '@/lib/wallet/access-auth';
 import {safeResearchResponse} from '@/lib/realizo-creative/ai-premium';
+import {salesAngleDirective} from '@/lib/realizo-creative/sales-angle';
 import {resolvePremiumVideoChoice} from '@/lib/realizo-creative/video-specs';
 import {signedMediaUrl} from '@/lib/realizo-creative/media';
 import {buildCommercialDirectorPackage,normalizeProductCopy} from '@/lib/realizo-creative/sales-director';
@@ -65,7 +66,7 @@ export async function POST(request,{params}){
   const spokenStyle=selectedStyle(finalStyle,concept.creative_style);
   // Reuse and improve the already-researched sales speech with no new AI call.
   const originalSpeech=String(concept.spoken_script??concept.script??'').trim();
-  const userSpeech=spokenStyle==='ugc'||spokenStyle==='demo'
+  const userSpeech=(project.sales_angle||'auto')==='auto'&&(spokenStyle==='ugc'||spokenStyle==='demo')
     ?improveSalesScript(originalSpeech,{
       seconds:duration,style:spokenStyle,productName:project.product_name||'',
       description:project.description||'',concept,report:findings,
@@ -77,6 +78,7 @@ export async function POST(request,{params}){
   if(isFilmStyle(finalStyle)&&audioMode!=='no_voice'&&!userSpeech)
     return Response.json({error:'premium_audio_script_required'},{status:422});
   const directorConcept={...concept,video_prompt:userPrompt,
+    requested_sales_angle:salesAngleDirective(project.sales_angle),
     spoken_script:isFilmStyle(finalStyle)&&audioMode==='no_voice'?'':userSpeech};
   // Verify spoken dialogue fills the chosen runtime BEFORE any video charge.
   // A short, sparse script should be edited, not stretched with silent shots.
