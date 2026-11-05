@@ -2,13 +2,8 @@
 import {useEffect,useRef,useState} from 'react';
 import {optimizeImage} from '@/lib/realizo-creative/optimize-image';
 import {getAdTemplate,templatePlan} from '@/lib/realizo-creative/ad-templates';
+import {SALES_ANGLE_CHOICES} from '@/lib/realizo-creative/sales-angle';
 
-const angles=[
- ['auto','Que la IA investigue y elija'],['problem','Problema → solución'],
- ['premium','Premium / lujo'],['benefits','Beneficio directo'],
- ['sensory','Sensorial / emocional'],
- ['lifestyle','Estilo de vida'],['offer','Oferta confirmada']
-];
 const markets=[['EC','Ecuador'],['CO','Colombia'],['MX','México'],['PE','Perú'],
  ['CL','Chile'],['GT','Guatemala'],['US','Estados Unidos'],['ES','España'],
  ['AR','Argentina'],['PA','Panamá'],['CR','Costa Rica'],['UY','Uruguay'],
@@ -62,7 +57,7 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
  const [templateChangeRequest,setTemplateChangeRequest]=useState('');
  const [templateSetting,setTemplateSetting]=useState('auto');
  const [product,setProduct]=useState({product_name:'',description:'',audience:'',
-  angle:template?.angle||'auto',market:'EC',video_language:'es',cta:'',creative_style:template?.style||initialStyle,cast_mode:'with_people',audio_mode:'no_voice',video_model_id:'',video_duration_seconds:''});
+  angle:template?.angle||'auto',custom_angle:'',market:'EC',video_language:'es',cta:'',creative_style:template?.style||initialStyle,cast_mode:'with_people',audio_mode:'no_voice',video_model_id:'',video_duration_seconds:''});
  const [project,setProject]=useState(null),[selection,setSelection]=useState(0);
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
  const [researchConfirm,setResearchConfirm]=useState(false);
@@ -166,6 +161,8 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
   if(!config?.enabled)return setError('La investigación de IA no está disponible en este momento.');
   if(!image?.id || product.description.trim().length<15)
     return setError('Sube una foto y describe el producto en al menos 15 caracteres.');
+  if(product.angle==='custom'&&(product.custom_angle.trim().length<8||product.custom_angle.trim().length>240))
+    return setError('Escribe tu ángulo de venta libre en 8 a 240 caracteres antes de investigar.');
   const chosen=(config.video_options||[]).find(m=>m.id===product.video_model_id);
   if(!chosen || !chosen.durations.includes(Number(product.video_duration_seconds)))
     return setError('Selecciona un motor de video y una duración compatible antes de investigar.');
@@ -332,10 +329,19 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
      </label>
      <label className="block text-sm font-bold">Ángulo de venta
        <select className={field+' mt-2'} disabled={Boolean(template)} value={product.angle} onChange={e=>change('angle',e.target.value)}>
-        {angles.map(([v,n])=><option key={v} value={v}>{n}</option>)}
+        {SALES_ANGLE_CHOICES.map(([v,n])=><option key={v} value={v}>{n}</option>)}
+        {template&&!SALES_ANGLE_CHOICES.some(([id])=>id===product.angle)&&
+         <option value={product.angle}>Ángulo fijo de la plantilla</option>}
        </select>
      </label>
     </div>
+    {product.angle==='custom'&&!template&&
+     <label className="block text-sm font-bold">Describe tu ángulo de venta
+      <textarea className={field+' mt-2 min-h-[92px]'} value={product.custom_angle}
+       maxLength={240} onChange={e=>change('custom_angle',e.target.value)}
+       placeholder="Ej. Quiero que el comprador sienta seguridad y atractivo al salir, destacando el aroma sin prometer atraer personas."/>
+      <span className="block text-xs font-normal text-[#806D90] mt-1">La IA investigará este enfoque y lo aplicará a los tres conceptos. No modifica el formato, el motor ni la duración.</span>
+     </label>}
     <label className="block text-sm font-bold">Idioma de voz y video
      <select className={field+' mt-2'} disabled={Boolean(template)} value={product.video_language} onChange={e=>change('video_language',e.target.value)}>
       {languages.map(([code,name])=><option key={code} value={code}>{name}</option>)}
