@@ -71,7 +71,7 @@ test('product research uses high reasoning without second LLM charge and forbids
  const r=buildResearchRequest({OPENAI_PREMIUM_MODEL:'gpt-6-luna'},project);
  assert.equal(r.reasoning.effort,'high');
  assert.equal(r.max_tool_calls,5);
- assert.ok(r.max_output_tokens<=14000);
+ assert.equal(r.max_output_tokens,28000);
  assert.equal(r.tools[0].type,'web_search');
  assert.ok(r.instructions.includes(RESEARCH_DELIVERABLE_CONTRACT));
 });
