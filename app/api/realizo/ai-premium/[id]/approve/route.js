@@ -66,7 +66,7 @@ export async function POST(request,{params}){
   const spokenStyle=selectedStyle(finalStyle,concept.creative_style);
   // Reuse and improve the already-researched sales speech with no new AI call.
   const originalSpeech=String(concept.spoken_script??concept.script??'').trim();
-  const userSpeech=project.sales_angle==='auto'&&(spokenStyle==='ugc'||spokenStyle==='demo')
+  const userSpeech=(project.sales_angle||'auto')==='auto'&&(spokenStyle==='ugc'||spokenStyle==='demo')
     ?improveSalesScript(originalSpeech,{
       seconds:duration,style:spokenStyle,productName:project.product_name||'',
       description:project.description||'',concept,report:findings,
