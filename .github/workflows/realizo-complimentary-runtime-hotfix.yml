@@ -6,6 +6,7 @@ on:
       - ".github/workflows/realizo-complimentary-runtime-hotfix.yml"
       - "lib/realizo-creative/ai-premium.js"
       - "tests/realizo-ai-research-complimentary.test.mjs"
+      - "tests/realizo-ai-premium.test.mjs"
   workflow_dispatch:
 permissions:
   contents: read
