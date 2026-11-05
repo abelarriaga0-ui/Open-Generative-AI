@@ -88,7 +88,10 @@ export async function GET(request,{params}){
         }else if(['failed','cancelled','incomplete'].includes(response.status)){
           await db.prepare(
             "UPDATE realizo_ai_projects SET status='failed',error_code=?,updated_at=datetime('now') WHERE id=? AND user_id=? AND status='researching'"
-          ).bind(response.status==='incomplete'?'research_output_incomplete':'research_provider_failed',id,user.id).run();
+          ).bind(response.status==='incomplete'
+            ?(response.incomplete_details?.reason==='max_output_tokens'
+              ?'research_output_token_limit':'research_output_incomplete')
+            :'research_provider_failed',id,user.id).run();
           if(project.billing_type==='paid')
             await db.prepare(
               "UPDATE realizo_ai_premium_orders SET status='released',updated_at=datetime('now') WHERE project_id=? AND user_id=? AND status='reserved'"
