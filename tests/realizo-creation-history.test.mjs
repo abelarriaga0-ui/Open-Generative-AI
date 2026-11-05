@@ -21,7 +21,8 @@ test('Mis videos holds the real completed videos and a separate recoverable rese
  assert.match(studio,/\/api\/realizo\/ai-premium/);
  assert.match(studio,/Proyectos Premium guardados/);
  assert.match(studio,/reopenPremiumProject\(item\.id\)/);
- assert.match(studio,/video_url/);
+ // Playback is now delegated to the unified creations gallery.
+ assert.match(studio,/RealizoCreationsGallery videos=\{jobs\}/);
  assert.match(jobs,/FROM generation_jobs WHERE user_id=\?/);
  assert.match(studio,/Promise\.allSettled/);
 });
