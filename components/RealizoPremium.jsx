@@ -1,7 +1,6 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import {optimizeImage} from '@/lib/realizo-creative/optimize-image';
-import {improveSalesScript,voiceBudget,MAX_SPOKEN_SCRIPT_CHARACTERS} from '@/lib/realizo-creative/sales-storyboard';
 import {getAdTemplate,templatePlan} from '@/lib/realizo-creative/ad-templates';
 
 const angles=[
@@ -65,18 +64,9 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
  const [product,setProduct]=useState({product_name:'',description:'',audience:'',
   angle:template?.angle||'auto',market:'EC',video_language:'es',cta:'',creative_style:template?.style||initialStyle,cast_mode:'with_people',audio_mode:'no_voice',video_model_id:'',video_duration_seconds:''});
  const [project,setProject]=useState(null),[selection,setSelection]=useState(0);
- const [editedPrompt,setEditedPrompt]=useState('');
- const [editedSpeech,setEditedSpeech]=useState('');
- const [reviewDuration,setReviewDuration]=useState(null);
- const [reviewModelId,setReviewModelId]=useState(null);
- const [reviewCastMode,setReviewCastMode]=useState('with_people');
- const [reviewAudioMode,setReviewAudioMode]=useState('no_voice');
- const [sellerConfirmed,setSellerConfirmed]=useState(false);
- const [style,setStyle]=useState(initialStyle),[shotPreference,setShotPreference]=useState('auto');
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
  const [researchConfirm,setResearchConfirm]=useState(false);
  const fileRef=useRef(null),keyRef=useRef(null);
- const manualSpeechRef=useRef(false),manualPromptRef=useRef(false);
  useEffect(()=>{
   let active=true;
   fetch('/api/realizo/ai-premium',{cache:'no-store',credentials:'same-origin'})
@@ -143,35 +133,6 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
    setSelection(i);
   }
  },[project?.id,project?.concepts]);
- useEffect(()=>{
-  if(project?.id){
-   setReviewDuration(Number(project.video_duration_seconds)||8);
-   setReviewModelId(project.video_model_id||null);
-   setReviewCastMode(project.cast_mode==='product_only'?'product_only':'with_people');
-   setReviewAudioMode(['no_voice','voiceover','dialogue'].includes(project.audio_mode)?project.audio_mode:'no_voice');
-  }
- },[project?.id,project?.video_duration_seconds,project?.video_model_id,project?.cast_mode,project?.audio_mode]);
- useEffect(()=>{
-  manualSpeechRef.current=false;
-  manualPromptRef.current=false;
-  setSellerConfirmed(false);
- },[project?.id,selection]);
- useEffect(()=>{
-  const chosen=project?.concepts?.[selection];
-  if(!manualPromptRef.current)setEditedPrompt(chosen?.video_prompt||'');
-  // Once the seller edits a line, do NOT overwrite the seller's exact words
-  // when they change runtime, format, or the project refreshes.
-  if(!manualSpeechRef.current)setEditedSpeech(chosen?improveSalesScript(chosen.spoken_script||chosen.script||'',{
-   seconds:reviewDuration||Number(project?.video_duration_seconds)||8,
-   style:project?.creative_style==='auto'?(chosen.creative_style||style):project?.creative_style,
-   productName:project?.product_name||'',
-   description:project?.description||'',
-   concept:chosen,report:project?.findings||{},language:project?.video_language||'es',
-  }):'');
- },[project?.concepts,selection,reviewDuration]);
- useEffect(()=>{
-  if(project?.id)setStyle(project.creative_style||'auto');
- },[project?.id,project?.creative_style]);
  const change=(k,v)=>{setProduct(p=>({...p,[k]:v}));keyRef.current=null};
  const upload=async(file)=>{
   if(!file)return;
@@ -244,39 +205,32 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
   }catch(e){setError(e.message)}
   finally{setBusy(false)}
  };
+ // The customer already chose the model, duration, cast and audio.
+ // Submit only the concept index; the server owns all prior choices.
  const approve=async()=>{
   setBusy(true);setError('');
   try{
    const r=await fetch('/api/realizo/ai-premium/'+encodeURIComponent(project.id)+'/approve',{
-    method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({index:selection,prompt:editedPrompt,speech:editedSpeech,style,
-     video_model_id:reviewModelId||project.video_model_id,
-     video_duration_seconds:reviewDuration||project.video_duration_seconds,
-     seller_claims_confirmed:sellerConfirmed,
-     shot_preference:shotPreference,cast_mode:reviewCastMode,audio_mode:reviewAudioMode}),
+    method:'POST',credentials:'same-origin',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({index:selection}),
    });
    const json=await r.json().catch(()=>({}));
-   if(!r.ok)throw Error(json.error==='seller_claims_confirmation_required'?
-    'Confirma que revisaste las afirmaciones de tu anuncio.':
-    json.error==='premium_audio_script_required'?'Para voz en off o diálogo, escribe primero el texto que se escuchará. Para solo música, selecciona «Sin voces».':
-    json.error==='premium_audio_cast_conflict'?'El diálogo entre actores requiere «Con personas». Selecciona voz en off o sin voces.':
-    json.error==='ugc_speech_timing_invalid'?
-    'Ajusta el diálogo UGC para que encaje en los segundos elegidos. No se cobrará otra investigación.':
-    json.error==='ugc_speech_quality_invalid'?
-    'El guion aún no está listo para vender: describe la fotografía, utiliza un gancho genérico o ignora el deseo principal del comprador. Edítalo aquí sin pagar otra investigación.':
-    json.error==='review_product_responsibility'?
-    'Acepta la declaración de responsabilidad comercial antes de aprobar.':
+   if(!r.ok)throw Error(
+    json.error==='ugc_speech_timing_invalid'||json.error==='ugc_speech_quality_invalid'?
+      'El guion de este concepto no se ajusta a la duración. Elige otro concepto; no se cobra otra investigación.':
+    json.error==='image_expired_reupload'?
+      'La fotografía original caducó y debe cargarse otra vez.':
+    json.error==='invalid_video_configuration'?
+      'El modelo o duración que seleccionaste ya no están disponibles.':
     'No se pudo aprobar: '+(json.error||r.status));
    if(!json.ready_for_editor)throw Error('El editor no recibió el proyecto.');
    setProject(json);onPrepare(json.ready_for_editor);onOpenAdvanced();
   }catch(e){setError(e.message)}
   finally{setBusy(false)}
  };
- const findings=project?.findings||{};
  const concepts=project?.concepts||[];
  const videoOptions=config?.video_options||[];
- const reviewOptions=videoOptions.filter(m=>m.image_role==='product_reference'||m.image_role==='start_frame');
- const reviewOption=reviewOptions.find(m=>m.id===reviewModelId);
  const selectedModel=videoOptions.find(m=>m.id===product.video_model_id);
  const availableDurations=selectedModel?.durations||[];
  const spokenWords=editedSpeech.trim()?editedSpeech.trim().split(/\s+/).length:0;
@@ -580,204 +534,30 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
      </div>}
     {project.status==='needs_review'&&!ready&&<p className="text-sm text-[#9A6257]">La investigación necesita revisión técnica antes de volver a intentarse. No se volverá a cobrar automáticamente.</p>}
     {ready&&<>
-      <div className="text-sm font-semibold text-[#6B4B8C] rounded-xl bg-[#F3EBFA] p-3 space-y-3">
-       <div className="flex flex-wrap gap-3 items-center">
-        <label className="flex flex-wrap items-center gap-2">
-         Motor:
-         <select aria-label="Motor del video" className="rounded-lg border border-[#C6A8E5] bg-white px-3 py-2 text-[#4F2E83]"
-          disabled={Boolean(template||project?.template_id)}
-          value={reviewModelId||project.video_model_id||''}
-          onChange={e=>{
-           const next=reviewOptions.find(m=>m.id===e.target.value);
-           if(!next)return;
-           setReviewModelId(next.id);
-           setReviewDuration(preferredDuration(next,reviewDuration||project.video_duration_seconds));
-          }}>
-          {!reviewOptions.some(m=>m.id===project.video_model_id)&&
-           <option value={project.video_model_id} disabled>{project.video_model_id} · requiere video</option>}
-          {reviewOptions.map(m=><option key={m.id} value={m.id}>{m.name||m.id}</option>)}
-         </select>
-        </label>
-        <label className="flex flex-wrap items-center gap-2">
-         Duración:
-         <select aria-label="Duración final del video" disabled={Boolean(template||project?.template_id)}
-          className="rounded-lg border border-[#C6A8E5] bg-white px-3 py-2 text-[#4F2E83]"
-          value={reviewDuration||project.video_duration_seconds||8}
-          onChange={e=>setReviewDuration(Number(e.target.value))}>
-          {(reviewOption?.durations||[Number(project.video_duration_seconds)||8]).map(n=>
-           <option value={n} key={n}>{n} segundos</option>)}
-         </select>
-        </label>
-       </div>
-       <p className="font-normal text-xs">{template||project?.template_id
-        ?'Configuración fija de la plantilla.'
-        :'Cambiar motor o duración reutiliza la investigación y el concepto. El costo del video se confirma antes de generar.'}</p>
-      </div>
-
-      <div className="rounded-2xl bg-[#F8F5F0] p-4 space-y-2">
-       <p className="font-bold">Análisis comercial</p>
-       <p className="text-sm text-[#6B5878]">
-        {String(findings.market_summary||'').slice(0,200)}{String(findings.market_summary||'').length>200?'…':''}
-       </p>
-       <details className="text-xs text-[#796A83]">
-        <summary className="font-semibold cursor-pointer">Ver informe completo, verificaciones y fuentes</summary>
-        <div className="mt-3 space-y-2">
-         <p>{findings.product_observation}</p>
-         {findings.product_dossier&&<div className="space-y-1">
-          <p className="font-bold">Identificación del producto</p>
-          <p>{findings.product_dossier.identified_product} · {findings.product_dossier.actual_category}</p>
-          <p>Coincidencia con la imagen: {findings.product_dossier.identity_status==='matched'?'Identidad contrastada':findings.product_dossier.identity_status==='partial'?'Coincidencia parcial':'Sin confirmar'}</p>
-          {!!findings.product_dossier.components_or_ingredients?.length&&<p><strong>Componentes/ingredientes investigados:</strong> {findings.product_dossier.components_or_ingredients.join(' · ')}</p>}
-          {!!findings.product_dossier.features?.length&&<p><strong>Características:</strong> {findings.product_dossier.features.join(' · ')}</p>}
-          {!!findings.product_dossier.realistic_uses?.length&&<p><strong>Usos:</strong> {findings.product_dossier.realistic_uses.join(' · ')}</p>}
-          {!!findings.product_dossier.evidence_gaps?.length&&<p><strong>Datos aún sin comprobar:</strong> {findings.product_dossier.evidence_gaps.join(' · ')}</p>}
-         </div>}
-         <p>{findings.market_summary}</p>
-         {!!findings.angle_analysis?.length&&<div className="space-y-1">
-          <p className="font-bold">Motivos de compra analizados</p>
-          {findings.angle_analysis.map((a,i)=><p key={i}>
-           <strong>{a.angle}:</strong> {a.buyer_motive} — {a.evidence_reason}
-          </p>)}
-         </div>}
-         {!!findings.research_evidence?.length&&<div className="space-y-1">
-          <p className="font-bold">Evidencias y su procedencia</p>
-          {findings.research_evidence.map((e,i)=><p key={i}>
-           {e.basis==='web'?'Fuente web':e.basis==='photo'?'Fotografía':e.basis==='seller'?'Declaración del vendedor':'Sin verificar'}: {e.claim}
-           {e.source_url&&e.basis==='web'?<a href={e.source_url} target="_blank" rel="noreferrer" className="underline text-[#6D48CB] ml-1">Ver fuente</a>:null}
-          </p>)}
-         </div>}
-         {(findings.description_conflicts||[]).length>0&&<p><strong>Observaciones:</strong> {findings.description_conflicts.join(' · ')}</p>}
-         {(findings.claims_to_verify||[]).length>0&&<p><strong>Por verificar:</strong> {findings.claims_to_verify.join(' · ')}</p>}
-         {(findings.research_limitations||[]).length>0&&<p><strong>Alcance:</strong> {findings.research_limitations.join(' · ')}</p>}
-         <p>{project.sources?.length?project.sources.map((x,i)=><span key={i}>
-          <a href={x.url} target="_blank" rel="noreferrer" className="underline text-[#6D48CB]">{x.title||x.url}</a>{' · '}
-         </span>):'No se obtuvieron enlaces verificables.'}</p>
-        </div>
-       </details>
-      </div>
-
-      {findings.selected_sales_angle&&<div className="mb-3 rounded-xl bg-[#F5EDF9] px-4 py-3">
-       <p className="text-xs text-[#806A91]">Ángulo recomendado por la investigación</p>
-       <p className="text-sm font-bold">{String(findings.selected_sales_angle).split(/[.;]/)[0].trim()}</p>
-      </div>}
+      <p className="text-sm text-[#88778E]">Elige un concepto. Realizo conservará automáticamente todas las opciones que ya seleccionaste.</p>
       <div className="grid sm:grid-cols-3 gap-3">
-       {concepts.map((c,i)=>{
-        const visual=visualFor(c);
+       {concepts.map((concept,i)=>{
+        const visual=visualFor(concept);
         return <button type="button" key={i} aria-pressed={selection===i}
-          onClick={()=>setSelection(i)}
+          disabled={busy} onClick={()=>setSelection(i)}
           className={'rounded-2xl text-left border-2 overflow-hidden transition '+(selection===i?'border-[#8054C9] shadow-md':'border-[#E9DFEC] hover:border-[#B89DE4]')}>
-         <div className="h-[110px] bg-gradient-to-br from-[#E6DBF6] via-[#F8E8EA] to-[#F9EDD7] flex items-center justify-center gap-4 relative">
-          {image?.url?<img src={image.url} alt="" className="h-20 w-20 rounded-xl object-contain bg-white/65 p-1 shadow-sm"/>:
-           <span className="text-5xl" aria-hidden="true">{visual.icon}</span>}
-          <div className="rounded-full bg-white/85 w-12 h-12 flex items-center justify-center text-2xl" aria-hidden="true">{visual.icon}</div>
-          <span className="absolute top-2 right-2 bg-white/90 rounded-full px-2 py-1 text-[10px] font-bold text-[#70509E]">{visual.label}</span>
+         <div className="h-[110px] bg-gradient-to-br from-[#E6DBF6] via-[#F8E8EA] to-[#F9EDD7] flex items-center justify-center">
+          <span className="text-5xl" aria-hidden="true">{visual.icon}</span>
          </div>
          <div className="p-4 space-y-2">
-          <p className="font-bold text-sm">{c.name}</p>
-          <p className="text-xs text-[#7D698A] line-clamp-2">“{c.hook}”</p>
-          {!!c.buyer_motive&&<p className="text-xs text-[#756581] line-clamp-2">Motivo: {c.buyer_motive}</p>}
+          <p className="font-bold text-sm">{concept.name}</p>
+          <p className="text-xs text-[#7D698A]">“{concept.hook}”</p>
+          {!!concept.buyer_motive&&<p className="text-xs text-[#756581]">Motivo: {concept.buyer_motive}</p>}
           <p className="text-xs font-bold text-[#7551BD]">{selection===i?'✓ Elegido':'Elegir concepto'}</p>
          </div>
         </button>;
        })}
       </div>
-      {concepts[selection]&&<div className="space-y-3">
-
-        {(!(style==='premium'||style==='cinematic')||reviewAudioMode!=='no_voice')&&<div className="rounded-xl bg-[#F8F3FC] p-4">
-         <p className="text-xs font-bold text-[#7555A5]">{style==='premium'||style==='cinematic'?(reviewAudioMode==='voiceover'?'Voz en off':'Diálogo entre actores'):'Guion hablado'} · {languages.find(([code])=>code===(project.video_language||'es'))?.[1]||'Español'}</p>
-         <textarea value={editedSpeech} onChange={e=>{manualSpeechRef.current=true;setEditedSpeech(e.target.value)}}
-          aria-label="Editar guion hablado sin costo adicional"
-          className={field+' mt-2 min-h-[95px] text-sm'} maxLength={MAX_SPOKEN_SCRIPT_CHARACTERS}/>
-         <p className="text-xs text-[#816D8F] mt-1">Edita el gancho, la explicación y el cierre sin pagar otra investigación. {style==='ugc'?
-           spokenWords+' palabras · objetivo '+speechMin+'–'+speechMax+' (ideal '+speechTarget+') para '+durationSpeech+' s.':
-           'El guion debe caber en '+durationSpeech+' segundos.'}</p>
-         <details className="mt-3 text-xs text-[#7A6988]">
-          <summary className="cursor-pointer">Mostrar los planos</summary>
-          <ul className="list-disc pl-4 mt-2 space-y-1">
-           {(concepts[selection].shots||[]).map((shot,i)=><li key={i}>{shot}</li>)}
-          </ul>
-         </details>
-        </div>}
-        {(style==='premium'||style==='cinematic')&&reviewAudioMode==='no_voice'&&
-         <p className="text-sm rounded-xl bg-[#F8F3FC] p-3">🎼 Sin voces: música instrumental y foley profesional. El guion hablado no se enviará.</p>}
-        <div className="space-y-2">
-         <p className="text-sm font-bold">¿Cómo quieres que se vea el anuncio?</p>
-         {project.creative_style==='auto'
-          ?<div className="space-y-2">
-            <p className="text-xs text-[#7E658B]">Proyecto anterior o estilo automático: puedes ajustar la presentación sin nueva consulta IA. Revisa y edita el guion hablado.</p>
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-             {creativeStyles.map(([id,icon,label])=><button type="button" key={id}
-              aria-pressed={style===id} onClick={()=>setStyle(id)}
-              className={'rounded-xl border-2 px-2 py-3 text-center '+(style===id
-               ?'border-[#7650C6] bg-[#F2EAFE]':'border-[#E7DEEC] bg-white')}>
-              <span className="block text-xl" aria-hidden="true">{icon}</span>
-              <span className="block mt-1 text-xs font-bold">{label}</span>
-             </button>)}
-            </div>
-           </div>
-          :<p className="text-sm font-semibold rounded-xl bg-[#F4EBFB] px-4 py-3">
-            {creativeStyles.find(([id])=>id===style)?.[2]||'Automático'} · elegido antes de investigar.
-            {style==='ugc'?' La voz es lo principal; los planos son apoyo.':''}
-           </p>}
-         {(style==='premium'||style==='cinematic')&&!template&&<div className="space-y-2">
-          <p className="text-sm font-bold">¿Quién aparece en el video final?</p>
-          <div className="grid sm:grid-cols-2 gap-2">
-           {[
-            ['product_only','📦 Solo producto','Escenas de producto con cámara y luz premium.'],
-            ['with_people','🎬 Con personas','Modelos en escenas de cine, sin estilo UGC.']
-           ].map(([id,label,description])=><button key={id} type="button" aria-pressed={reviewCastMode===id}
-            onClick={()=>{setReviewCastMode(id);if(id==='product_only'&&reviewAudioMode==='dialogue')setReviewAudioMode('no_voice');}} className={'rounded-xl border-2 p-3 text-left '+(reviewCastMode===id?'border-[#7650C6] bg-[#F2EAFE]':'border-[#E7DEEC] bg-white')}>
-            <strong className="block text-sm">{label}</strong><span className="block text-xs mt-1">{description}</span>
-           </button>)}
-          </div>
-          <p className="text-xs text-[#71588B]">Puedes cambiarlo sin pagar otra investigación.</p>
-         </div>}
-         {(style==='premium'||style==='cinematic')&&!template&&<div className="space-y-2">
-          <p className="text-sm font-bold">¿Qué sonido tendrá el video?</p>
-          <div className="grid sm:grid-cols-3 gap-2">
-           {[
-            ['no_voice','🎼 Sin voces','Música y efectos; ninguna voz.'],
-            ['voiceover','🎙️ Voz en off','Locución profesional.'],
-            ['dialogue','🗣️ Diálogo','Actores conversan entre sí.']
-           ].map(([id,label,description])=><button key={id} type="button"
-            disabled={id==='dialogue'&&reviewCastMode==='product_only'}
-            aria-pressed={reviewAudioMode===id}
-            onClick={()=>setReviewAudioMode(id)}
-            className={'rounded-xl border-2 p-3 text-left disabled:opacity-40 '+(reviewAudioMode===id?'border-[#7650C6] bg-[#F2EAFE]':'border-[#E7DEEC] bg-white')}>
-            <strong className="block text-sm">{label}</strong><span className="block text-xs mt-1">{description}</span>
-           </button>)}
-          </div>
-          <p className="text-xs text-[#71588B]">Puedes cambiar el audio sin pagar otra investigación; la voz generada depende del modelo.</p>
-         </div>}
-         <label className="block text-xs font-bold">Tomas
-          <select className={field+' mt-2'} value={shotPreference} onChange={e=>setShotPreference(e.target.value)}>
-           <option value="auto">La IA decide</option>
-           <option value="single">Una toma</option>
-           <option value="multi">Varias tomas</option>
-          </select>
-         </label>
-        </div>
-        <p className="text-xs text-[#6B5387]">El director audiovisual adapta voz, planos y referencias al modelo que elijas.</p>
-
-        <details className="rounded-xl border border-[#E7DCEF] p-4">
-         <summary className="cursor-pointer text-sm font-bold">Editar prompt técnico (avanzado)</summary>
-         <p className="text-xs text-[#7C6C88] mt-2">El motor puede recibir instrucciones técnicas en inglés; el guion hablado se solicita en el idioma elegido. La voz nativa depende del modelo de video seleccionado.</p>
-         <textarea value={editedPrompt} onChange={e=>{manualPromptRef.current=true;setEditedPrompt(e.target.value)}}
-           className={field+' mt-3 min-h-[155px]'} maxLength={5500}/>
-        </details>
-      </div>}
-      <label className="flex items-start gap-2 text-sm text-[#675678]">
-       <input type="checkbox" checked={sellerConfirmed}
-        onChange={e=>setSellerConfirmed(e.target.checked)}
-        className="mt-1"/>
-       <span>Confirmo que revisé el guion y las afirmaciones comerciales que autorizo.</span>
-      </label>
-      <button type="button" onClick={approve}
-       disabled={busy||!sellerConfirmed}
-        className="rounded-2xl bg-[#6D48CB] text-white font-bold py-3.5 px-6 disabled:opacity-50">
-        {busy?'Guardando…':'Aprobar concepto y elegir modelo de video'}
+      <button type="button" onClick={approve} disabled={busy}
+       className="rounded-2xl bg-[#6D48CB] text-white font-bold py-3.5 px-6 disabled:opacity-50">
+       {busy?'Preparando video…':'Aprobar concepto y continuar'}
       </button>
-      <p className="text-xs text-[#86788F]">La aprobación no genera ni cobra un video. El editor mostrará su precio antes del envío.</p>
+      <p className="text-xs text-[#86788F]">Al aprobar autorizas el concepto y sus afirmaciones comerciales. Se mostrará el precio antes de generar o cobrar el video.</p>
     </>}
   </section>}
  </div>;
