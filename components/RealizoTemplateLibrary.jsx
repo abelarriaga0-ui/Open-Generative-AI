@@ -3,6 +3,7 @@ import {useEffect,useRef,useState} from 'react';
 import {AD_TEMPLATES} from '@/lib/realizo-creative/ad-templates';
 import {USER_TEMPLATE_CATEGORIES} from '@/lib/realizo-creative/user-templates';
 import {LUXURY_TEMPLATE_ID,LUXURY_TEMPLATE_SAMPLE_URL} from '@/lib/realizo-creative/luxury-product-only-template';
+import {UGC15_TEMPLATE_ID,UGC15_TEMPLATE_SAMPLE_URL,UGC15_TEMPLATE_SAMPLE_EXPIRES} from '@/lib/realizo-creative/ugc15-omni-template';
 import {TEMPLATE_PREVIEW_SRC,TEMPLATE_HOVER_SRC,TEMPLATE_POSTER_SRC} from '@/lib/realizo-creative/template-video-input';
 
 export default function RealizoTemplateLibrary({onChoose,onChooseSaved,guest=false,featured=false}){
@@ -17,6 +18,9 @@ export default function RealizoTemplateLibrary({onChoose,onChooseSaved,guest=fal
  const [paused,setPaused]=useState(true);
  const item=AD_TEMPLATES[0];
  const luxury=AD_TEMPLATES.find(t=>t.id===LUXURY_TEMPLATE_ID);
+ const ugc15=AD_TEMPLATES.find(t=>t.id===UGC15_TEMPLATE_ID);
+ const [ugc15PreviewFailed,setUgc15PreviewFailed]=useState(false);
+ const ugc15PreviewValid=Date.now()<Date.parse(UGC15_TEMPLATE_SAMPLE_EXPIRES);
  const [luxuryPreviewFailed,setLuxuryPreviewFailed]=useState(false);
  const [personalTemplates,setPersonalTemplates]=useState([]);
  const [personalLoading,setPersonalLoading]=useState(false);
@@ -142,6 +146,28 @@ export default function RealizoTemplateLibrary({onChoose,onChooseSaved,guest=fal
         
       </div>}
       <button type="button" className="realizo-v11-use" onClick={()=>onChoose(item.id)}>Usar plantilla <span aria-hidden="true">→</span></button>
+    </article>}
+    {ugc15&&(activeCategory==='todos'||activeCategory==='ugc')&&<article className="realizo-v11-card realizo-template-preview-card" aria-label="UGC de venta de 15 segundos con Seedance 2 Omni">
+      <div className="realizo-v11-image-link realizo-template-video-frame">
+       <div className="realizo-v11-card-photo realizo-v11-photo-0" aria-hidden="true"/>
+       {!ugc15PreviewFailed&&ugc15PreviewValid&&<video
+        src={UGC15_TEMPLATE_SAMPLE_URL}
+        className="realizo-template-preview-video is-playing"
+        muted playsInline loop autoPlay preload="none"
+        controlsList="nodownload noremoteplayback noplaybackrate"
+        disablePictureInPicture onError={()=>setUgc15PreviewFailed(true)}
+        aria-label="Video de ejemplo real UGC de 15 segundos"/>}
+       <div className="realizo-v11-photo-fade"/>
+       <span className="realizo-v11-duration">0:15</span>
+       <div className="realizo-v11-card-overlay">
+        <h3>{ugc15.name}</h3><p>UGC · 15 segundos · Voz continua</p>
+        <span className="realizo-v11-tag">🎙️ Seedance 2 Omni</span>
+       </div>
+      </div>
+      {!featured&&<div className="realizo-v11-card-extra"><span>15 s · 720p · High · 9:16</span></div>}
+      <button type="button" className="realizo-v11-use" onClick={()=>onChoose(ugc15.id)}>
+       Usar plantilla <span aria-hidden="true">→</span>
+      </button>
     </article>}
     {luxury&&(activeCategory==='todos'||activeCategory==='cine_premium')&&<article className="realizo-v11-card realizo-template-preview-card" aria-label="Plantilla Luxury Film solo producto">
       <div className="realizo-v11-image-link realizo-template-video-frame">
