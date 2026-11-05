@@ -64,7 +64,7 @@ test('Premium approved brief actually selects provider reference workflow and ch
  assert.match(approval,/buildCommercialDirectorPackage/);
  assert.doesNotMatch(approval,/acknowledged_responsibility/);
  const ui=readFileSync('components/RealizoPremium.jsx','utf8');
- assert.match(ui,/Aprobar concepto y continuar/);
+ assert.match(ui,/Aprobar concepto y generar/);
  assert.match(ui,/Cinematográfico/);
  assert.doesNotMatch(ui,/setCorrection/);
  const bridge=readFileSync('lib/realizo-creative/wallet-generation.js','utf8');
@@ -428,10 +428,11 @@ test('Premium review is concept-only and preserves all choices stored before res
  const approval=readFileSync('app/api/realizo/ai-premium/[id]/approve/route.js','utf8');
  const review=ui.split('    {ready&&<>')[1]?.split('    </>}')[0]||'';
  assert.ok(review.includes('concepts.map('),'three researched concepts are shown');
- assert.match(review,/Aprobar concepto y continuar/);
- assert.doesNotMatch(review,/<select|<textarea|type="checkbox"/);
+ assert.match(review,/Aprobar concepto y generar/);
+ assert.doesNotMatch(review,/<select|type="checkbox"/);
+ assert.match(review,/Editar guion de este concepto/);
  assert.doesNotMatch(review,/¿Quién aparece|¿Qué sonido|¿Cómo quieres que se vea|Duración final/);
- assert.match(ui,/body:JSON.stringify\(\{index:selection\}\)/);
+ assert.match(ui,/body:JSON.stringify\(\{index:selection/);
  assert.doesNotMatch(approval,/body\.(?:video_model_id|video_duration_seconds|cast_mode|audio_mode|style|speech|prompt)/);
  assert.match(approval,/normalizeCastMode\(project\.cast_mode\)/);
  assert.match(approval,/normalizeAudioMode\(project\.audio_mode\)/);
