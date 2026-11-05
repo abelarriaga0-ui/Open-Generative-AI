@@ -340,6 +340,9 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
           <RealizoPremium initialStyle={formatPreset} initialTemplateId={templateId} key={'premium-'+createKey+'-'+(resumeProjectId||'new')+'-'+(templateId||'free')}
             initialProjectId={resumeProjectId}
             onPrepare={setBrief} onOpenAdvanced={openEditor} onCreateNew={newPremiumProject}
+            onWalletGenerate={onWalletGenerate}
+            onGenerationComplete={()=>{setPage('videos');setCreationsRefresh(n=>n+1);refreshWallet();}}
+            onViewCreations={()=>{setPage('videos');setCreationsRefresh(n=>n+1);}}
             onWalletRefresh={refreshWallet}
             onUseAutomatic={()=>chooseCreatorMode('automatic')}/>:
           <RealizoCreator accountId={accountId} onPrepare={setBrief} onOpenAdvanced={openEditor}/>}
