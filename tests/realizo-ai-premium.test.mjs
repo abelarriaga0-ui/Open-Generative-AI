@@ -84,6 +84,7 @@ test('general paid eligibility is strictly live-funded and price fixed at 49 cen
  const {premiumPublicEnabled,premiumAccess,PREMIUM_PRICE_CENTS,availableAIFunds,researchFingerprint}=await import('../lib/realizo-creative/ai-premium.js');
  const env={REALIZO_ENV:'production',PAYPAL_MODE:'live',REALIZO_AUTH_PROVIDER:'native',
   REALIZO_AI_PREMIUM_ENABLED:'true',REALIZO_AI_PREMIUM_PUBLIC_ENABLED:'true',
+  REALIZO_AI_RESEARCH_COMPLIMENTARY:'false',
   OPENAI_API_KEY:'private',OPENAI_PREMIUM_MODEL:'gpt-6-luna'};
  assert.equal(premiumPublicEnabled(env),true);
  assert.equal((await premiumAccess(env,{id:'new-user'})).mode,'paid');

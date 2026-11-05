@@ -21,6 +21,16 @@ test('research is truly zero price for any authenticated customer, not merely la
  assert.match(PREMIUM_PRICING_VERSION,/complimentary/);
  assert.equal(PREMIUM_PRICE_CENTS,49,'original price remains configurable for later');
 });
+test('production keep_vars cannot silently re-enable a 49-cent charge when new flag is absent',async()=>{
+ const {REALIZO_AI_RESEARCH_COMPLIMENTARY:unused,...livePreservedVars}=env;
+ const access=await premiumAccess(livePreservedVars,{id:'customer'});
+ assert.deepEqual(access,{enabled:true,mode:'sponsored',price_cents:0});
+ // A customer's wallet balance must never determine free-research eligibility.
+ const noFunds={...livePreservedVars,WALLETS_DB:null};
+ assert.equal((await premiumAccess(noFunds,{id:'customer-without-balance'})).price_cents,0);
+ const cfg=JSON.parse(readFileSync('wrangler.consolidated.jsonc','utf8'));
+ assert.equal(cfg.keep_vars,true);
+});
 test('switching off promotion restores verified paid research without altering video quote',async()=>{
  assert.equal((await premiumAccess({...env,REALIZO_AI_RESEARCH_COMPLIMENTARY:'false'},{id:'owner'})).mode,'paid');
  assert.equal((await premiumAccess({...env,REALIZO_AI_RESEARCH_COMPLIMENTARY:'false'},{id:'owner'})).price_cents,49);
