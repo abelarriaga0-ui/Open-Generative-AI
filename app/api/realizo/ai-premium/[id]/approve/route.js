@@ -7,7 +7,7 @@ import {buildCommercialDirectorPackage,normalizeProductCopy} from '@/lib/realizo
 import {acceptsSellerConfirmation} from '@/lib/realizo-creative/approval-consent';
 import {getAdTemplate} from '@/lib/realizo-creative/ad-templates';
 import {selectedStyle} from '@/lib/realizo-creative/format-guides';
-import {scriptReadiness,MAX_SPOKEN_SCRIPT_CHARACTERS} from '@/lib/realizo-creative/sales-storyboard';
+import {scriptReadiness,improveSalesScript,MAX_SPOKEN_SCRIPT_CHARACTERS} from '@/lib/realizo-creative/sales-storyboard';
 import {normalizeCastMode,isFilmStyle} from '@/lib/realizo-creative/cast-mode';
 import {normalizeAudioMode,filmAudioValid} from '@/lib/realizo-creative/audio-mode';
 
@@ -37,51 +37,47 @@ export async function POST(request,{params}){
   if(!concept || typeof concept.video_prompt!=='string')
     return Response.json({error:'invalid_concept'},{status:400});
   const findings=project.findings_json?JSON.parse(project.findings_json):{};
-  const conflicts=Array.isArray(findings.description_conflicts)?findings.description_conflicts:[];
   const claimsToVerify=Array.isArray(findings.claims_to_verify)?findings.claims_to_verify:[];
-  const correction=String(body.correction||'').trim().slice(0,700);
-  // Backward compatibility: an old cached Studio client can omit the new
-  // checkbox field while the updated server is already deployed. The user
-  // has explicitly clicked "Approve concept" in their authenticated session.
-  // Don't strand previously paid research for a UI/server version mismatch.
-  // Current clients still display and require the explicit checkbox; reject
-  // a caller who *explicitly* supplies false. Acknowledgement is not proof
-  // that a product claim is true and does not waive applicable obligations.
+  // The only second-stage choice is the concept index. Always use the
+  // authenticated project values saved in the initial product setup.
   if(!acceptsSellerConfirmation(body))
     return Response.json({error:'seller_claims_confirmation_required'},{status:422});
-  // Keep reported evidence separate from seller-authored marketing copy.
-  const userPrompt=String(body.prompt||concept.video_prompt).trim();
+  const userPrompt=String(concept.video_prompt||'').trim();
   if(userPrompt.length<10||userPrompt.length>5500)
     return Response.json({error:'invalid_prompt'},{status:400});
-  const style=['auto','ugc','cinematic','premium','demo'].includes(project.creative_style)
+  const initialStyle=['auto','ugc','cinematic','premium','demo'].includes(project.creative_style)
     ?project.creative_style:'auto';
-  // Legacy projects with 'auto' may retain the old review-time style selection.
   const selectedTemplate=getAdTemplate(project.template_id);
-  const finalStyle=selectedTemplate?.style||(style==='auto'&&['auto','ugc','cinematic','premium','demo'].includes(body.style)?body.style:style);
-  const userSpeech=String(body.speech??concept.spoken_script??concept.script??'').trim();
-  if(userSpeech.length>MAX_SPOKEN_SCRIPT_CHARACTERS)
-    return Response.json({error:'invalid_spoken_script'},{status:400});
-  const shotPreference=['auto','single','multi'].includes(body.shot_preference)?body.shot_preference:'auto';
-  const castMode=isFilmStyle(finalStyle)?normalizeCastMode(body.cast_mode??project.cast_mode):'with_people';
-  const audioMode=isFilmStyle(finalStyle)?normalizeAudioMode(body.audio_mode??project.audio_mode):'no_voice';
-  if(isFilmStyle(finalStyle)&&!filmAudioValid(audioMode,castMode))return Response.json({error:'premium_audio_cast_conflict'},{status:422});
-  if(isFilmStyle(finalStyle)&&audioMode!=='no_voice'&&!userSpeech)return Response.json({error:'premium_audio_script_required'},{status:422});
-  const directorConcept={...concept,video_prompt:userPrompt,spoken_script:isFilmStyle(finalStyle)&&audioMode==='no_voice'?'':userSpeech};
-  // The research is already paid for. An owner may explicitly switch to a
-  // photo-compatible motor at review time without paying OpenAI again.
-  const modelId=selectedTemplate
-    ? project.video_model_id
-    : String(body.video_model_id||project.video_model_id||'');
+  const finalStyle=selectedTemplate?.style||selectedStyle(initialStyle,concept.creative_style);
+  const shotPreference='auto';
+  const castMode=isFilmStyle(finalStyle)?normalizeCastMode(project.cast_mode):'with_people';
+  const audioMode=isFilmStyle(finalStyle)?normalizeAudioMode(project.audio_mode):'no_voice';
+  if(isFilmStyle(finalStyle)&&!filmAudioValid(audioMode,castMode))
+    return Response.json({error:'premium_audio_cast_conflict'},{status:422});
+  const modelId=String(project.video_model_id||'');
   let videoChoice;
   try{
-    videoChoice=resolvePremiumVideoChoice(modelId,body.video_duration_seconds??project.video_duration_seconds);
+    videoChoice=resolvePremiumVideoChoice(modelId,project.video_duration_seconds);
   }catch{
     return Response.json({error:'invalid_video_configuration'},{status:422});
   }
-  // Final duration is chosen AFTER research at no new AI charge.
-  // The same exact model must explicitly support it.
   const duration=videoChoice.duration;
   const spokenStyle=selectedStyle(finalStyle,concept.creative_style);
+  // Reuse and improve the already-researched sales speech with no new AI call.
+  const originalSpeech=String(concept.spoken_script??concept.script??'').trim();
+  const userSpeech=spokenStyle==='ugc'||spokenStyle==='demo'
+    ?improveSalesScript(originalSpeech,{
+      seconds:duration,style:spokenStyle,productName:project.product_name||'',
+      description:project.description||'',concept,report:findings,
+      language:project.video_language||'es'
+    })
+    :originalSpeech;
+  if(userSpeech.length>MAX_SPOKEN_SCRIPT_CHARACTERS)
+    return Response.json({error:'invalid_spoken_script'},{status:400});
+  if(isFilmStyle(finalStyle)&&audioMode!=='no_voice'&&!userSpeech)
+    return Response.json({error:'premium_audio_script_required'},{status:422});
+  const directorConcept={...concept,video_prompt:userPrompt,
+    spoken_script:isFilmStyle(finalStyle)&&audioMode==='no_voice'?'':userSpeech};
   // Verify spoken dialogue fills the chosen runtime BEFORE any video charge.
   // A short, sparse script should be edited, not stretched with silent shots.
   if(spokenStyle==='ugc'||(spokenStyle==='demo'&&userSpeech)){
