@@ -63,7 +63,7 @@ export default function RealizoHyperrealPro({guest=false,onWalletRefresh}){
  const fail=e=>ERRORS[e]||String(e||'Ocurrió un error. Intenta nuevamente.');
  async function reload(){
   try{
-   const r=await fetch('/api/realizo/hyperreal/prepare',{credentials:'same-origin',cache:'no-store'});
+   const r=await fetch('/api/realizo/hyperreal/prepare?list=1',{credentials:'same-origin',cache:'no-store'});
    if(r.ok){const j=await r.json();setJobs(j.jobs||[]);}
   }catch{}
  }
