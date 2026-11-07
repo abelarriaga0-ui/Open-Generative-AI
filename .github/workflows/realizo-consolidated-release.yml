@@ -16,6 +16,7 @@ on:
       - "lib/realizo-creative/hyperreal-pro.js"
       - "app/api/realizo/hyperreal/**"
       - "tests/realizo-hyperreal-pro.test.mjs"
+      - "tests/realizo-hyperreal-routing-policy.test.mjs"
       - "wrangler.consolidated.jsonc"
       - "app/api/wallet/quote/route.js"
       - "app/api/wallet/generate/route.js"
@@ -144,7 +145,7 @@ jobs:
       - name: Check product identity and spoken-script integrity
         run: node --test tests/realizo-product-identity-voice.test.mjs tests/realizo-direct-premium-generation.test.mjs tests/realizo-universal-angle-director.test.mjs
       - name: Verify hyperreal commercial storyboards across all styles before shipping
-        run: node --test tests/realizo-hyperreal-commercial.test.mjs tests/realizo-hyperreal-pro.test.mjs tests/realizo-hyperreal-model-routing.test.mjs tests/realizo-muapi-master-ugc30.test.mjs tests/realizo-sales-director.test.mjs tests/realizo-premium-film-contract.test.mjs
+        run: node --test tests/realizo-hyperreal-commercial.test.mjs tests/realizo-hyperreal-pro.test.mjs tests/realizo-hyperreal-routing-policy.test.mjs tests/realizo-hyperreal-model-routing.test.mjs tests/realizo-muapi-master-ugc30.test.mjs tests/realizo-sales-director.test.mjs tests/realizo-premium-film-contract.test.mjs
       - name: Verify visible wallet and research spendable balance agree before publishing
         run: |
           node --test tests/realizo-ai-premium-live-wallet.test.mjs tests/realizo-ai-premium.test.mjs
@@ -202,7 +203,7 @@ jobs:
         run: |
           node --input-type=module <<'JS'
           const origin='https://realizo-auth-sandbox.abelarriaga0.workers.dev';
-          const paths=[['/studio',200],['/studio/images',200],['/studio/creations',200],['/login',200],['/api/auth/features',200],['/api/conversion-templates',200],['/api/realizo/images/config',200],['/api/realizo/images/presets',401],['/api/realizo/images/history',401],['/api/wallet',401],['/api/wallet/paypal/config',401],['/api/realizo/template/luxury/prepare',405],['/api/realizo/user-templates',401]];
+          const paths=[['/studio',200],['/studio/images',200],['/studio/creations',200],['/login',200],['/api/auth/features',200],['/api/conversion-templates',200],['/api/realizo/images/config',200],['/api/realizo/images/presets',401],['/api/realizo/images/history',401],['/api/realizo/hyperreal/document',401],['/api/realizo/hyperreal/prepare',405],['/api/wallet',401],['/api/wallet/paypal/config',401],['/api/realizo/template/luxury/prepare',405],['/api/realizo/user-templates',401]];
           for(const [p,status] of paths){
             const r=await fetch(origin+p,{redirect:'manual',signal:AbortSignal.timeout(20000)});
             const location=r.headers.get('location')||'';
@@ -224,6 +225,12 @@ jobs:
               if(!Array.isArray(j.templates)||!j.templates.length||j.templates.some(t=>t.available&&(!Number.isInteger(t.price_cents)||t.price_cents<1)))
                 throw Error('Catalog not ready or paid generation unexpectedly active');
             }
+          }
+          for (const p of ['/api/realizo/hyperreal/document','/api/realizo/hyperreal/prepare']) {
+            const response=await fetch(origin+p,{method:'POST',
+              headers:{'Origin':origin,'Content-Type':'application/json'},
+              body:'{}',redirect:'manual',signal:AbortSignal.timeout(20000)});
+            if(response.status!==401)throw Error('Protected hyperreal POST '+p+' must return 401, got '+response.status);
           }
           const luxury=await fetch(origin+'/api/realizo/template/luxury/prepare',{method:'POST',
             headers:{'Content-Type':'application/json','Origin':origin},body:'{}',redirect:'manual',
