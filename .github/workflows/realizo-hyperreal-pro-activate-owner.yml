@@ -1,0 +1,86 @@
+name: Realizo Hiperrealista PRO - activate verified owner-only pilot
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  activate:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/main' && github.actor == 'abelarriaga0-ui'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify this exact image-first Realizo release is ALREADY deployed
+        run: |
+          node --input-type=module <<'JS'
+          const app='https://realizo-auth-sandbox.abelarriaga0.workers.dev';
+          const cap=await fetch(app+'/api/realizo/hyperreal/prepare?capabilities=1',{
+            cache:'no-store',signal:AbortSignal.timeout(15000)});
+          const data=await cap.json().catch(()=>({}));
+          if(cap.status!==200||data.version!=='realizo-hyperreal-pro-v2-image-first'||
+             data.production!=='image_first_per_scene'||
+             data.image_model!=='nano-banana-2-1-edit'||
+             data.video_model!=='kling-4.0-reference-to-video')
+            throw Error('The current public Realizo Worker does NOT have the verified Hiperrealista PRO V2. Stop before funding.');
+          for(const [url,expected] of [
+            ['/api/realizo/hyperreal/prepare?list=1',401],
+            ['/api/realizo/hyperreal/prepare',405],
+            ['/api/realizo/hyperreal/document',401]
+          ]){
+            const r=await fetch(app+url,{redirect:'manual',signal:AbortSignal.timeout(15000)});
+            if(r.status!==expected)throw Error('Protected route not ready: '+url);
+          }
+          console.log('V2_PUBLIC_RELEASE=VERIFIED, OWNER AUTH GUARDS=VERIFIED');
+          JS
+      - name: Check model and FFmpeg/D1 integration test conclusions via GitHub Actions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --input-type=module <<'JS'
+          const headers={Authorization:'Bearer '+process.env.GH_TOKEN,
+             Accept:'application/vnd.github+json'};
+          for(const workflow of [
+            'realizo-hyperreal-v2-tests.yml',
+            'realizo-hyperreal-montage-ci.yml',
+            'realizo-hyperreal-pro-storage-check.yml'
+          ]){
+            const url='https://api.github.com/repos/abelarriaga0-ui/Open-Generative-AI/actions/workflows/'+workflow+'/runs?branch=main&per_page=1';
+            const r=await fetch(url,{headers,signal:AbortSignal.timeout(15000)});
+            const j=await r.json().catch(()=>({}));
+            const last=j.workflow_runs?.[0];
+            if(!r.ok||last?.conclusion!=='success')
+              throw Error('Required independent engine tests not completed successfully: '+workflow);
+            console.log('ENGINE_TEST_PASSED='+workflow);
+          }
+          JS
+      - name: Verify owner and exact D1 reserve/render schema READ ONLY
+        run: |
+          node --input-type=module <<'JS'
+          import {HyperrealD1} from './scripts/hyperreal-pro-db.mjs';
+          const db=new HyperrealD1(process.env.CLOUDFLARE_API_TOKEN);
+          const schema=await db.query("SELECT name,type FROM sqlite_master WHERE name IN ('realizo_hyperreal_pro_jobs','realizo_hyperreal_pro_video_chunks','realizo_hyperreal_pro_release_gate','realizo_hyperreal_pro_reserve','realizo_hyperreal_pro_capture','realizo_hyperreal_pro_release')");
+          if(schema.length!==6)throw Error('Release schema/triggers not installed');
+          const owner=await db.query("SELECT COUNT(*) AS n FROM realizo_prepaid_muapi_imports WHERE slot=1");
+          if(Number(owner[0]?.n)!==1)throw Error('Owner identity not verified');
+          const gate=await db.query("SELECT enabled FROM realizo_hyperreal_pro_release_gate WHERE slot=1");
+          if(gate.length!==1)throw Error('Invalid safety switch');
+          console.log('OWNER_ONLY_PILOT_SCHEMA=VERIFIED');
+          JS
+      - name: Open owner-only Hiperrealista PRO paid confirmation (no generation or charge)
+        run: |
+          node --input-type=module <<'JS'
+          import {HyperrealD1} from './scripts/hyperreal-pro-db.mjs';
+          const db=new HyperrealD1(process.env.CLOUDFLARE_API_TOKEN);
+          const rows=await db.query(
+            "UPDATE realizo_hyperreal_pro_release_gate SET enabled=1,engine_version='image-first-v2-owner-D1-pilot',approved_at=datetime('now'),updated_at=datetime('now') WHERE slot=1 RETURNING enabled,engine_version");
+          if(rows.length!==1||Number(rows[0].enabled)!==1)
+            throw Error('Feature switch update failed');
+          console.log('OWNER_ONLY_CONFIRMATION_GATE=ENABLED');
+          console.log('NO_MUAPI_GENERATION_OR_WALLET_WRITE_PERFORMED=true');
+          JS
