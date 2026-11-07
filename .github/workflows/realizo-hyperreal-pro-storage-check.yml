@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/realizo-hyperreal-pro-storage-check.yml'
       - 'scripts/hyperreal-pro-storage-probe.mjs'
+      - 'scripts/hyperreal-pro-video-roundtrip.mjs'
   workflow_dispatch:
 permissions:
   contents: read
@@ -28,3 +29,5 @@ jobs:
           ffprobe -hide_banner -version | head -n 1
       - name: Test bounded D1 chunk storage using a disposable dedicated probe table
         run: node scripts/hyperreal-pro-storage-probe.mjs
+      - name: Verify a real synthetic MP4 survives multiple DB chunks and SHA-256 reconstruction
+        run: node scripts/hyperreal-pro-video-roundtrip.mjs
