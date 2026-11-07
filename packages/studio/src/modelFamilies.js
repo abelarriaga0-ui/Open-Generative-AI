@@ -283,6 +283,7 @@ function cleanImageFamilyName(name) {
 }
 
 function videoFamilyName(familyId, fallbackName) {
+  if(familyId === "kling-v4")return "Kling 4.0";
   const versionedNames = [
     [/^kling-v(.+)$/, "Kling v"],
     [/^seedance-(.+)$/, "Seedance "],
