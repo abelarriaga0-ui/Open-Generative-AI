@@ -121,6 +121,8 @@ async function uploadQuote(env,user,request,body){
 async function confirmQuote(env,user,body){
  const release=await env.WALLETS_DB.prepare('SELECT enabled FROM realizo_hyperreal_pro_release_gate WHERE slot=1').first().catch(()=>null);
  if(Number(release?.enabled)!==1)return error('hyperreal_engine_not_verified',503);
+ const pilotOwner=await env.WALLETS_DB.prepare('SELECT user_id FROM realizo_prepaid_muapi_imports WHERE slot=1').first().catch(()=>null);
+ if(!pilotOwner||pilotOwner.user_id!==user.id)return error('hyperreal_pilot_owner_only',403);
  const id=body.quote_id;
  if(typeof id!=='string'||!ID.test(id))return error('invalid_quote_id',400);
  const db=env.WALLETS_DB;
