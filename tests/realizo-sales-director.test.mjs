@@ -436,7 +436,7 @@ test('Premium review is concept-only and preserves all choices stored before res
  assert.doesNotMatch(approval,/body\.(?:video_model_id|video_duration_seconds|cast_mode|audio_mode|style|prompt)/);
  assert.match(approval,/normalizeCastMode\(project\.cast_mode\)/);
  assert.match(approval,/normalizeAudioMode\(project\.audio_mode\)/);
- assert.match(approval,/resolveAnyPremiumVideoChoice\(modelId,project\.video_duration_seconds\)/);
+ assert.match(approval,/resolveAnyPremiumVideoChoice\(modelId,project\.video_duration_seconds,db\)/);
  assert.match(approval,/const finalStyle=selectedTemplate\?\.style\|\|selectedStyle\(initialStyle,concept\.creative_style\)/);
  assert.match(approval,/improveSalesScript\(originalSpeech/);
  assert.match(approval,/const finalPrompt=director\.prompt\+referenceTag;/);
