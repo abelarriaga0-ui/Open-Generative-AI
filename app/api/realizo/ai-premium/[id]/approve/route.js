@@ -108,11 +108,17 @@ export async function POST(request,{params}){
   if(selectedTemplate?.id==='ugc-vendedor'&&duration!==30)
     return Response.json({error:'template_requires_30_seconds'},{status:422});
   const workflowId=videoChoice.workflowId;
+  const promptLimit=Number(liveContract?.prompt_max_length||videoChoice.option?.prompt_max_length||12500);
+  const referenceTag=modelId.startsWith('kling-4.0-')&&workflowId==='references'?
+    ' PRODUCT REFERENCE @image_1 must keep its exact original packaging; @image_1 is not the first frame.':
+    modelId.startsWith('kling-4.0-')&&workflowId==='animate_image'?
+    ' START FRAME @first_frame is the customer's uploaded image.':'';
   const director=buildCommercialDirectorPackage({
     concept:directorConcept,productName:normalizeProductCopy(project.product_name),
     description:normalizeProductCopy(project.description),cta:concept.cta||project.cta,
     market:project.market_code,videoLanguage:project.video_language||'es',style:finalStyle,shotPreference,castMode,audioMode,duration,
     imageProvided:true,modelId,workflowId,
+    promptMaxLength:Math.max(4000,Math.min(12500,promptLimit-referenceTag.length)), 
     productGeometry:findings.product_visual_geometry||null,
     templateId:selectedTemplate?.id||null,templateActor:project.template_actor||'auto',
     templateSetting:project.template_setting||'auto',
@@ -125,7 +131,8 @@ export async function POST(request,{params}){
   // Truncating its tail silently stripped mandatory voice/actor clauses and
   // caused the quote gate to reject an otherwise correctly approved project.
   // Keep the exact validated director prompt for pricing AND generation.
-  const finalPrompt=director.prompt;
+  const finalPrompt=director.prompt+referenceTag;
+  if(finalPrompt.length>promptLimit)return Response.json({error:'invalid_video_configuration'},{status:422});
   await db.prepare(
     "UPDATE realizo_ai_projects SET status='approved',video_model_id=?,video_workflow_id=?,video_duration_seconds=?,selected_concept=?,approved_prompt=?,creative_style=?,cast_mode=?,audio_mode=?,updated_at=datetime('now') WHERE id=? AND user_id=?"
   ).bind(modelId,workflowId,duration,selection,finalPrompt,finalStyle,castMode,audioMode,id,user.id).run();
