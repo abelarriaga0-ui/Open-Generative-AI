@@ -1,0 +1,34 @@
+name: Realizo - Kling 4.0 live route and catalog preflight (no spending)
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/realizo-kling4-availability-audit.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Validate public Muapi Kling 4.0 reference and text endpoints without sending generation
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          const base='https://api.muapi.ai/api/v1/';
+          for(const name of ['kling-4.0-reference-to-video','kling-4.0-text-to-video']){
+            const catalog=await fetch(base+'models/'+name,{signal:AbortSignal.timeout(12000)});
+            const data=await catalog.json().catch(()=>({}));
+            const item=data.model||data;
+            const route=await fetch(base+name,{method:'GET',redirect:'manual',signal:AbortSignal.timeout(12000)});
+            const allowed=(route.headers.get('allow')||'');
+            const recognized=catalog.ok&&(item.name===name||item.id===name)&&
+              item.is_enabled!==false&&item.is_coming_soon!==true;
+            const routable=route.status===405&&(!allowed||allowed.toUpperCase().includes('POST'));
+            console.log(name+' CATALOG_STATUS='+catalog.status+
+              ' RECOGNIZED='+recognized+' ROUTE_GET_STATUS='+route.status+' POST_ONLY='+routable);
+            if(!recognized||!routable)process.exitCode=1;
+          }
+          console.log('READ_ONLY_NO_MUAPI_VIDEO_SPENDING=true');
+          JS
