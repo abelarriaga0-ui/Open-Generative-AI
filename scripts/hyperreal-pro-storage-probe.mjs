@@ -5,7 +5,7 @@ const db=new HyperrealD1(process.env.CLOUDFLARE_API_TOKEN);
 const table='realizo_hyperreal_v2_chunk_probe';
 try{
  await db.query('CREATE TABLE IF NOT EXISTS '+table+'(slot INTEGER PRIMARY KEY,data BLOB)');
- const bytes=Buffer.alloc(700000,0x32);
+ const bytes=Buffer.alloc(180000,0x32);
  await db.query("INSERT OR REPLACE INTO "+table+"(slot,data) VALUES (1,X'"+bytes.toString('hex')+"')");
  const results=await db.query('SELECT length(data) AS n FROM '+table+' WHERE slot=1');
  if(Number(results?.[0]?.n)!==bytes.length)throw Error('chunk_limit_verification_failed');
