@@ -1,0 +1,36 @@
+/* This stylesheet is scoped to Hiperrealista PRO; never change other Realizo surfaces. */
+.shell{color:#f4f0f9;max-width:1200px;margin:0 auto;padding:12px 0 52px}
+.shell .panel{background:#171820!important;border:1px solid #3b3649!important;border-radius:24px;box-shadow:0 18px 55px #00000020}
+.shell .softPanel{background:#20202b!important;border:1px solid #383145!important;border-radius:18px}
+.shell label{color:#efebf6!important;font-size:13px;line-height:1.5;font-weight:650;display:block}
+.shell .field,.shell :is(input:not([type="checkbox"]),textarea,select){
+  appearance:auto;color:#f9f5ff!important;-webkit-text-fill-color:#f9f5ff!important;
+  background:#11131b!important;border:1px solid #6b5d7c!important;
+  border-radius:14px!important;padding:13px 14px!important;min-height:46px;
+  width:100%;font-size:14px!important;line-height:1.4!important;
+  caret-color:#fff!important;opacity:1!important;outline:none!important;
+  box-shadow:none!important;
+}
+.shell textarea{min-height:92px!important;resize:vertical}
+.shell :is(input,textarea,select):focus{
+  border-color:#d3b2ff!important;box-shadow:0 0 0 3px #925ec933!important
+}
+.shell :is(input,textarea)::placeholder{color:#b7aec5!important;-webkit-text-fill-color:#b7aec5!important;opacity:1!important}
+.shell select option{color:#15121c!important;background:#fff!important}
+.shell input[type="file"]{max-width:100%}
+.shell input[type="file"]::file-selector-button{background:#44315e;color:#fff;border:0;border-radius:9px;padding:8px 11px;margin-right:12px;cursor:pointer}
+.shell summary{cursor:pointer;color:#f0e4ff;font-weight:700}
+.shell .primary{background:#aa7bf6!important;color:#181122!important;border:0!important;border-radius:14px!important;padding:13px 18px;font-weight:800;cursor:pointer}
+.shell .primary:hover:not(:disabled){background:#c39cff!important}
+.shell .secondary{background:#292135!important;color:#e9dcfa!important;border:1px solid #635174!important;border-radius:14px!important;padding:11px 15px;font-weight:750;cursor:pointer}
+.shell :is(button,input,select,textarea):disabled{opacity:.55!important;cursor:not-allowed}
+.shell .muted{color:#c7bdd4!important;font-size:13px;line-height:1.55}
+.shell .subtle{color:#a9a0b5!important;font-size:12px;line-height:1.55}
+.shell .stat{display:inline-flex;align-items:center;gap:7px;border:1px solid #655276;color:#f0dffd;background:#3b294f;border-radius:999px;padding:6px 11px;font-size:11px;font-weight:800}
+.shell .preview{background:#101118!important;border:1px dashed #645473!important;border-radius:17px;display:flex;min-height:180px;align-items:center;justify-content:center;overflow:hidden}
+.shell .preview img{width:100%;max-height:270px;object-fit:contain}
+.shell .timelineItem{display:flex;gap:13px;align-items:flex-start;padding:12px 0;border-bottom:1px solid #383244;color:#f7edff}
+.shell .timelineItem:last-child{border-bottom:none}
+.shell .error{background:#44202b;color:#ffcad2;border:1px solid #985466;border-radius:12px;padding:12px;font-size:13px}
+.shell .success{background:#193c30;color:#d3ffeb;border:1px solid #458b71;border-radius:12px;padding:12px;font-size:13px}
+@media(max-width:640px){.shell{padding-top:0}.shell .panel{border-radius:18px!important}.shell .field{min-height:44px}}
