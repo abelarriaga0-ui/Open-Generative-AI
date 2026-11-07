@@ -6,7 +6,7 @@ const table='realizo_hyperreal_v2_chunk_probe';
 try{
  console.log('HYPERREAL_PROBE_PHASE=create');
  await db.query('CREATE TABLE IF NOT EXISTS '+table+'(slot INTEGER PRIMARY KEY,data BLOB)');
- const bytes=Buffer.alloc(180000,0x32);
+ const bytes=Buffer.alloc(20000,0x32);
  console.log('HYPERREAL_PROBE_PHASE=insert size='+bytes.length);
  await db.query("INSERT OR REPLACE INTO "+table+"(slot,data) VALUES (1,X'"+bytes.toString('hex')+"')");
  console.log('HYPERREAL_PROBE_PHASE=select');
