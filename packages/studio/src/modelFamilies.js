@@ -5,6 +5,7 @@ import {
   t2vModels,
   v2vModels,
 } from "./models.js";
+import {KLING4_T2V_MODELS,KLING4_I2V_MODELS} from "./kling4VideoModels.js";
 import { getModelMediaCapabilities } from "./modelCapabilities.js";
 import {
   getGroupedVideoConfiguration,
@@ -282,6 +283,7 @@ function cleanImageFamilyName(name) {
 }
 
 function videoFamilyName(familyId, fallbackName) {
+  if(familyId === "kling-v4")return "Kling 4.0";
   const versionedNames = [
     [/^kling-v(.+)$/, "Kling v"],
     [/^seedance-(.+)$/, "Seedance "],
@@ -579,8 +581,8 @@ export const imageModelCatalog = buildCatalog(
 
 export const videoModelCatalog = buildCatalog(
   [
-    { mode: "t2v", models: t2vModels },
-    { mode: "i2v", models: i2vModels },
+    { mode: "t2v", models: [...t2vModels,...KLING4_T2V_MODELS] },
+    { mode: "i2v", models: [...i2vModels,...KLING4_I2V_MODELS] },
     { mode: "v2v", models: v2vModels },
   ],
   {

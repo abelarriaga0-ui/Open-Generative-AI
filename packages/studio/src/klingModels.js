@@ -1,6 +1,7 @@
 import { createGroupedVideoRegistry } from "./groupedVideoRegistry.js";
 
 export const KLING_FAMILY_NAMES = Object.freeze({
+  "kling-v4": "Kling 4.0",
   "kling-v3": "Kling 3.0",
   "kling-v3-omni": "Kling 3.0 Omni",
   "kling-o1": "Kling O1",
@@ -24,6 +25,11 @@ const registry = createGroupedVideoRegistry({
   },
   facetLabels: { profile: "Generation", speed: "Speed" },
   registerVariants(register) {
+    for (const flavor of ["", "-flash"]) {
+      register(`kling-4.0${flavor}-text-to-video`, "kling-v4", [null], {profile:flavor?"fast":"pro"});
+      register(`kling-4.0${flavor}-reference-to-video`, "kling-v4", ["references"], {profile:flavor?"fast":"pro"});
+      register(`kling-4.0${flavor}-keyframe-to-video`, "kling-v4", ["animate_image"], {profile:flavor?"fast":"pro"});
+    }
     for (const service of ["standard", "pro", "4k"]) {
       register(`kling-v3.0-${service}-text-to-video`, "kling-v3", [null], { service });
       register(`kling-v3.0-${service}-image-to-video`, "kling-v3", ["animate_image", "keyframes"], { service });

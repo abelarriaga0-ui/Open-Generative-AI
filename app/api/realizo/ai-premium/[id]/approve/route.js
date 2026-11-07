@@ -3,6 +3,7 @@ import {enforceSameOrigin} from '@/lib/wallet/access-auth';
 import {safeResearchResponse} from '@/lib/realizo-creative/ai-premium';
 import {salesAngleDirective} from '@/lib/realizo-creative/sales-angle';
 import {resolvePremiumVideoChoice} from '@/lib/realizo-creative/video-specs';
+import {resolveAnyPremiumVideoChoice,buildLivePremiumVideoInput} from '@/lib/realizo-creative/premium-live-models';
 import {buildPremiumGenerationParams} from '@/lib/realizo-creative/premium-video-settings';
 import {signedMediaUrl} from '@/lib/realizo-creative/media';
 import {buildCommercialDirectorPackage,normalizeProductCopy} from '@/lib/realizo-creative/sales-director';
@@ -58,8 +59,14 @@ export async function POST(request,{params}){
     return Response.json({error:'premium_audio_cast_conflict'},{status:422});
   const modelId=String(project.video_model_id||'');
   let videoChoice;
+  const savedSettings=project.video_settings_json?JSON.parse(project.video_settings_json):{};
+  const liveContract=savedSettings?.model_contract?.model_origin==='muapi_live'&&
+    savedSettings.model_contract.id===modelId?savedSettings.model_contract:null;
   try{
-    videoChoice=resolvePremiumVideoChoice(modelId,project.video_duration_seconds);
+    videoChoice=liveContract&&liveContract.durations.includes(Number(project.video_duration_seconds))?
+      {modelId,duration:Number(project.video_duration_seconds),workflowId:liveContract.workflow_id,
+       imageRole:liveContract.image_role,option:liveContract}:
+      await resolveAnyPremiumVideoChoice(modelId,project.video_duration_seconds);
   }catch{
     return Response.json({error:'invalid_video_configuration'},{status:422});
   }
@@ -101,11 +108,17 @@ export async function POST(request,{params}){
   if(selectedTemplate?.id==='ugc-vendedor'&&duration!==30)
     return Response.json({error:'template_requires_30_seconds'},{status:422});
   const workflowId=videoChoice.workflowId;
+  const promptLimit=Number(liveContract?.prompt_max_length||videoChoice.option?.prompt_max_length||12500);
+  const referenceTag=modelId.startsWith('kling-4.0-')&&workflowId==='references'?
+    ' PRODUCT REFERENCE @image_1 must keep its exact original packaging; @image_1 is not the first frame.':
+    modelId.startsWith('kling-4.0-')&&workflowId==='animate_image'?
+    ' START FRAME @first_frame is the customer's uploaded image.':'';
   const director=buildCommercialDirectorPackage({
     concept:directorConcept,productName:normalizeProductCopy(project.product_name),
     description:normalizeProductCopy(project.description),cta:concept.cta||project.cta,
     market:project.market_code,videoLanguage:project.video_language||'es',style:finalStyle,shotPreference,castMode,audioMode,duration,
     imageProvided:true,modelId,workflowId,
+    promptMaxLength:Math.max(4000,Math.min(12500,promptLimit-referenceTag.length)), 
     productGeometry:findings.product_visual_geometry||null,
     templateId:selectedTemplate?.id||null,templateActor:project.template_actor||'auto',
     templateSetting:project.template_setting||'auto',
@@ -118,7 +131,8 @@ export async function POST(request,{params}){
   // Truncating its tail silently stripped mandatory voice/actor clauses and
   // caused the quote gate to reject an otherwise correctly approved project.
   // Keep the exact validated director prompt for pricing AND generation.
-  const finalPrompt=director.prompt;
+  const finalPrompt=director.prompt+referenceTag;
+  if(finalPrompt.length>promptLimit)return Response.json({error:'invalid_video_configuration'},{status:422});
   await db.prepare(
     "UPDATE realizo_ai_projects SET status='approved',video_model_id=?,video_workflow_id=?,video_duration_seconds=?,selected_concept=?,approved_prompt=?,creative_style=?,cast_mode=?,audio_mode=?,updated_at=datetime('now') WHERE id=? AND user_id=?"
   ).bind(modelId,workflowId,duration,selection,finalPrompt,finalStyle,castMode,audioMode,id,user.id).run();
@@ -133,9 +147,11 @@ export async function POST(request,{params}){
     Number(asset.expires_at),Math.floor(Date.now()/1000)+3600));
   let readyForGeneration;
   try{
-   readyForGeneration=buildPremiumGenerationParams({modelId,duration,
+   readyForGeneration=liveContract?buildLivePremiumVideoInput(liveContract,{
+    modelId,duration,prompt:finalPrompt,imageUrl:image,settings:savedSettings
+   }):buildPremiumGenerationParams({modelId,duration,
     prompt:finalPrompt,imageUrl:image,workflowId,imageRole:videoChoice.imageRole,
-    settings:project.video_settings_json?JSON.parse(project.video_settings_json):{},
+    settings:savedSettings,
    });
   }catch{
    return Response.json({error:'invalid_video_configuration'},{status:422});
