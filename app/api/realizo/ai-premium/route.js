@@ -1,5 +1,5 @@
 import {getWalletEnvironment,requireWalletUser,jsonError} from '@/lib/wallet/server';
-import {premiumVideoOptions} from '@/lib/realizo-creative/video-specs';
+import {allPremiumVideoOptions,resolveAnyPremiumVideoChoice} from '@/lib/realizo-creative/premium-live-models';
 import {getCloudflareContext} from '@opennextjs/cloudflare';
 import {launchPremiumResearch,reconcileExpiredPremiumLaunch} from '@/lib/realizo-creative/research-lifecycle';
 import {enforceSameOrigin} from '@/lib/wallet/access-auth';
@@ -43,7 +43,7 @@ export async function GET(request){
    general_available_cents:aiFunds,
    video_charge_separate:true,
    pricing_version:PREMIUM_PRICING_VERSION,
-   video_options:premiumVideoOptions(),
+   video_options:await allPremiumVideoOptions(),
    cost_tracking:'provider_usage_estimate; provider invoice reconciliation required',
    research_scope:'Foto y mercado + tres propuestas de venta. Video aparte.',
    projects:list.results??[],
@@ -72,7 +72,10 @@ export async function POST(request){
   if(Number(request.headers.get('content-length')||0)>5000)return error('request_too_large',413);
   const body=await request.json();
   let data;
-  try{data=validatePremiumInput(body)}
+  try{
+   const verifiedModel=await resolveAnyPremiumVideoChoice(String(body.video_model_id||''),body.video_duration_seconds);
+   data=validatePremiumInput(body,{videoChoiceOverride:verifiedModel});
+  }
   catch(e){
    if(e.message==='invalid_ad_template')return error('invalid_ad_template',422);
    if(e.message==='premium_audio_cast_conflict')return error('premium_audio_cast_conflict',422);
