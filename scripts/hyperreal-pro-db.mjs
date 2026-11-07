@@ -79,7 +79,7 @@ export class HyperrealD1 {
  async putChunk(job,index,buffer){
   assertId(job.id);
   if(!Number.isSafeInteger(index)||index<0||index>300||
-    !Buffer.isBuffer(buffer)||buffer.length<1||buffer.length>700000)
+    !Buffer.isBuffer(buffer)||buffer.length<1||buffer.length>180000)
    throw Error('hyperreal_chunk_invalid');
   await this.query(
    "INSERT OR REPLACE INTO realizo_hyperreal_pro_video_chunks(job_id,chunk_index,data) VALUES ("+
