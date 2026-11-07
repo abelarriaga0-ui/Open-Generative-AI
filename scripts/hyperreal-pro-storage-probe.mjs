@@ -4,9 +4,12 @@ import {HyperrealD1} from './hyperreal-pro-db.mjs';
 const db=new HyperrealD1(process.env.CLOUDFLARE_API_TOKEN);
 const table='realizo_hyperreal_v2_chunk_probe';
 try{
+ console.log('HYPERREAL_PROBE_PHASE=create');
  await db.query('CREATE TABLE IF NOT EXISTS '+table+'(slot INTEGER PRIMARY KEY,data BLOB)');
  const bytes=Buffer.alloc(180000,0x32);
+ console.log('HYPERREAL_PROBE_PHASE=insert size='+bytes.length);
  await db.query("INSERT OR REPLACE INTO "+table+"(slot,data) VALUES (1,X'"+bytes.toString('hex')+"')");
+ console.log('HYPERREAL_PROBE_PHASE=select');
  const results=await db.query('SELECT length(data) AS n FROM '+table+' WHERE slot=1');
  if(Number(results?.[0]?.n)!==bytes.length)throw Error('chunk_limit_verification_failed');
  console.log('HYPERREAL_D1_CHUNK_WRITE_READ_SIZE='+bytes.length);
