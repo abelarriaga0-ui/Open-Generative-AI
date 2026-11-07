@@ -45,6 +45,7 @@ jobs:
           const deposits=await sql("SELECT COALESCE(SUM(amount_cents),0) AS total, COUNT(*) AS n FROM verified_deposits WHERE provider_environment='sandbox'");
           const orders=await sql("SELECT status,COUNT(*) AS n,COALESCE(SUM(price_cents),0) AS cents FROM generation_jobs GROUP BY status");
           const hasNewFunds=cents>Number(rows[0].imported||0);
+          console.log('PROVIDER_BALANCE_EXACT_USD='+usd.toFixed(3));
           console.log('PROVIDER_BALANCE_USD='+ (cents/100).toFixed(2));
           console.log('OWNER_WALLET_AVAILABLE_USD='+ (Number(rows[0].available)/100).toFixed(2));
           console.log('OWNER_WALLET_RESERVED_USD='+ (Number(rows[0].reserved)/100).toFixed(2));
