@@ -1,0 +1,54 @@
+name: Realizo Hiperrealista PRO - comprobar proveedor y montaje SIN gastar
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/realizo-hyperreal-pro-preflight.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      REALIZO_MUAPI_API_KEY: ${{ secrets.REALIZO_MUAPI_API_KEY }}
+      REALIZO_OPENAI_API_KEY: ${{ secrets.REALIZO_OPENAI_API_KEY || secrets.OPENAI_API_KEY }}
+    steps:
+      - name: Validate public R2 permissions and model estimates, NO GENERATION
+        run: |
+          node --input-type=module <<'JS'
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          const muapi=process.env.REALIZO_MUAPI_API_KEY;
+          const openai=process.env.REALIZO_OPENAI_API_KEY;
+          if(!token||!muapi||!openai)throw Error('Missing one of the private account secrets; no generation attempted');
+          const r2=await fetch('https://api.cloudflare.com/client/v4/accounts/7e405c54c1a91abbdad537f7fec379a1/r2/buckets',{
+            headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(18000)});
+          const r2j=await r2.json().catch(()=>({}));
+          console.log('R2_LIST_STATUS='+r2.status+' ALLOWED='+Boolean(r2.ok&&r2j.success));
+          const models=['nano-banana-2-1-edit','kling-4.0-reference-to-video'];
+          for(const model of models){
+            const r=await fetch('https://api.muapi.ai/api/v1/models/'+model,{
+              signal:AbortSignal.timeout(12000)});
+            const m=await r.json().catch(()=>({}));
+            console.log('MODEL_'+model+'='+r.status+' RECOGNIZED='+Boolean(r.ok&&(m.name===model||m.model?.name===model||m.id===model)));
+          }
+          const sample='https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/nano-banana-2.0-edit-in.jpg';
+          for(const [model,payload] of [
+            ['nano-banana-2-1-edit',{prompt:'Photorealistic premium product commercial reference',images_list:[sample],resolution:'4k',aspect_ratio:'9:16',output_format:'jpg'}],
+            ['kling-4.0-reference-to-video',{prompt:'@image_1 realistic 5 second product commercial',image_urls:[sample],duration:5,resolution:'1080p',aspect_ratio:'9:16'}]
+          ]){
+            const r=await fetch('https://api.muapi.ai/api/v1/models/'+model+'/estimate-cost',{
+              method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),
+              signal:AbortSignal.timeout(18000)});
+            const j=await r.json().catch(()=>({}));
+            const cost=Number(j.cost??j.estimated_cost??j.estimate?.amount_usd??j.estimate?.cost??j.amount_usd);
+            console.log('QUOTE_'+model+'_HTTP='+r.status+' NUMERIC_COST='+Number.isFinite(cost));
+          }
+          const r=await fetch('https://api.openai.com/v1/models/gpt-6-luna',{
+            headers:{Authorization:'Bearer '+openai},signal:AbortSignal.timeout(12000)});
+          console.log('OPENAI_RESEARCH_MODEL_AVAILABLE='+r.ok);
+          console.log('PREFLIGHT_READ_ONLY_NO_PROVIDER_SPENDING=true');
+          if(!r2.ok||!r.ok)process.exitCode=1;
+          JS
