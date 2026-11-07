@@ -7,15 +7,15 @@ import {
 
 const models=[
   {id:'seedance-2.5-intl-omni-reference',family_id:'seedance-2.5',
-   family:'Seedance 2.5',image_role:'product_reference',workflow_id:'references',durations:[15,30]},
+   family:'Seedance 2.5',image_role:'product_reference',mode:'i2v',workflow_id:'references',durations:[15,30]},
   {id:'seedance-2.5-text-to-video',family_id:'seedance-2.5',
-   family:'Seedance 2.5',image_role:'none',workflow_id:null,durations:[15,30]},
+   family:'Seedance 2.5',image_role:'none',mode:'t2v',workflow_id:null,durations:[15,30]},
   {id:'seedance-2.5-intl-text-to-video',family_id:'seedance-2.5',
-   family:'Seedance 2.5',image_role:'none',workflow_id:null,durations:[15,30]},
+   family:'Seedance 2.5',image_role:'none',mode:'t2v',workflow_id:null,durations:[15,30]},
   {id:'seedance-2.5-image-to-video',family_id:'seedance-2.5',
-   family:'Seedance 2.5',image_role:'start_frame',workflow_id:'animate_image',durations:[15,30]},
+   family:'Seedance 2.5',image_role:'start_frame',mode:'i2v',workflow_id:'animate_image',durations:[15,30]},
   {id:'veo3.1-reference-to-video',family_id:'veo-3.1',
-   family:'Veo 3.1',image_role:'product_reference',workflow_id:'references',durations:[8,15]}
+   family:'Veo 3.1',image_role:'product_reference',mode:'i2v',workflow_id:'references',durations:[8,15]}
 ];
 test('one model name per family hides technical endpoints',()=>{
   const list=hyperrealModelFamilies(models);
