@@ -66,7 +66,7 @@ export async function POST(request,{params}){
     videoChoice=liveContract&&liveContract.durations.includes(Number(project.video_duration_seconds))?
       {modelId,duration:Number(project.video_duration_seconds),workflowId:liveContract.workflow_id,
        imageRole:liveContract.image_role,option:liveContract}:
-      await resolveAnyPremiumVideoChoice(modelId,project.video_duration_seconds);
+      await resolveAnyPremiumVideoChoice(modelId,project.video_duration_seconds,db);
   }catch{
     return Response.json({error:'invalid_video_configuration'},{status:422});
   }
