@@ -1,12 +1,21 @@
 name: Realizo Hiperrealista PRO - activate verified owner-only pilot
 on:
+  workflow_run:
+    workflows: ['Realizo - consolidate the existing studio safely']
+    types: [completed]
   workflow_dispatch:
 permissions:
   contents: read
   actions: read
 jobs:
   activate:
-    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/main' && github.actor == 'abelarriaga0-ui'
+    if: >-
+      github.repository == 'abelarriaga0-ui/Open-Generative-AI' &&
+      ((github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_branch == 'main') ||
+       (github.event_name == 'workflow_dispatch' &&
+        github.ref == 'refs/heads/main' && github.actor == 'abelarriaga0-ui'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
