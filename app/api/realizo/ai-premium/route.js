@@ -43,7 +43,7 @@ export async function GET(request){
    general_available_cents:aiFunds,
    video_charge_separate:true,
    pricing_version:PREMIUM_PRICING_VERSION,
-   video_options:await allPremiumVideoOptions(),
+   video_options:await allPremiumVideoOptions(env.WALLETS_DB),
    cost_tracking:'provider_usage_estimate; provider invoice reconciliation required',
    research_scope:'Foto y mercado + tres propuestas de venta. Video aparte.',
    projects:list.results??[],
@@ -73,7 +73,7 @@ export async function POST(request){
   const body=await request.json();
   let data;
   try{
-   const verifiedModel=await resolveAnyPremiumVideoChoice(String(body.video_model_id||''),body.video_duration_seconds);
+   const verifiedModel=await resolveAnyPremiumVideoChoice(String(body.video_model_id||''),body.video_duration_seconds,env.WALLETS_DB);
    data=validatePremiumInput(body,{videoChoiceOverride:verifiedModel});
   }
   catch(e){

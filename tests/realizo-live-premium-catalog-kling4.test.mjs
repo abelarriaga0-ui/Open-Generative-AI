@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {premiumVideoOptions,resolvePremiumVideoChoice} from '../lib/realizo-creative/video-specs.js';
 import {resolvePremiumVideoSettings,buildPremiumGenerationParams} from '../lib/realizo-creative/premium-video-settings.js';
-import {allPremiumVideoOptions,liveVideoOptionFromRecord,liveVideoSettingsForChoice,buildLivePremiumVideoInput} from '../lib/realizo-creative/premium-live-models.js';
+import {allPremiumVideoOptions,createPublishedVideoCatalog,liveVideoOptionFromRecord,liveVideoSettingsForChoice,buildLivePremiumVideoInput} from '../lib/realizo-creative/premium-live-models.js';
 import {buildCommercialDirectorPackage} from '../lib/realizo-creative/sales-director.js';
 import {validatePremiumInput} from '../lib/realizo-creative/ai-premium.js';
 
@@ -98,21 +98,41 @@ test('unsafe, unpriced, unsupported or undocumented models do not become paid ch
   properties:{prompt:{type:'string'}}}}),null);
  assert.equal(liveVideoOptionFromRecord(newRecord,new Set([newRecord.name])),null);
 });
-test('live public catalog extends stale built-in list, without any customer key or generated video',async()=>{
+test('a daily D1 snapshot extends the bundled list, without any provider request on client load',async()=>{
  const original=globalThis.fetch;
- let calls=0;
- globalThis.fetch=async(url,options)=>{
-  calls++;
-  assert.equal(url,'https://api.muapi.ai/api/v1/models');
-  assert.ok(!options.headers.Authorization && !options.headers['x-api-key']);
-  return {ok:true,async json(){return {models:[newRecord]}}};
- };
+ let providerCalls=0;
+ globalThis.fetch=async()=>{providerCalls++;throw Error('No Muapi calls allowed on customer request')};
  try{
-  const options=await allPremiumVideoOptions();
+  const snapshot=createPublishedVideoCatalog([newRecord]);
+  assert.equal(snapshot.options.length,1);
+  assert.equal(snapshot.options[0].id,newRecord.name);
+  assert.equal(snapshot.options[0].settings_by_duration,undefined);
+  let d1Reads=0;
+  const db={prepare(query){
+   assert.match(query,/SELECT snapshot_json FROM realizo_muapi_video_catalog/);
+   d1Reads++;
+   return {async first(){return {snapshot_json:JSON.stringify(snapshot)}}};
+  }};
+  const options=await allPremiumVideoOptions(db);
   assert.ok(options.some(x=>x.id===newRecord.name));
   assert.ok(options.some(x=>x.id==='kling-4.0-reference-to-video'));
-  assert.equal(calls,1);
+  assert.equal(d1Reads,1);
+  assert.equal(providerCalls,0);
  }finally{globalThis.fetch=original;}
+});
+test('the scheduled workflow refreshes once daily and never bills or runs on page requests',()=>{
+ const workflow=readFileSync('.github/workflows/realizo-muapi-catalog-daily.yml','utf8');
+ const loader=readFileSync('lib/realizo-creative/premium-live-models.js','utf8');
+ const script=readFileSync('scripts/refresh-realizo-muapi-catalog.mjs','utf8');
+ const route=readFileSync('app/api/realizo/ai-premium/route.js','utf8');
+ assert.match(workflow,/cron: '17 9 \* \* \*'/);
+ assert.match(workflow,/refresh-realizo-muapi-catalog\.mjs/);
+ assert.match(workflow,/wrangler d1 execute WALLETS_DB/);
+ assert.match(script,/createPublishedVideoCatalog/);
+ assert.match(script,/https:\/\/api\.muapi\.ai\/api\/v1\/models/);
+ assert.doesNotMatch(script,/\/(?:predictions|generate)(?:\/|['"])/);
+ assert.match(route,/allPremiumVideoOptions\(env\.WALLETS_DB\)/);
+ assert.doesNotMatch(loader,/await fetch\(/);
 });
 test('Kling 4 prompt is compact and retains mandatory premium voice and actor locks',()=>{
  const p=buildCommercialDirectorPackage({
@@ -134,7 +154,7 @@ test('Kling 4 prompt is compact and retains mandatory premium voice and actor lo
 test('API reads live catalog and approval preserves verified settings without touching wallet logic',()=>{
  const get=readFileSync('app/api/realizo/ai-premium/route.js','utf8');
  const approve=readFileSync('app/api/realizo/ai-premium/[id]/approve/route.js','utf8');
- assert.match(get,/video_options:await allPremiumVideoOptions\(\)/);
+ assert.match(get,/video_options:await allPremiumVideoOptions\(env\.WALLETS_DB\)/);
  assert.match(get,/resolveAnyPremiumVideoChoice/);
  assert.match(approve,/buildLivePremiumVideoInput/);
  assert.match(approve,/savedSettings\.model_contract/);
