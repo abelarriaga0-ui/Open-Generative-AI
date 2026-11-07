@@ -258,13 +258,14 @@ async function execute(job){
  progress.videos=Array.isArray(progress.videos)?progress.videos:[];
  progress.done=progress.done||{};
  try{
-  const research=await runProviderStep(job,progress,{
-   key:'research',type:'openai',model:'responses',
-   payload:buildHyperrealDirectorRequest({OPENAI_PREMIUM_MODEL:'gpt-6-luna'},brief),
-   stage:'research'
-  });
-  if(!research)return;
+  let research=null;
   if(!progress.story){
+   research=await runProviderStep(job,progress,{
+    key:'research',type:'openai',model:'responses',
+    payload:buildHyperrealDirectorRequest({OPENAI_PREMIUM_MODEL:'gpt-6-luna'},brief),
+    stage:'research'
+   });
+   if(!research)return;
    progress.story=parseHyperrealDirectorResult(research,brief);
    // The original owner photograph can support brand identity. If the
    // AI cannot identify the product, do NOT invent conversion claims.
