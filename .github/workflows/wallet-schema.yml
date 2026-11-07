@@ -26,6 +26,12 @@ on:
       - "components/RealizoStudio.jsx"
       - "tests/realizo-premium-cast-director.test.mjs"
       - "tests/realizo-premium-film-contract.test.mjs"
+      - "tests/realizo-live-premium-catalog-kling4.test.mjs"
+      - "lib/realizo-creative/premium-live-models.js"
+      - "lib/realizo-creative/video-specs.js"
+      - "packages/studio/src/kling4VideoModels.js"
+      - "packages/studio/src/klingModels.js"
+      - "packages/studio/src/modelFamilies.js"
       - "tests/realizo-premium-audio-choice.test.mjs"
       - "lib/realizo-creative/audio-mode.js"
       - "scripts/realizo-premium-audio-sandbox.sql"
@@ -63,7 +69,7 @@ jobs:
       - name: Billeteras, Sandbox y sintaxis ESM (sin secretos ni servicios externos)
         run: |
           npm run test:wallet
-          node --test tests/realizo-ugc15-omni-template.test.mjs tests/realizo-direct-premium-generation.test.mjs tests/realizo-funded-usage-muapi-failures.test.mjs tests/realizo-ai-research-complimentary.test.mjs tests/realizo-universal-angle-director.test.mjs
+          node --test tests/realizo-live-premium-catalog-kling4.test.mjs tests/realizo-ugc15-omni-template.test.mjs tests/realizo-direct-premium-generation.test.mjs tests/realizo-funded-usage-muapi-failures.test.mjs tests/realizo-ai-research-complimentary.test.mjs tests/realizo-universal-angle-director.test.mjs
           node --test tests/realizo-paypal-live-preflight.test.mjs tests/realizo-paypal-inline-checkout.test.mjs
 
   deploy-realizo-sandbox:
