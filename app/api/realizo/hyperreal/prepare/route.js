@@ -7,7 +7,7 @@ import {ensureOwnedMedia} from '@/lib/wallet/live-video-models';
 import {
   normalizeHyperrealProductionBrief,hyperrealShotPlan,hyperrealQuoteBreakdown,
   HYPERREAL_IMAGE_MODEL,HYPERREAL_VIDEO_MODEL,
-  HYPERREAL_CHUNK_BYTES,HYPERREAL_IMAGE_RESOLUTION,HYPERREAL_VIDEO_RESOLUTION
+  HYPERREAL_CHUNK_BYTES,HYPERREAL_IMAGE_RESOLUTION,HYPERREAL_VIDEO_RESOLUTION,HYPERREAL_V2_VERSION
 } from '@/lib/realizo-creative/hyperreal-production';
 
 export const dynamic='force-dynamic';
@@ -213,6 +213,11 @@ export async function POST(request){
 }
 export async function GET(request){
  const mode=new URL(request.url).searchParams;
+ if(mode.get('capabilities')==='1')return Response.json({
+  version:HYPERREAL_V2_VERSION,production:'image_first_per_scene',
+  image_model:HYPERREAL_IMAGE_MODEL,video_model:HYPERREAL_VIDEO_MODEL,
+  user_spend_requires_explicit_confirmation:true
+ },{headers:HEADERS});
  if(!mode.has('list')&&!mode.has('job_id')&&!mode.has('download'))
   return new Response(null,{status:405,headers:{Allow:'POST'}});
  try{
