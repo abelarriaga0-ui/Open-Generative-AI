@@ -1,0 +1,62 @@
+name: Realizo - reconcile exact verified Muapi owner balance USD 30.892 (one-time)
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/realizo-owner-muapi-balance-sync-20261107.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: realizo-owner-muapi-prepaid-20261107-exact-once
+  cancel-in-progress: false
+jobs:
+  reconcile:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      REALIZO_MUAPI_API_KEY: ${{ secrets.REALIZO_MUAPI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Confirm original Realizo production worker and D1, no other database
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          import {readFileSync} from 'node:fs';
+          const config=JSON.parse(readFileSync('wrangler.consolidated.jsonc','utf8'));
+          if(config.name!=='realizo-auth-sandbox'||
+             config.vars.REALIZO_ENV!=='production'||
+             config.vars.MUAPI_GENERATION_ENABLED!=='true'||
+             config.d1_databases?.[0]?.database_id!=='2561f6c8-bfb2-4ea4-8527-7fec29188edf'||
+             config.d1_databases?.[0]?.database_name!=='realizo-wallets-sandbox')
+            throw Error('Unexpected production destination; no write permitted');
+          console.log('EXACT_ORIGINAL_WALLET_DATABASE=CONFIRMED');
+          JS
+      - name: Test exact owner balance sync guards and static JavaScript syntax
+        run: |
+          python3 -m unittest discover -s tests -p 'test_realizo_owner_muapi_balance_sync.py' -v
+          node --check scripts/reconcile-owner-muapi-20261107.mjs
+      - name: Verify live provider USD 30.892 and every D1 owner guard READ ONLY
+        run: node scripts/reconcile-owner-muapi-20261107.mjs --check
+      - name: Install isolated Wrangler, no production application deploy
+        shell: bash
+        run: |
+          npm install --prefix "$RUNNER_TEMP/realizo-muapi-reconcile-wrangler" --no-save --no-audit --no-fund wrangler@4.156.2
+          echo "$RUNNER_TEMP/realizo-muapi-reconcile-wrangler/node_modules/.bin" >> "$GITHUB_PATH"
+      - name: Apply guarded additive migration ONLY on the verified original D1
+        shell: bash
+        run: |
+          wrangler d1 migrations apply WALLETS_DB --config wrangler.consolidated.jsonc --remote
+      - name: Atomically allocate only USD 30.55 to original owner and record ledger receipt
+        run: node scripts/reconcile-owner-muapi-20261107.mjs --apply
+      - name: Recheck receipt and prevent any repeated deposit
+        run: |
+          node scripts/reconcile-owner-muapi-20261107.mjs --apply
+          echo 'No PayPal charge, no Muapi generation and no change to any other wallet.'
