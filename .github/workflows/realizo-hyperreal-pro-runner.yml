@@ -1,0 +1,66 @@
+name: Realizo Hiperrealista PRO - autonomous queued production
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/realizo-hyperreal-pro-runner.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: realizo-hyperreal-v2-exclusive-video-engine
+  cancel-in-progress: false
+jobs:
+  production:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read-only D1 queue check; skip models and video renderer when empty
+        id: queue
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          import {HyperrealD1} from './scripts/hyperreal-pro-db.mjs';
+          const db=new HyperrealD1(process.env.CLOUDFLARE_API_TOKEN);
+          const rows=await db.query("SELECT COUNT(*) AS n FROM realizo_hyperreal_pro_jobs WHERE status IN ('reserved','processing') AND (lease_expires_at IS NULL OR lease_expires_at<unixepoch())");
+          const pending=Number(rows[0]?.n||0);
+          console.log('HYPERREAL_PENDING_JOBS='+pending+' (no account data logged)');
+          const fs=await import('node:fs');
+          fs.appendFileSync(process.env.GITHUB_OUTPUT,'has_jobs='+(pending>0?'1':'0')+'\n');
+          JS
+      - name: Verify full engine credentials before any paid provider call
+        if: steps.queue.outputs.has_jobs == '1'
+        env:
+          MUAPI: ${{ secrets.REALIZO_MUAPI_API_KEY }}
+          OPENAI: ${{ secrets.REALIZO_OPENAI_API_KEY || secrets.OPENAI_API_KEY }}
+        run: |
+          test -n "$MUAPI" || (echo 'Muapi credential unavailable, no generation' && exit 1)
+          test -n "$OPENAI" || (echo 'OpenAI credential unavailable, no generation' && exit 1)
+      - name: Install ffmpeg only for queued, already confirmed jobs
+        if: steps.queue.outputs.has_jobs == '1'
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ffmpeg
+          ffmpeg -hide_banner -version | head -n 1
+      - name: Resume and deliver one confirmed product commercial autonomously
+        if: steps.queue.outputs.has_jobs == '1'
+        env:
+          REALIZO_MUAPI_API_KEY: ${{ secrets.REALIZO_MUAPI_API_KEY }}
+          REALIZO_OPENAI_API_KEY: ${{ secrets.REALIZO_OPENAI_API_KEY || secrets.OPENAI_API_KEY }}
+        run: |
+          node --check scripts/hyperreal-pro-runner.mjs
+          node scripts/hyperreal-pro-runner.mjs
+      - name: No requests means no API spending
+        if: steps.queue.outputs.has_jobs != '1'
+        run: echo 'No Hiperrealista PRO customer jobs. No AI calls, no wallet spending.'
