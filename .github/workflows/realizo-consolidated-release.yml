@@ -6,6 +6,13 @@ on:
       - ".github/workflows/realizo-consolidated-release.yml"
       - "components/RealizoStudio.jsx"
       - "components/RealizoHyperrealPro.jsx"
+      - "components/RealizoHyperrealPro.module.css"
+      - "lib/realizo-creative/hyperreal-model-routing.js"
+      - "lib/realizo-creative/hyperreal-document.js"
+      - "tests/realizo-hyperreal-model-routing.test.mjs"
+      - "tests/realizo-hyperreal-document.test.mjs"
+      - "tests/test_realizo_hyperreal_document_jobs.py"
+      - "migrations/0032_realizo_hyperreal_document_jobs.sql"
       - "lib/realizo-creative/hyperreal-pro.js"
       - "app/api/realizo/hyperreal/**"
       - "tests/realizo-hyperreal-pro.test.mjs"
@@ -137,7 +144,7 @@ jobs:
       - name: Check product identity and spoken-script integrity
         run: node --test tests/realizo-product-identity-voice.test.mjs tests/realizo-direct-premium-generation.test.mjs tests/realizo-universal-angle-director.test.mjs
       - name: Verify hyperreal commercial storyboards across all styles before shipping
-        run: node --test tests/realizo-hyperreal-commercial.test.mjs tests/realizo-hyperreal-pro.test.mjs tests/realizo-muapi-master-ugc30.test.mjs tests/realizo-sales-director.test.mjs tests/realizo-premium-film-contract.test.mjs
+        run: node --test tests/realizo-hyperreal-commercial.test.mjs tests/realizo-hyperreal-pro.test.mjs tests/realizo-hyperreal-model-routing.test.mjs tests/realizo-muapi-master-ugc30.test.mjs tests/realizo-sales-director.test.mjs tests/realizo-premium-film-contract.test.mjs
       - name: Verify visible wallet and research spendable balance agree before publishing
         run: |
           node --test tests/realizo-ai-premium-live-wallet.test.mjs tests/realizo-ai-premium.test.mjs
@@ -155,6 +162,8 @@ jobs:
           npm pkg set 'devDependencies.@tailwindcss/vite=4.3.3'
           npm install --no-audit --no-fund --legacy-peer-deps
           npm install --no-save --package-lock=false next@16.4.2 @opennextjs/cloudflare@1.20.12 wrangler@4.156.2
+          node --test tests/realizo-hyperreal-document.test.mjs
+          python -m unittest discover -s tests -p 'test_realizo_hyperreal_document_jobs.py' -v
           npm run build:packages
           npx opennextjs-cloudflare build --config wrangler.consolidated.jsonc
           test -s .open-next/worker.js
