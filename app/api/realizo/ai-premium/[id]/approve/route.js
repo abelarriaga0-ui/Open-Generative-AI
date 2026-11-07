@@ -112,7 +112,7 @@ export async function POST(request,{params}){
   const referenceTag=modelId.startsWith('kling-4.0-')&&workflowId==='references'?
     ' PRODUCT REFERENCE @image_1 must keep its exact original packaging; @image_1 is not the first frame.':
     modelId.startsWith('kling-4.0-')&&workflowId==='animate_image'?
-    ' START FRAME @first_frame is the customer's uploaded image.':'';
+    " START FRAME @first_frame is the customer's uploaded image.":'';
   const director=buildCommercialDirectorPackage({
     concept:directorConcept,productName:normalizeProductCopy(project.product_name),
     description:normalizeProductCopy(project.description),cta:concept.cta||project.cta,
