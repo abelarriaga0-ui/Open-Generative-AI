@@ -19,8 +19,10 @@ jobs:
         with: {persist-credentials: false}
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
-      - name: Validate server-side video renderer exists
+      - name: Install and verify server-side FFmpeg renderer
         run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ffmpeg
           ffmpeg -hide_banner -version | head -n 1
           ffprobe -hide_banner -version | head -n 1
       - name: Test bounded D1 chunk storage using a disposable dedicated probe table
