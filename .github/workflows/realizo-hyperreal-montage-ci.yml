@@ -1,0 +1,31 @@
+name: Realizo Hiperrealista PRO - synthetic multi-scene MP4 test
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/realizo-hyperreal-montage-ci.yml'
+      - 'scripts/hyperreal-pro-montage.mjs'
+      - 'scripts/hyperreal-pro-runner.mjs'
+      - 'tests/realizo-hyperreal-montage.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install FFmpeg without invoking any paid provider
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ffmpeg
+      - name: Assemble synthetic footage and verify duration, codec and voice requirements
+        run: |
+          node --check scripts/hyperreal-pro-runner.mjs
+          node --test tests/realizo-hyperreal-montage.test.mjs
+          echo 'VIDEO_MONTAGE_TEST_ONLY_NO_PROVIDER_SPEND=true'
