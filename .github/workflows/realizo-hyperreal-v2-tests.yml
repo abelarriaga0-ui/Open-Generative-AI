@@ -1,0 +1,51 @@
+name: Realizo Hiperrealista PRO V2 - isolated engine tests
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/realizo-hyperreal-v2-tests.yml'
+      - 'lib/realizo-creative/hyperreal-production.js'
+      - 'components/RealizoHyperrealPro.jsx'
+      - 'app/api/realizo/hyperreal/prepare/route.js'
+      - 'scripts/hyperreal-pro-*.mjs'
+      - 'tests/realizo-hyperreal-v2.test.mjs'
+      - 'tests/test_realizo_hyperreal_v2_sql.py'
+      - 'migrations/0033_realizo_hyperreal_pro_production.sql'
+      - 'migrations/0034_realizo_hyperreal_pro_release_gate.sql'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tests:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Node sales director and image/video commercial contracts
+        run: |
+          node --test tests/realizo-hyperreal-v2.test.mjs tests/realizo-hyperreal-pro.test.mjs
+          node --check scripts/hyperreal-pro-db.mjs
+          node --check scripts/hyperreal-pro-runner.mjs
+      - name: Financial SQL rollback and isolation from other wallets
+        run: python3 -m unittest discover -s tests -p 'test_realizo_hyperreal_v2_sql.py' -v
+      - name: Ensure research, video generation and final upload are disabled without confirmation
+        run: |
+          node --input-type=module <<'JS'
+          import {readFileSync} from 'node:fs';
+          const route=readFileSync('app/api/realizo/hyperreal/prepare/route.js','utf8');
+          if(!route.includes('realizo_hyperreal_pro_release_gate')||
+             !route.includes("body.action==='confirm'")||
+             !route.includes("body.action==='quote'"))
+            throw Error('The owner must see one full-package quote before spending');
+          const runner=readFileSync('scripts/hyperreal-pro-runner.mjs','utf8');
+          if(!runner.includes("db.claim(workerId)")||
+             !runner.includes("runProviderStep")||
+             !runner.includes("db.finish(job")||
+             !runner.includes("progress.pending"))
+            throw Error('Missing durable staged engine');
+          console.log('FULL_BUNDLE_PAYMENTS_STAY_DISABLED_UNTIL_VERIFIED=true');
+          JS
