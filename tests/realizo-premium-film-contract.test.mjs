@@ -95,7 +95,7 @@ test('Goda Premium voiceover preserves full audio contract when approved and sen
 test('approval and client editor keep the exact server-built Premium film prompt',()=>{
  const approval=readFileSync('app/api/realizo/ai-premium/[id]/approve/route.js','utf8');
  const studio=readFileSync('packages/studio/src/components/VideoStudio.jsx','utf8');
- assert.match(approval,/const finalPrompt=director\.prompt;/);
+ assert.match(approval,/const finalPrompt=director\.prompt\+referenceTag;/);
  assert.doesNotMatch(approval,/finalPrompt=director\.prompt\.slice/);
  assert.match(studio,/setPrompt\(String\(preparedBrief\.prompt\|\|""\)\)/);
  assert.match(studio,/!\['premium','cinematic'\]\.includes\(preparedBrief\.creative_style\)/);
