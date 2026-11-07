@@ -1,0 +1,27 @@
+name: Realizo Hiperrealista PRO - probar MP4 por fragmentos D1 sin clientes
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/realizo-hyperreal-pro-storage-check.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Validate server-side video renderer exists
+        run: |
+          ffmpeg -hide_banner -version | head -n 1
+          ffprobe -hide_banner -version | head -n 1
+      - name: Test bounded D1 chunk storage using a disposable dedicated probe table
+        run: node scripts/hyperreal-pro-storage-probe.mjs
