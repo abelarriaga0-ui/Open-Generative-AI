@@ -1,222 +1,315 @@
 'use client';
-import {useEffect, useMemo, useState} from 'react';
+import {useEffect,useMemo,useRef,useState} from 'react';
 import {optimizeImage} from '@/lib/realizo-creative/optimize-image';
-import {normalizeHyperrealProBrief, planHyperrealProScenes} from '@/lib/realizo-creative/hyperreal-pro';
+import {normalizeHyperrealProBrief,planHyperrealProScenes} from '@/lib/realizo-creative/hyperreal-pro';
+import {hyperrealModelFamilies} from '@/lib/realizo-creative/hyperreal-model-routing';
+import styles from './RealizoHyperrealPro.module.css';
 
-const initial = {
-  product_name: '', description: '', audience: '', angle: '', actor: '',
-  location: '', cta: '', spoken_script: '',
-  duration: 30, format: '9:16', speak: true
+const initial={product_name:'',description:'',audience:'',angle:'',actor:'',location:'',cta:'',
+ spoken_script:'',duration:30,format:'9:16',speak:true};
+const failures={
+  invalid_media_reference:'La foto de referencia venció. Vuelve a subirla.',
+  invalid_video_configuration:'El motor no admite esta configuración. Prueba otra duración o modelo.',
+  reference_image_model_required:'Este motor no admite referencias visuales en esa duración.',
+  text_video_model_required:'Este motor no admite texto a video en esa duración.',
+  document_ai_unavailable:'La extracción no pudo completarse. Intenta nuevamente más tarde.',
+  document_daily_limit:'Has llegado al límite de tres documentos por día.',
+  document_result_invalid:'La IA no pudo recuperar una ficha fiable de este documento.',
+  document_without_readable_text:'Este documento no contiene texto que pueda extraerse.',
+  unsupported_document:'Sube PDF (hasta 4 MB), DOCX (hasta 2 MB) o TXT (hasta 200 KB).',
+  document_ai_not_configured:'La extracción documental no está disponible en este momento.'
 };
-const money = cents => new Intl.NumberFormat('es-EC', {style:'currency',currency:'USD'}).format((cents||0)/100);
-const field = 'block w-full rounded-2xl border border-[#E4DAEB] bg-white p-3.5 text-sm text-[#30203D] outline-none focus:border-[#805BC1]';
-const label = 'block text-[13px] font-bold text-[#574367] mb-2';
-const errorText = {
-  invalid_media_reference: 'La foto de referencia caducó. Vuelve a subirla.',
-  invalid_video_configuration: 'El motor no admite esta duración o calidad. Selecciona otra opción.',
-  reference_image_model_required: 'Elige un motor de referencias visuales, no uno que solo anime el primer fotograma.',
-  not_authenticated: 'Inicia sesión antes de generar.',
-};
-export default function RealizoHyperrealPro({guest=false, onWalletGenerate, onGenerationComplete, onWalletRefresh, onViewCreations}) {
-  const [brief,setBrief] = useState(initial);
-  const [photo,setPhoto] = useState(null);
-  const [preview,setPreview] = useState('');
-  const [config,setConfig] = useState(null);
-  const [modelId,setModelId] = useState('');
-  const [prepared,setPrepared] = useState(null);
-  const [error,setError] = useState('');
-  const [busy,setBusy] = useState(false);
-  const [phase,setPhase] = useState('');
-  const [submittedJob,setSubmittedJob] = useState('');
-  const [completed,setCompleted] = useState(null);
+const control={display:'block',marginTop:7};
+const caption='text-[#CBC0D7] text-xs leading-6';
 
-  useEffect(()=>{
-    fetch('/api/realizo/ai-premium',{credentials:'same-origin',cache:'no-store'})
-      .then(async response=>{
-        const data=await response.json().catch(()=>({}));
-        if(!response.ok)throw Error(data.error||'No se pudo cargar el catálogo');
-        setConfig(data);
-      }).catch(e=>setError(e.message));
-  },[]);
-  useEffect(()=>{
-    if(!photo){setPreview('');return;}
-    const url=URL.createObjectURL(photo);
-    setPreview(url);
-    return ()=>URL.revokeObjectURL(url);
-  },[photo]);
-  const compatible = useMemo(
-    ()=> (config?.video_options||[]).filter(m=>m.image_role==='product_reference' && m.durations?.includes(Number(brief.duration))),
-    [config,brief.duration]
-  );
-  useEffect(()=>{
-    if(!compatible.some(m=>m.id===modelId))
-      setModelId(compatible.find(m=>m.id==='seedance-2.5-intl-omni-reference')?.id||compatible[0]?.id||'');
-  },[compatible,modelId]);
-  const chosen = compatible.find(m=>m.id===modelId);
-  const settings = chosen?.settings_by_duration?.[brief.duration]||chosen||{};
-  const change=(key,value)=>{setBrief(p=>({...p,[key]:value}));setPrepared(null);setCompleted(null);};
-  const btn='rounded-full px-6 py-3 font-extrabold text-[13px] transition disabled:opacity-50';
-  const scenes = prepared?.scenes||[];
-
-  const plan=()=>{
-    setError('');
-    try {
-      const validated=normalizeHyperrealProBrief(brief);
-      if(!photo)throw Error('Sube la fotografía original del producto.');
-      if(!chosen)throw Error('No hay un motor de referencia visual compatible con los segundos seleccionados.');
-      setPrepared({scenes:planHyperrealProScenes(validated),brief:validated});
-    }catch(e){setError(e.message)}
-  };
-  const generate=async()=>{
-    if(guest){window.location.assign('/login');return;}
-    if(busy || !prepared?.brief || !photo || !chosen)return;
-    setBusy(true);setError('');setCompleted(null);setSubmittedJob('');
-    try{
-      setPhase('Preparando la foto del producto...');
-      const image=await optimizeImage(photo);
-      const upload=new FormData();
-      upload.append('image',image,'referencia-producto.webp');
-      const sent=await fetch('/api/realizo/media',{method:'POST',credentials:'same-origin',body:upload});
-      const item=await sent.json().catch(()=>({}));
-      if(!sent.ok||!item.url)throw Error(item.error||'No se pudo subir la foto de referencia.');
-
-      setPhase('Preparando el storyboard hiperrealista...');
-      const r=await fetch('/api/realizo/hyperreal/prepare',{
-        method:'POST',credentials:'same-origin',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          brief:prepared.brief, image_url:item.url, model_id:modelId,
-          ...(settings?.aspect_ratios?.includes(brief.format)?{aspect_ratio:brief.format}:{}),
-        })
-      });
-      const storyboard=await r.json().catch(()=>({}));
-      if(!r.ok||!storyboard.params)throw Error(errorText[storyboard.error]||storyboard.error||'No se pudo preparar el video.');
-      if(typeof onWalletGenerate!=='function')throw Error('El generador de video está temporalmente indisponible.');
-
-      setPhase('Consultando el costo exacto. Debes confirmar antes de pagar...');
-      const result=await onWalletGenerate(storyboard.params,{
-        onSubmitted:id=>{setSubmittedJob(id);setPhase('MuAPI está generando tu video. Puedes encontrar el trabajo en Mis creaciones.');onWalletRefresh?.()}
-      });
-      setCompleted(result);
-      onWalletRefresh?.();
-      onGenerationComplete?.(result);
-    }catch(e){setError(e?.message||'No se pudo generar.');}
-    finally{setBusy(false);setPhase('')}
-  };
-
-  return <section className="max-w-[1200px] mx-auto space-y-6">
-    <header className="rounded-[30px] bg-gradient-to-br from-[#2D1A47] via-[#4C3473] to-[#7553AD] p-7 sm:p-10 text-white shadow-sm">
-      <span className="inline-flex rounded-full bg-white/15 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[.2em]">Módulo separado · Hiperrealista PRO</span>
-      <h1 className="mt-4 text-[30px] sm:text-[43px] font-extrabold tracking-tight">Anuncios que parecen grabados de verdad.</h1>
-      <p className="mt-3 max-w-[770px] text-sm leading-7 text-[#EDE4F9]">Crea un video publicitario con la misma persona, el mismo producto y un plan de múltiples tomas. Puedes incluir diálogo a cámara y acciones naturales sin modificar los flujos de Realizo AI Premium.</p>
-    </header>
-
-    <div className="rounded-2xl border border-[#EADDF4] bg-[#FBF8FF] px-5 py-4 text-[13px] leading-6 text-[#634C79]">
-      <strong>Estado de esta versión:</strong> genera un video con instrucciones de varias tomas usando una fotografía como referencia de identidad. La generación automática de una imagen distinta por escena, el montaje de varios clips y la ejecución integral en segundo plano aún no están habilitados. El realismo, los cortes y la voz dependen del modelo elegido y no están garantizados.
-    </div>
-
-    <div className="grid gap-6 lg:grid-cols-[1.15fr_.85fr]">
-      <form onSubmit={e=>{e.preventDefault();plan()}} className="space-y-5 rounded-[26px] border border-[#EDE5EF] bg-white p-5 sm:p-7 shadow-sm">
-        <div>
-          <h2 className="text-xl font-extrabold text-[#352442]">1. Tu producto y tu idea</h2>
-          <p className="text-[13px] mt-1 text-[#756681]">El producto real define la marca, el envase, la etiqueta y los colores.</p>
-        </div>
-        <label className={label}>Foto original del producto
-          <input type="file" accept="image/jpeg,image/png,image/webp" className={field+' mt-2'} onChange={e=>{
-            const file=e.target.files?.[0]||null;
-            if(file && (!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>8*1024*1024)){setError('Sube una foto JPG, PNG o WebP de hasta 8 MB.');return;}
-            setPhoto(file);setPrepared(null);setError('');
-          }}/>
-        </label>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <label className={label}>Nombre del producto
-            <input required maxLength={90} value={brief.product_name} onChange={e=>change('product_name',e.target.value)} placeholder="Ej. Champú capilar" className={field+' mt-2'}/>
-          </label>
-          <label className={label}>Público objetivo
-            <input maxLength={150} value={brief.audience} onChange={e=>change('audience',e.target.value)} placeholder="Ej. Hombres adultos en Ecuador" className={field+' mt-2'}/>
-          </label>
-        </div>
-        <label className={label}>Descripción y atributos confirmados
-          <textarea required rows={3} maxLength={400} value={brief.description} onChange={e=>change('description',e.target.value)} className={field+' mt-2'} placeholder="Qué es, cómo se usa y qué puedes afirmar realmente de este producto."/>
-        </label>
-        <label className={label}>Ángulo de venta
-          <textarea rows={2} maxLength={250} value={brief.angle} onChange={e=>change('angle',e.target.value)} className={field+' mt-2'} placeholder="Ej. Rutina personal con aspecto más cuidado; evita promesas no verificadas."/>
-        </label>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <label className={label}>Personaje constante
-            <input maxLength={220} value={brief.actor} onChange={e=>change('actor',e.target.value)} className={field+' mt-2'} placeholder="Adulto, apariencia, ropa..."/>
-          </label>
-          <label className={label}>Lugar y luz
-            <input maxLength={170} value={brief.location} onChange={e=>change('location',e.target.value)} className={field+' mt-2'} placeholder="Baño de casa con luz de ventana"/>
-          </label>
-        </div>
-        <div className="grid sm:grid-cols-3 gap-4">
-          <label className={label}>Duración
-            <select value={brief.duration} onChange={e=>change('duration',Number(e.target.value))} className={field+' mt-2'}>
-              {[15,30,45].map(n=><option key={n} value={n}>{n} segundos</option>)}
-            </select>
-          </label>
-          <label className={label}>Formato
-            <select value={brief.format} onChange={e=>change('format',e.target.value)} className={field+' mt-2'}>
-              <option value="9:16">9:16 · Reels / TikTok</option>
-              <option value="16:9">16:9 · Horizontal</option>
-            </select>
-          </label>
-          <label className={label}>Voz a cámara
-            <select value={brief.speak?'yes':'no'} onChange={e=>change('speak',e.target.value==='yes')} className={field+' mt-2'}>
-              <option value="yes">Sí, hablar a cámara</option>
-              <option value="no">No, solo actividades</option>
-            </select>
-          </label>
-        </div>
-        {brief.speak&&<label className={label}>Guion hablado exacto (opcional)
-          <textarea rows={3} maxLength={900} value={brief.spoken_script} onChange={e=>change('spoken_script',e.target.value)} className={field+' mt-2'} placeholder="Si lo dejas vacío, se pedirá al modelo que formule un diálogo breve basado únicamente en tus datos. La voz depende del motor."/>
-        </label>}
-        <label className={label}>Llamado a la acción
-          <input maxLength={100} value={brief.cta} onChange={e=>change('cta',e.target.value)} className={field+' mt-2'} placeholder="Escríbenos para conocer más"/>
-        </label>
-        <div className="rounded-2xl bg-[#F8F4FC] p-4 space-y-3">
-          <p className="font-extrabold text-[13px] text-[#503B71]">2. Motor que conserva la foto como referencia</p>
-          <select value={modelId} onChange={e=>{setModelId(e.target.value);setPrepared(null)}} className={field} disabled={!compatible.length}>
-            {!compatible.length?<option value="">Sin motores compatibles para {brief.duration} s</option>:
-              compatible.map(m=><option key={m.id} value={m.id}>{m.family} · {m.name}</option>)}
-          </select>
-          <p className="text-xs leading-5 text-[#806B8B]">Solo se listan los motores que declaran soporte para referencias y para la duración elegida. La disponibilidad y el costo final se verifican antes del cobro.</p>
-        </div>
-        <button className={btn+' bg-[#6F49B0] text-white w-full'} type="submit" disabled={busy||!photo||!chosen}>Preparar las escenas sin costo</button>
-      </form>
-
-      <div className="space-y-5">
-        <section className="rounded-[26px] border border-[#EDE5EF] bg-white p-5 sm:p-7 shadow-sm">
-          <h2 className="text-xl font-extrabold text-[#352442]">3. Continuidad visual</h2>
-          <p className="text-[13px] text-[#7B6983] mt-1">Cada toma seguirá el mismo rostro, ropa, producto y lugar.</p>
-          <div className="mt-4 rounded-2xl bg-[#F6F1FA] min-h-[190px] flex items-center justify-center overflow-hidden">
-            {preview?<img src={preview} alt="Referencia original del producto" className="max-h-[260px] object-contain"/>:
-              <p className="px-6 text-center text-sm text-[#9D8FA5]">Tu fotografía aparecerá aquí</p>}
-          </div>
-          {scenes.length>0?<div className="space-y-3 mt-5">
-            <h3 className="font-bold text-[#594074] text-sm">{scenes.length} tomas planificadas · {brief.duration} segundos</h3>
-            {scenes.map(scene=><div className="flex gap-3 rounded-2xl border border-[#EEE5F3] p-3" key={scene.number}>
-              <span className="shrink-0 grid place-items-center rounded-xl bg-[#EDE2FD] text-[#6E44A2] w-9 h-9 font-bold">{scene.number}</span>
-              <div><p className="text-[13px] font-bold text-[#4F3970]">{scene.title} · {scene.start}–{scene.end} s</p>
-                <p className="text-xs leading-5 text-[#817187] mt-1">{scene.action}</p></div>
-            </div>)}
-          </div>:<p className="text-[13px] leading-6 text-[#82738D] mt-5">Completa tus datos y pulsa «Preparar las escenas». No se usarán créditos para esta planificación.</p>}
-        </section>
-        {prepared&&<section className="rounded-[26px] border border-[#D9C8EE] bg-[#F8F3FF] p-6">
-          <h3 className="font-extrabold text-[#50347F] text-lg">4. Generar en Realizo</h3>
-          <p className="text-sm leading-6 text-[#6B5684] mt-2">Al continuar, primero se mostrará el <strong>precio exacto del video</strong> según el modelo. Nada se cobra hasta que lo confirmes. Este modo no aplica recargos adicionales fuera de la cotización mostrada.</p>
-          <button type="button" onClick={generate} disabled={busy||!chosen}
-            className={btn+' w-full mt-4 bg-[#6F49B0] text-white'}>
-            {busy?'Procesando...':guest?'Iniciar sesión para generar':'Cotizar y generar video'}
-          </button>
-          {busy&&<p role="status" className="mt-3 text-xs text-[#745B91]">{phase||'Procesando...'}</p>}
-          {submittedJob&&<p className="text-xs text-[#715D87] mt-3">Trabajo registrado: {submittedJob}. Si se cierra la página, revisa su estado en Mis creaciones.</p>}
-          {completed?.url&&<a href={completed.url} target="_blank" rel="noopener noreferrer" className="block mt-4 text-sm font-bold underline text-[#6546A6]">Ver video generado</a>}
-          <button type="button" onClick={onViewCreations} className="text-xs font-bold underline text-[#6D5290] mt-4">Ir a Mis creaciones</button>
-        </section>}
-        {error&&<p role="alert" className="rounded-xl border border-[#E9BCC0] bg-[#FFF1F3] text-[#A04454] p-4 text-sm">{error}</p>}
-      </div>
-    </div>
-  </section>;
+export default function RealizoHyperrealPro({guest=false,onWalletGenerate,onGenerationComplete,onWalletRefresh,onViewCreations}){
+ const [brief,setBrief]=useState(initial);
+ const [photo,setPhoto]=useState(null),[preview,setPreview]=useState('');
+ const [documentFile,setDocumentFile]=useState(null);
+ const [docId,setDocId]=useState(''),[docStatus,setDocStatus]=useState('');
+ const [docResult,setDocResult]=useState(null),[docBusy,setDocBusy]=useState(false);
+ const [config,setConfig]=useState(null),[familyId,setFamilyId]=useState('realizo-kling-4.0');
+ const [prepared,setPrepared]=useState(null),[busy,setBusy]=useState(false);
+ const [error,setError]=useState(''),[notice,setNotice]=useState('');
+ const [phase,setPhase]=useState(''),[submittedJob,setSubmittedJob]=useState('');
+ const [completed,setCompleted]=useState(null);
+ const docRequestKey=useRef('');
+ const families=useMemo(()=>hyperrealModelFamilies(config?.video_options||[]),[config]);
+ const seconds=Number(brief.duration),hasImage=Boolean(photo);
+ const available=f=>f.variants.some(v=>v.durations?.includes(seconds)&&
+   v.image_role===(hasImage?'product_reference':'none'));
+ const selected=families.find(f=>f.id===familyId);
+ const validModel=Boolean(selected&&available(selected));
+ const failText=msg=>failures[msg]||String(msg||'No se pudo continuar.');
+ const change=(key,value)=>{
+   setBrief(v=>({...v,[key]:value}));setPrepared(null);setCompleted(null);setError('');
+ };
+ const applyDocument=data=>{
+   if(!data)return;
+   setBrief(v=>({...v,product_name:data.product_name||v.product_name,
+     description:data.description||v.description,audience:data.audience||v.audience,
+     angle:data.angle||v.angle}));
+   setPrepared(null);setNotice('Información importada. Puedes corregirla antes de generar.');
+ };
+ useEffect(()=>{
+   if(guest)return;
+   fetch('/api/realizo/ai-premium',{credentials:'same-origin',cache:'no-store'})
+     .then(async r=>{const j=await r.json();if(!r.ok)throw Error(j.error);setConfig(j);})
+     .catch(e=>setError(failText(e.message)));
+   fetch('/api/realizo/hyperreal/document',{credentials:'same-origin',cache:'no-store'})
+     .then(async r=>r.ok?r.json():null).then(j=>{
+       if(!j?.job_id)return;
+       if(['starting','submitted'].includes(j.status)){
+         setDocId(j.job_id);setDocStatus(j.status);
+       }else if(j.status==='completed'){
+         setDocStatus('completed');setDocResult(j.result);
+       }
+     }).catch(()=>{});
+ },[guest]);
+ useEffect(()=>{
+   if(!photo){setPreview('');return;}
+   const url=URL.createObjectURL(photo);setPreview(url);
+   return ()=>URL.revokeObjectURL(url);
+ },[photo]);
+ useEffect(()=>{
+   if(!validModel){
+     const first=families.find(available);
+     if(first&&first.id!==familyId)setFamilyId(first.id);
+   }
+ },[familyId,seconds,hasImage,families]);
+ useEffect(()=>{
+   if(!docId||!['starting','submitted'].includes(docStatus))return;
+   let stopped=false,timer;
+   async function poll(){
+     try{
+       const r=await fetch('/api/realizo/hyperreal/document?job_id='+encodeURIComponent(docId),
+         {credentials:'same-origin',cache:'no-store'});
+       const j=await r.json().catch(()=>({}));
+       if(stopped)return;
+       if(!r.ok)throw Error(j.error);
+       if(j.status==='completed'){
+         setDocStatus('completed');setDocResult(j.result);setDocBusy(false);
+         applyDocument(j.result);
+       }else if(j.status==='failed'){
+         setDocBusy(false);setDocStatus('failed');setError(failText(j.error));
+       }else{
+         setDocStatus(j.status);timer=setTimeout(poll,3500);
+       }
+     }catch{if(!stopped)timer=setTimeout(poll,5500);}
+   }
+   timer=setTimeout(poll,2500);
+   return ()=>{stopped=true;clearTimeout(timer);};
+ },[docId,docStatus]);
+ const choosePhoto=e=>{
+   const f=e.target.files?.[0]||null;
+   if(f&&(!['image/jpeg','image/png','image/webp'].includes(f.type)||f.size>8*1024*1024)){
+     setError('Sube una foto JPG, PNG o WebP de hasta 8 MB.');return;
+   }
+   setPhoto(f);setPrepared(null);setError('');
+ };
+ const chooseDoc=e=>{
+   const f=e.target.files?.[0]||null;
+   if(f&&!/\.(pdf|docx|txt|md)$/i.test(f.name)){setError(failures.unsupported_document);return;}
+   setDocumentFile(f);setDocResult(null);setDocId('');setDocStatus('');setError('');setDocBusy(false);
+ };
+ const analyzeDocument=async()=>{
+   if(guest){window.location.assign('/login');return;}
+   if(!documentFile||docBusy)return;
+   setDocBusy(true);setError('');setNotice('');setDocResult(null);
+   docRequestKey.current=crypto.randomUUID();
+   try{
+     const form=new FormData();form.append('document',documentFile,documentFile.name);
+     form.append('request_key',docRequestKey.current);
+     const r=await fetch('/api/realizo/hyperreal/document',
+       {method:'POST',credentials:'same-origin',body:form});
+     const j=await r.json().catch(()=>({}));
+     if(!r.ok||!j.job_id)throw Error(j.error||'document_ai_unavailable');
+     setDocId(j.job_id);setDocStatus(j.status);
+     setNotice('Leyendo la ficha. Puedes cerrar esta pantalla y volver después.');
+   }catch(e){setDocBusy(false);setError(failText(e.message));}
+ };
+ const prepare=()=>{
+   setError('');setNotice('');
+   try{
+     const value=normalizeHyperrealProBrief(brief);
+     if(!validModel)throw Error(hasImage?'reference_image_model_required':'text_video_model_required');
+     setPrepared({brief:value,familyId,scenes:planHyperrealProScenes(value)});
+   }catch(e){setError(failText(e.message));}
+ };
+ const generate=async()=>{
+   if(guest){window.location.assign('/login');return;}
+   if(busy||!prepared||!validModel)return;
+   setBusy(true);setError('');setNotice('');setCompleted(null);setSubmittedJob('');
+   try{
+     let imageUrl='';
+     if(photo){
+       setPhase('Preparando la foto...');
+       const upload=new FormData(),file=await optimizeImage(photo);
+       upload.append('image',file,file.name||'producto.jpg');
+       const r=await fetch('/api/realizo/media',{method:'POST',credentials:'same-origin',body:upload});
+       const j=await r.json().catch(()=>({}));
+       if(!r.ok||!j.url)throw Error(j.error||'No se pudo subir la imagen.');
+       imageUrl=j.url;
+     }
+     setPhase('Preparando instrucciones...');
+     const r=await fetch('/api/realizo/hyperreal/prepare',{method:'POST',credentials:'same-origin',
+       headers:{'Content-Type':'application/json'},
+       body:JSON.stringify({brief:prepared.brief,family_id:prepared.familyId,
+         ...(imageUrl?{image_url:imageUrl}:{})})});
+     const result=await r.json().catch(()=>({}));
+     if(!r.ok||!result.params)throw Error(result.error||'No se pudo preparar el video.');
+     if(typeof onWalletGenerate!=='function')throw Error('Generación no disponible.');
+     setPhase('Cotizando. Confirma el precio antes de pagar.');
+     const job=await onWalletGenerate(result.params,{
+       onSubmitted:id=>{setSubmittedJob(id);onWalletRefresh?.();
+         setPhase('Video en proceso. Su estado aparece en Mis creaciones.');}
+     });
+     setCompleted(job);onWalletRefresh?.();onGenerationComplete?.(job);
+   }catch(e){setError(failText(e.message));}
+   finally{setBusy(false);setPhase('');}
+ };
+ return <section className={styles.shell}>
+   <header className="mb-6">
+     <span className={styles.stat}>✦ Hiperrealista PRO</span>
+     <h1 className="mt-3 text-[29px] sm:text-[38px] font-extrabold text-[#FBF4FF]">Videos que parecen reales.</h1>
+     <p className={styles.muted}>Tu producto, varias tomas naturales y un mismo personaje.</p>
+   </header>
+   <div className="grid lg:grid-cols-[1.15fr_.85fr] gap-6">
+     <div className="space-y-5">
+       <section className={styles.panel+' p-5 sm:p-7 space-y-5'}>
+         <h2 className="text-xl font-extrabold text-[#FBF4FF]">1. Producto</h2>
+         <label>Foto del producto <span className="text-[#B8AEC6] font-normal">(opcional)</span>
+           <input type="file" style={control} accept="image/jpeg,image/png,image/webp" onChange={choosePhoto}/>
+         </label>
+         <div className={styles.softPanel+' p-4 space-y-3'}>
+           <strong className="text-[#FAF4FF] text-sm">¿Tienes la documentación del producto?</strong>
+           <label>Sube PDF, Word o TXT
+             <input type="file" style={control}
+               accept=".pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+               onChange={chooseDoc}/>
+           </label>
+           <button type="button" className={styles.secondary} disabled={!documentFile||docBusy}
+             onClick={analyzeDocument}>{docBusy?'Analizando…':'Completar datos con IA'}</button>
+           <p className={caption}>Hasta 3 lecturas al día sin descuento de créditos. El archivo se envía a la IA; revisa la información extraída.</p>
+           {docStatus==='completed'&&docResult&&<div className={styles.success+' space-y-2'}>
+             <p>Ficha del producto extraída.</p>
+             <button type="button" className={styles.secondary} onClick={()=>applyDocument(docResult)}>Usar información</button>
+             {docResult.missing_information&&<p className={caption}>Por confirmar: {docResult.missing_information}</p>}
+             {docResult.safety_notes&&<p className={caption}>Precauciones: {docResult.safety_notes}</p>}
+           </div>}
+         </div>
+         <div className="grid sm:grid-cols-2 gap-4">
+           <label>Nombre del producto
+             <input style={control} maxLength={90} value={brief.product_name}
+               placeholder="Ej. GODA" onChange={e=>change('product_name',e.target.value)}/>
+           </label>
+           <label>Público objetivo <span className="text-[#B8AEC6] font-normal">(opcional)</span>
+             <input style={control} maxLength={150} value={brief.audience}
+               placeholder="Ej. Hombres adultos" onChange={e=>change('audience',e.target.value)}/>
+           </label>
+         </div>
+         <label>Descripción y características comprobables
+           <textarea style={control} maxLength={400} rows={3} value={brief.description}
+             placeholder="Qué es y cómo se utiliza" onChange={e=>change('description',e.target.value)}/>
+         </label>
+         <label>Ángulo de venta <span className="text-[#B8AEC6] font-normal">(opcional)</span>
+           <textarea style={control} maxLength={250} rows={2} value={brief.angle}
+             placeholder="Ej. Rutina personal antes de salir" onChange={e=>change('angle',e.target.value)}/>
+         </label>
+       </section>
+       <section className={styles.panel+' p-5 sm:p-7 space-y-5'}>
+         <h2 className="text-xl font-extrabold text-[#FBF4FF]">2. Tu video</h2>
+         <div className="grid sm:grid-cols-3 gap-4">
+           <label>Duración
+             <select style={control} value={brief.duration}
+               onChange={e=>change('duration',Number(e.target.value))}>
+               {[15,30,45].map(n=><option key={n} value={n}>{n} segundos</option>)}
+             </select>
+           </label>
+           <label>Formato
+             <select style={control} value={brief.format}
+               onChange={e=>change('format',e.target.value)}>
+               <option value="9:16">9:16 · Vertical</option>
+               <option value="16:9">16:9 · Horizontal</option>
+             </select>
+           </label>
+           <label>Voz
+             <select style={control} value={brief.speak?'yes':'no'}
+               onChange={e=>change('speak',e.target.value==='yes')}>
+               <option value="yes">Hablar a cámara</option>
+               <option value="no">Solo actividades</option>
+             </select>
+           </label>
+         </div>
+         <label>Modelo de generación
+           <select style={control} value={familyId} onChange={e=>{
+             setFamilyId(e.target.value);setPrepared(null);
+           }}>
+             {families.map(f=><option key={f.id} value={f.id} disabled={!available(f)}>
+               {f.label}{available(f)?'':' · No compatible con esta duración/modalidad'}
+             </option>)}
+           </select>
+         </label>
+         <p className={caption}>{hasImage?'Realizo elegirá la variante que utiliza la fotografía como referencia.':
+           'Sin fotografía, Realizo elegirá texto a video. Para fidelidad al envase, sube una foto.'}
+           {' '}El costo se verifica y confirma antes de generar.</p>
+         <details className={styles.softPanel+' p-4'}>
+           <summary>Personalizar personaje, escenario, guion y CTA</summary>
+           <div className="grid sm:grid-cols-2 gap-4 mt-4">
+             <label>Persona
+               <input style={control} maxLength={220} value={brief.actor}
+                 placeholder="Ej. Hombre de 30 años, camiseta negra" onChange={e=>change('actor',e.target.value)}/>
+             </label>
+             <label>Escenario
+               <input style={control} maxLength={170} value={brief.location}
+                 placeholder="Ej. Habitación con luz de ventana" onChange={e=>change('location',e.target.value)}/>
+             </label>
+           </div>
+           {brief.speak&&<label className="mt-3">Diálogo exacto <span className="text-[#B8AEC6] font-normal">(opcional)</span>
+             <textarea style={control} maxLength={900} rows={3} value={brief.spoken_script}
+               placeholder="Frases que dirá el personaje..." onChange={e=>change('spoken_script',e.target.value)}/>
+           </label>}
+           <label className="mt-3">Llamado a la acción
+             <input style={control} maxLength={100} value={brief.cta}
+               placeholder="Escríbenos para pedirlo" onChange={e=>change('cta',e.target.value)}/>
+           </label>
+         </details>
+         <button type="button" className={styles.primary+' w-full'}
+           disabled={busy||!validModel||!brief.product_name.trim()||!brief.description.trim()}
+           onClick={prepare}>Preparar escenas</button>
+         <p className={caption}>Preparar las escenas no descuenta créditos.</p>
+       </section>
+     </div>
+     <div className="space-y-5">
+       <section className={styles.panel+' p-5 sm:p-7 space-y-4'}>
+         <h2 className="text-xl font-extrabold text-[#FBF4FF]">Vista previa</h2>
+         <div className={styles.preview}>{preview?
+           <img src={preview} alt="Referencia visual del producto"/>:
+           <p className={styles.muted+' p-5 text-center'}>Tu producto aparecerá aquí</p>}</div>
+         {prepared?.scenes?.length?<div>
+           <p className={styles.muted+' font-bold mb-2'}>{prepared.scenes.length} tomas · {seconds} segundos</p>
+           {prepared.scenes.map(shot=><div className={styles.timelineItem} key={shot.number}>
+             <span className={styles.stat}>{shot.number}</span>
+             <div><strong className="text-sm">{shot.title} · {shot.start}–{shot.end} s</strong>
+               <p className={caption}>{shot.action}</p></div>
+           </div>)}
+         </div>:<p className={styles.muted}>Completa el producto y prepara las escenas para ver la propuesta.</p>}
+       </section>
+       {prepared&&<section className={styles.panel+' p-5 sm:p-7 space-y-3'}>
+         <h3 className="text-xl font-extrabold text-[#FBF4FF]">3. Generar</h3>
+         <p className={styles.muted}>Verás el precio exacto antes de autorizar el descuento.</p>
+         <button type="button" className={styles.primary+' w-full'}
+           disabled={busy} onClick={generate}>{busy?'Procesando…':guest?'Iniciar sesión':'Cotizar y generar'}</button>
+         {busy&&<p role="status" className={styles.muted}>{phase}</p>}
+         {submittedJob&&<p className={caption}>Trabajo registrado: {submittedJob}. Revisa Mis creaciones.</p>}
+         {completed?.url&&<a href={completed.url} target="_blank" rel="noopener noreferrer"
+           className="text-[#D5B4FF] underline text-sm">Ver video</a>}
+         <button type="button" className={styles.secondary+' w-full'} onClick={onViewCreations}>Mis creaciones</button>
+       </section>}
+       {notice&&<div className={styles.success} role="status">{notice}</div>}
+       {error&&<div className={styles.error} role="alert">{error}</div>}
+       <p className={caption}>El realismo, los cortes y el audio dependen del modelo. En esta versión las tomas se dirigen dentro de una generación; aún no se montan clips independientes.</p>
+     </div>
+   </div>
+ </section>;
 }
