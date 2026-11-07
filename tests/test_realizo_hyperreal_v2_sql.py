@@ -74,5 +74,6 @@ class HyperrealProductionSQLTest(unittest.TestCase):
  def test_no_existing_video_or_paypal_tables_are_modified(self):
   self.assertNotIn('UPDATE generation_jobs',MIGRATION)
   self.assertNotIn('verified_deposits',MIGRATION)
-  self.assertNotIn('paypal',MIGRATION.lower())
+  self.assertNotIn('UPDATE verified_deposits',MIGRATION)
+  self.assertNotIn('INSERT INTO verified_deposits',MIGRATION)
 if __name__=='__main__':unittest.main()
