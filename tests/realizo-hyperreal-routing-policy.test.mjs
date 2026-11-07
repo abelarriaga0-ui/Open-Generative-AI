@@ -26,7 +26,7 @@ test('Hiperrealista POST handlers retain native auth, same-origin and document o
   ]){
     const source=readFileSync(file,'utf8');
     assert.match(source,/enforceSameOrigin\(request\)/,file);
-    assert.match(source,/requireWalletUser\(request,env\)/,file);
+    assert.match(source,/requireWalletUser\(request,\s*env\)/,file);
   }
   const source=readFileSync('app/api/realizo/hyperreal/document/route.js','utf8');
   assert.match(source,/WHERE user_id=\?/);
