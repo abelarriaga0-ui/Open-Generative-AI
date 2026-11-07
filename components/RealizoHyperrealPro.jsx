@@ -1,317 +1,379 @@
 'use client';
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {optimizeImage} from '@/lib/realizo-creative/optimize-image';
-import {normalizeHyperrealProBrief,planHyperrealProScenes} from '@/lib/realizo-creative/hyperreal-pro';
-import {hyperrealModelFamilies,resolveHyperrealModelFamily} from '@/lib/realizo-creative/hyperreal-model-routing';
 import styles from './RealizoHyperrealPro.module.css';
 
-const initial={product_name:'',description:'',audience:'',angle:'',actor:'',location:'',cta:'',
- spoken_script:'',duration:30,format:'9:16',speak:true};
-const failures={
-  invalid_media_reference:'La foto de referencia venció. Vuelve a subirla.',
-  invalid_video_configuration:'El motor no admite esta configuración. Prueba otra duración o modelo.',
-  reference_image_model_required:'Este motor no admite referencias visuales en esa duración.',
-  text_video_model_required:'Este motor no admite texto a video en esa duración.',
-  document_ai_unavailable:'La extracción no pudo completarse. Intenta nuevamente más tarde.',
-  document_daily_limit:'Has llegado al límite de tres documentos por día.',
-  document_result_invalid:'La IA no pudo recuperar una ficha fiable de este documento.',
-  document_without_readable_text:'Este documento no contiene texto que pueda extraerse.',
-  unsupported_document:'Sube PDF (hasta 4 MB), DOCX (hasta 2 MB) o TXT (hasta 200 KB).',
-  document_ai_not_configured:'La extracción documental no está disponible en este momento.'
+const DEFAULT={
+ source_mode:'ai',product_name:'',description:'',audience:'',angle:'',cta:'',
+ creative_style:'ugc',audio_mode:'camera',cast_mode:'auto',duration:30,
+ aspect_ratio:'9:16',market_code:'EC',actor:'',location:'',instructions:''
 };
-const control={display:'block',marginTop:7};
-const caption='text-[#CBC0D7] text-xs leading-6';
-
-export default function RealizoHyperrealPro({guest=false,onWalletGenerate,onGenerationComplete,onWalletRefresh,onViewCreations}){
- const [brief,setBrief]=useState(initial);
+const ERRORS={
+ product_photo_required:'Para conservar el envase real necesitamos una foto del producto.',
+ document_details_required:'Completa primero la ficha con tu documento o escribe el nombre y la descripción.',
+ invalid_media_reference:'La referencia caducó. Vuelve a seleccionar la foto.',
+ hyperreal_quote_provider_unavailable:'MuAPI no pudo confirmar todos los precios. No se cobró nada.',
+ hyperreal_engine_not_verified:'La cadena automática de imágenes, videos y montaje aún está en validación. No hay cargos.',
+ hyperreal_quote_expired:'La cotización caducó. Vuelve a cotizar antes de pagar.',
+ insufficient_wallet_credits:'No tienes créditos suficientes para el paquete.',
+ hyperreal_active_job_limit:'Espera a terminar alguno de tus tres proyectos activos.',
+ document_ai_unavailable:'No se pudo analizar el documento. Intenta más tarde.',
+ document_ai_not_configured:'La lectura documental no está disponible en este momento.',
+ document_daily_limit:'Llegaste al límite de tres documentos al día.',
+ document_result_invalid:'No se pudo extraer una ficha válida.',
+ unsupported_document:'Admite PDF de 4 MB, DOCX de 2 MB o TXT de 200 KB.',
+ hyperreal_billing_not_ready:'El cobro premium no está habilitado.',
+ hyperreal_provider_not_ready:'El servicio de IA no está listo.'
+};
+const money=c=>new Intl.NumberFormat('es-EC',{style:'currency',currency:'USD'}).format((c||0)/100);
+const control={display:'block',marginTop:8};
+const small='text-[#CEC0DC] text-[12px] leading-5';
+const STYLES=[['ugc','UGC natural','Persona real hablando a cámara'],
+ ['premium','Premium','Detalles, emoción y valor'],
+ ['demo','Demostración','Producto en acción'],
+ ['cinematic','Cinematográfico','Historia comercial con continuidad']];
+const STATUS={
+ quoted:'Cotización pendiente',reserved:'En cola',processing:'Produciendo',
+ needs_review:'Revisión técnica',completed:'Video listo',failed:'No se pudo completar'
+};
+const STAGE={
+ quote:'Presupuesto',research:'Investigando producto y guion',
+ image_master:'Creando protagonista hiperrealista',
+ scene_images:'Generando fotografías de cada escena',
+ scene_videos:'Animando cada toma con Kling',
+ montage:'Montando y revisando el anuncio',
+ completed:'Video final listo',failed:'Producción interrumpida',
+ needs_review:'Conciliación del proveedor'
+};
+export default function RealizoHyperrealPro({guest=false,onWalletRefresh}){
+ const [form,setForm]=useState(DEFAULT);
  const [photo,setPhoto]=useState(null),[preview,setPreview]=useState('');
- const [documentFile,setDocumentFile]=useState(null);
- const [docId,setDocId]=useState(''),[docStatus,setDocStatus]=useState('');
- const [docResult,setDocResult]=useState(null),[docBusy,setDocBusy]=useState(false);
- const [config,setConfig]=useState(null),[familyId,setFamilyId]=useState('realizo-kling-4.0');
- const [prepared,setPrepared]=useState(null),[busy,setBusy]=useState(false);
- const [error,setError]=useState(''),[notice,setNotice]=useState('');
- const [phase,setPhase]=useState(''),[submittedJob,setSubmittedJob]=useState('');
- const [completed,setCompleted]=useState(null);
- const docRequestKey=useRef('');
- const families=useMemo(()=>hyperrealModelFamilies(config?.video_options||[]),[config]);
- const seconds=Number(brief.duration),hasImage=Boolean(photo);
- const available=f=>{try{
-   resolveHyperrealModelFamily(config?.video_options||[],f.id,seconds,{hasImage});
-   return true;
- }catch{return false;}};
- const selected=families.find(f=>f.id===familyId);
- const validModel=Boolean(selected&&available(selected));
- const failText=msg=>failures[msg]||String(msg||'No se pudo continuar.');
- const change=(key,value)=>{
-   setBrief(v=>({...v,[key]:value}));setPrepared(null);setCompleted(null);setError('');
+ const [document,setDocument]=useState(null);
+ const [docResult,setDocResult]=useState(null),[docJob,setDocJob]=useState(''),
+       [docStatus,setDocStatus]=useState(''),[docBusy,setDocBusy]=useState(false);
+ const [modelsOpen,setModelsOpen]=useState(false);
+ const [quote,setQuote]=useState(null),[jobId,setJobId]=useState('');
+ const [jobs,setJobs]=useState([]),[busy,setBusy]=useState(false);
+ const [progress,setProgress]=useState(''),[error,setError]=useState('');
+ const cachedAsset=useRef({file:null,url:''});
+ const update=(key,value)=>{
+  setForm(p=>({...p,[key]:value}));
+  setQuote(null);setError('');
  };
- const applyDocument=data=>{
-   if(!data)return;
-   setBrief(v=>({...v,product_name:data.product_name||v.product_name,
-     description:data.description||v.description,audience:data.audience||v.audience,
-     angle:data.angle||v.angle}));
-   setPrepared(null);setNotice('Información importada. Puedes corregirla antes de generar.');
- };
+ const fail=e=>ERRORS[e]||String(e||'Ocurrió un error. Intenta nuevamente.');
+ async function reload(){
+  try{
+   const r=await fetch('/api/realizo/hyperreal/prepare',{credentials:'same-origin',cache:'no-store'});
+   if(r.ok){const j=await r.json();setJobs(j.jobs||[]);}
+  }catch{}
+ }
  useEffect(()=>{
-   if(guest)return;
-   fetch('/api/realizo/ai-premium',{credentials:'same-origin',cache:'no-store'})
-     .then(async r=>{const j=await r.json();if(!r.ok)throw Error(j.error);setConfig(j);})
-     .catch(e=>setError(failText(e.message)));
-   fetch('/api/realizo/hyperreal/document',{credentials:'same-origin',cache:'no-store'})
-     .then(async r=>r.ok?r.json():null).then(j=>{
-       if(!j?.job_id)return;
-       if(['starting','submitted'].includes(j.status)){
-         setDocId(j.job_id);setDocStatus(j.status);
-       }else if(j.status==='completed'){
-         setDocStatus('completed');setDocResult(j.result);
-       }
-     }).catch(()=>{});
+  if(guest)return;
+  reload();
+  fetch('/api/realizo/hyperreal/document',{credentials:'same-origin',cache:'no-store'})
+   .then(r=>r.ok?r.json():null).then(j=>{
+    if(!j?.job_id)return;
+    if(j.status==='completed'){setDocResult(j.result);setDocStatus('completed');}
+    else if(['starting','submitted'].includes(j.status)){
+     setDocJob(j.job_id);setDocStatus(j.status);
+    }
+   }).catch(()=>{});
  },[guest]);
  useEffect(()=>{
-   if(!photo){setPreview('');return;}
-   const url=URL.createObjectURL(photo);setPreview(url);
-   return ()=>URL.revokeObjectURL(url);
+  if(!photo){setPreview('');return;}
+  const url=URL.createObjectURL(photo);setPreview(url);
+  return ()=>URL.revokeObjectURL(url);
  },[photo]);
  useEffect(()=>{
-   if(!validModel){
-     const first=families.find(available);
-     if(first&&first.id!==familyId)setFamilyId(first.id);
-   }
- },[familyId,seconds,hasImage,families]);
+  if(!docJob||!['starting','submitted'].includes(docStatus))return;
+  let cancelled=false,timer;
+  const poll=async()=>{
+   try{
+    const r=await fetch('/api/realizo/hyperreal/document?job_id='+docJob,
+       {credentials:'same-origin',cache:'no-store'});
+    const j=await r.json().catch(()=>({}));
+    if(cancelled)return;
+    if(!r.ok)throw Error(j.error);
+    if(j.status==='completed'){
+     setDocStatus('completed');setDocBusy(false);setDocResult(j.result);
+     setForm(p=>({...p,product_name:j.result.product_name||p.product_name,
+      description:j.result.description||p.description,
+      audience:j.result.audience||p.audience,angle:j.result.angle||p.angle}));
+    }else if(j.status==='failed'){
+     setDocBusy(false);setDocStatus('failed');setError(fail(j.error));
+    }else{setDocStatus(j.status);timer=setTimeout(poll,3500);}
+   }catch{if(!cancelled)timer=setTimeout(poll,5000);}
+  };
+  timer=setTimeout(poll,3000);
+  return ()=>{cancelled=true;clearTimeout(timer);};
+ },[docJob,docStatus]);
  useEffect(()=>{
-   if(!docId||!['starting','submitted'].includes(docStatus))return;
-   let stopped=false,timer;
-   async function poll(){
-     try{
-       const r=await fetch('/api/realizo/hyperreal/document?job_id='+encodeURIComponent(docId),
-         {credentials:'same-origin',cache:'no-store'});
-       const j=await r.json().catch(()=>({}));
-       if(stopped)return;
-       if(!r.ok)throw Error(j.error);
-       if(j.status==='completed'){
-         setDocStatus('completed');setDocResult(j.result);setDocBusy(false);
-         applyDocument(j.result);
-       }else if(j.status==='failed'){
-         setDocBusy(false);setDocStatus('failed');setError(failText(j.error));
-       }else{
-         setDocStatus(j.status);timer=setTimeout(poll,3500);
-       }
-     }catch{if(!stopped)timer=setTimeout(poll,5500);}
-   }
-   timer=setTimeout(poll,2500);
-   return ()=>{stopped=true;clearTimeout(timer);};
- },[docId,docStatus]);
- const choosePhoto=e=>{
-   const f=e.target.files?.[0]||null;
-   if(f&&(!['image/jpeg','image/png','image/webp'].includes(f.type)||f.size>8*1024*1024)){
-     setError('Sube una foto JPG, PNG o WebP de hasta 8 MB.');return;
-   }
-   setPhoto(f);setPrepared(null);setError('');
- };
- const chooseDoc=e=>{
-   const f=e.target.files?.[0]||null;
-   if(f&&!/\.(pdf|docx|txt|md)$/i.test(f.name)){setError(failures.unsupported_document);return;}
-   setDocumentFile(f);setDocResult(null);setDocId('');setDocStatus('');setError('');setDocBusy(false);
+  if(!jobId)return;
+  let disposed=false,timer;
+  const poll=async()=>{
+   try{
+    const r=await fetch('/api/realizo/hyperreal/prepare?job_id='+jobId,
+      {credentials:'same-origin',cache:'no-store'});
+    if(r.ok){
+     const j=await r.json();
+     if(disposed)return;
+     setJobs(list=>[j.job,...list.filter(x=>x.id!==j.job.id)].slice(0,12));
+     if(['completed','failed','needs_review'].includes(j.job.status)){
+      setJobId('');onWalletRefresh?.();return;
+     }
+    }
+   }catch{}
+   if(!disposed)timer=setTimeout(poll,9000);
+  };
+  timer=setTimeout(poll,1800);
+  return ()=>{disposed=true;clearTimeout(timer);};
+ },[jobId]);
+ const selectPhoto=e=>{
+  const file=e.target.files?.[0]||null;
+  if(file&&(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>8*1024*1024)){
+   setError('Elige una imagen JPG, PNG o WebP de hasta 8 MB.');return;
+  }
+  setPhoto(file);cachedAsset.current={file:null,url:''};setQuote(null);setError('');
  };
  const analyzeDocument=async()=>{
-   if(guest){window.location.assign('/login');return;}
-   if(!documentFile||docBusy)return;
-   setDocBusy(true);setError('');setNotice('');setDocResult(null);
-   docRequestKey.current=crypto.randomUUID();
-   try{
-     const form=new FormData();form.append('document',documentFile,documentFile.name);
-     form.append('request_key',docRequestKey.current);
-     const r=await fetch('/api/realizo/hyperreal/document',
-       {method:'POST',credentials:'same-origin',body:form});
-     const j=await r.json().catch(()=>({}));
-     if(!r.ok||!j.job_id)throw Error(j.error||'document_ai_unavailable');
-     setDocId(j.job_id);setDocStatus(j.status);
-     setNotice('Leyendo la ficha. Puedes cerrar esta pantalla y volver después.');
-   }catch(e){setDocBusy(false);setError(failText(e.message));}
+  if(guest){location.assign('/login');return;}
+  if(!document||docBusy)return;
+  setError('');setDocBusy(true);setDocResult(null);
+  const f=new FormData();f.append('document',document,document.name);
+  f.append('request_key',crypto.randomUUID());
+  try{
+   const r=await fetch('/api/realizo/hyperreal/document',{
+    method:'POST',credentials:'same-origin',body:f
+   });
+   const j=await r.json().catch(()=>({}));
+   if(!r.ok||!j.job_id)throw Error(j.error||'document_ai_unavailable');
+   setDocJob(j.job_id);setDocStatus(j.status);
+  }catch(e){setDocBusy(false);setError(fail(e.message));}
  };
- const prepare=()=>{
-   setError('');setNotice('');
-   try{
-     const value=normalizeHyperrealProBrief(brief);
-     if(!validModel)throw Error(hasImage?'reference_image_model_required':'text_video_model_required');
-     setPrepared({brief:value,familyId,scenes:planHyperrealProScenes(value)});
-   }catch(e){setError(failText(e.message));}
+ const getPhotoUrl=async()=>{
+  if(cachedAsset.current.file===photo&&cachedAsset.current.url)return cachedAsset.current.url;
+  const optimized=await optimizeImage(photo);
+  const f=new FormData();f.append('image',optimized,optimized.name||'referencia.jpg');
+  const r=await fetch('/api/realizo/media',{method:'POST',credentials:'same-origin',body:f});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok||!j.url)throw Error(j.error||'No se pudo subir la foto.');
+  cachedAsset.current={file:photo,url:j.url};
+  return j.url;
  };
- const generate=async()=>{
-   if(guest){window.location.assign('/login');return;}
-   if(busy||!prepared||!validModel)return;
-   setBusy(true);setError('');setNotice('');setCompleted(null);setSubmittedJob('');
-   try{
-     let imageUrl='';
-     if(photo){
-       setPhase('Preparando la foto...');
-       const upload=new FormData(),file=await optimizeImage(photo);
-       upload.append('image',file,file.name||'producto.jpg');
-       const r=await fetch('/api/realizo/media',{method:'POST',credentials:'same-origin',body:upload});
-       const j=await r.json().catch(()=>({}));
-       if(!r.ok||!j.url)throw Error(j.error||'No se pudo subir la imagen.');
-       imageUrl=j.url;
-     }
-     setPhase('Preparando instrucciones...');
-     const r=await fetch('/api/realizo/hyperreal/prepare',{method:'POST',credentials:'same-origin',
-       headers:{'Content-Type':'application/json'},
-       body:JSON.stringify({brief:prepared.brief,family_id:prepared.familyId,
-         ...(imageUrl?{image_url:imageUrl}:{})})});
-     const result=await r.json().catch(()=>({}));
-     if(!r.ok||!result.params)throw Error(result.error||'No se pudo preparar el video.');
-     if(typeof onWalletGenerate!=='function')throw Error('Generación no disponible.');
-     setPhase('Cotizando. Confirma el precio antes de pagar.');
-     const job=await onWalletGenerate(result.params,{
-       onSubmitted:id=>{setSubmittedJob(id);onWalletRefresh?.();
-         setPhase('Video en proceso. Su estado aparece en Mis creaciones.');}
-     });
-     setCompleted(job);onWalletRefresh?.();onGenerationComplete?.(job);
-   }catch(e){setError(failText(e.message));}
-   finally{setBusy(false);setPhase('');}
+ const getQuote=async()=>{
+  if(guest){location.assign('/login');return;}
+  if(!photo){setError(ERRORS.product_photo_required);return;}
+  if(form.source_mode==='document'&&(!form.product_name||form.description.length<15)){
+   setError(ERRORS.document_details_required);return;
+  }
+  if(busy)return;
+  setBusy(true);setError('');setProgress('Preparando foto y consultando todos los costos...');
+  try{
+   const url=await getPhotoUrl();
+   const r=await fetch('/api/realizo/hyperreal/prepare',{
+    method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:'quote',request_key:crypto.randomUUID(),
+      brief:{...form,image_url:url}})
+   });
+   const j=await r.json().catch(()=>({}));
+   if(!r.ok||!j.quote_id)throw Error(j.error||'hyperreal_quote_provider_unavailable');
+   setQuote(j);
+  }catch(e){setError(fail(e.message));}
+  finally{setBusy(false);setProgress('');}
  };
+ const confirm=async()=>{
+  if(!quote||busy)return;
+  setBusy(true);setError('');setProgress('Confirmando presupuesto y reservando créditos...');
+  try{
+   const r=await fetch('/api/realizo/hyperreal/prepare',{
+    method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:'confirm',quote_id:quote.quote_id})
+   });
+   const j=await r.json().catch(()=>({}));
+   if(!r.ok||!j.job_id)throw Error(j.error||'hyperreal_reservation_failed');
+   setQuote(null);setJobId(j.job_id);onWalletRefresh?.();reload();
+  }catch(e){setError(fail(e.message));}
+  finally{setBusy(false);setProgress('');}
+ };
+ const currentJobs=useMemo(()=>jobs.slice(0,6),[jobs]);
  return <section className={styles.shell}>
-   <header className="mb-6">
-     <span className={styles.stat}>✦ Hiperrealista PRO</span>
-     <h1 className="mt-3 text-[29px] sm:text-[38px] font-extrabold text-[#FBF4FF]">Videos que parecen reales.</h1>
-     <p className={styles.muted}>Tu producto, varias tomas naturales y un mismo personaje.</p>
-   </header>
-   <div className="grid lg:grid-cols-[1.15fr_.85fr] gap-6">
-     <div className="space-y-5">
-       <section className={styles.panel+' p-5 sm:p-7 space-y-5'}>
-         <h2 className="text-xl font-extrabold text-[#FBF4FF]">1. Producto</h2>
-         <label>Foto del producto <span className="text-[#B8AEC6] font-normal">(opcional)</span>
-           <input type="file" style={control} accept="image/jpeg,image/png,image/webp" onChange={choosePhoto}/>
-         </label>
-         <div className={styles.softPanel+' p-4 space-y-3'}>
-           <strong className="text-[#FAF4FF] text-sm">¿Tienes la documentación del producto?</strong>
-           <label>Sube PDF, Word o TXT
-             <input type="file" style={control}
-               accept=".pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
-               onChange={chooseDoc}/>
-           </label>
-           <button type="button" className={styles.secondary} disabled={!documentFile||docBusy}
-             onClick={analyzeDocument}>{docBusy?'Analizando…':'Completar datos con IA'}</button>
-           <p className={caption}>Hasta 3 lecturas al día sin descuento de créditos. El archivo se envía a la IA; revisa la información extraída.</p>
-           {docStatus==='completed'&&docResult&&<div className={styles.success+' space-y-2'}>
-             <p>Ficha del producto extraída.</p>
-             <button type="button" className={styles.secondary} onClick={()=>applyDocument(docResult)}>Usar información</button>
-             {docResult.missing_information&&<p className={caption}>Por confirmar: {docResult.missing_information}</p>}
-             {docResult.safety_notes&&<p className={caption}>Precauciones: {docResult.safety_notes}</p>}
-           </div>}
-         </div>
-         <div className="grid sm:grid-cols-2 gap-4">
-           <label>Nombre del producto
-             <input style={control} maxLength={90} value={brief.product_name}
-               placeholder="Ej. GODA" onChange={e=>change('product_name',e.target.value)}/>
-           </label>
-           <label>Público objetivo <span className="text-[#B8AEC6] font-normal">(opcional)</span>
-             <input style={control} maxLength={150} value={brief.audience}
-               placeholder="Ej. Hombres adultos" onChange={e=>change('audience',e.target.value)}/>
-           </label>
-         </div>
-         <label>Descripción y características comprobables
-           <textarea style={control} maxLength={400} rows={3} value={brief.description}
-             placeholder="Qué es y cómo se utiliza" onChange={e=>change('description',e.target.value)}/>
-         </label>
-         <label>Ángulo de venta <span className="text-[#B8AEC6] font-normal">(opcional)</span>
-           <textarea style={control} maxLength={250} rows={2} value={brief.angle}
-             placeholder="Ej. Rutina personal antes de salir" onChange={e=>change('angle',e.target.value)}/>
-         </label>
-       </section>
-       <section className={styles.panel+' p-5 sm:p-7 space-y-5'}>
-         <h2 className="text-xl font-extrabold text-[#FBF4FF]">2. Tu video</h2>
-         <div className="grid sm:grid-cols-3 gap-4">
-           <label>Duración
-             <select style={control} value={brief.duration}
-               onChange={e=>change('duration',Number(e.target.value))}>
-               {[15,30,45].map(n=><option key={n} value={n}>{n} segundos</option>)}
-             </select>
-           </label>
-           <label>Formato
-             <select style={control} value={brief.format}
-               onChange={e=>change('format',e.target.value)}>
-               <option value="9:16">9:16 · Vertical</option>
-               <option value="16:9">16:9 · Horizontal</option>
-             </select>
-           </label>
-           <label>Voz
-             <select style={control} value={brief.speak?'yes':'no'}
-               onChange={e=>change('speak',e.target.value==='yes')}>
-               <option value="yes">Hablar a cámara</option>
-               <option value="no">Solo actividades</option>
-             </select>
-           </label>
-         </div>
-         <label>Modelo de generación
-           <select style={control} value={familyId} onChange={e=>{
-             setFamilyId(e.target.value);setPrepared(null);
-           }}>
-             {families.map(f=><option key={f.id} value={f.id} disabled={!available(f)}>
-               {f.label}{available(f)?'':' · No compatible con esta duración/modalidad'}
-             </option>)}
-           </select>
-         </label>
-         <p className={caption}>{hasImage?'Realizo elegirá la variante que utiliza la fotografía como referencia.':
-           'Sin fotografía, Realizo elegirá texto a video. Para fidelidad al envase, sube una foto.'}
-           {' '}El costo se verifica y confirma antes de generar.</p>
-         <details className={styles.softPanel+' p-4'}>
-           <summary>Personalizar personaje, escenario, guion y CTA</summary>
-           <div className="grid sm:grid-cols-2 gap-4 mt-4">
-             <label>Persona
-               <input style={control} maxLength={220} value={brief.actor}
-                 placeholder="Ej. Hombre de 30 años, camiseta negra" onChange={e=>change('actor',e.target.value)}/>
-             </label>
-             <label>Escenario
-               <input style={control} maxLength={170} value={brief.location}
-                 placeholder="Ej. Habitación con luz de ventana" onChange={e=>change('location',e.target.value)}/>
-             </label>
-           </div>
-           {brief.speak&&<label className="mt-3">Diálogo exacto <span className="text-[#B8AEC6] font-normal">(opcional)</span>
-             <textarea style={control} maxLength={900} rows={3} value={brief.spoken_script}
-               placeholder="Frases que dirá el personaje..." onChange={e=>change('spoken_script',e.target.value)}/>
-           </label>}
-           <label className="mt-3">Llamado a la acción
-             <input style={control} maxLength={100} value={brief.cta}
-               placeholder="Escríbenos para pedirlo" onChange={e=>change('cta',e.target.value)}/>
-           </label>
-         </details>
-         <button type="button" className={styles.primary+' w-full'}
-           disabled={busy||!validModel||!brief.product_name.trim()||!brief.description.trim()}
-           onClick={prepare}>Preparar escenas</button>
-         <p className={caption}>Preparar las escenas no descuenta créditos.</p>
-       </section>
+  <header className="mb-6">
+   <span className={styles.stat}>✦ Hiperrealista PRO · Producción automática</span>
+   <h1 className="text-[29px] sm:text-[40px] font-extrabold text-[#FCF5FF] mt-3">Comerciales que parecen grabados de verdad.</h1>
+   <p className={styles.muted}>Tú eliges el estilo. Realizo investiga, crea las fotografías 4K, anima las escenas y las une.</p>
+  </header>
+  <div className="grid lg:grid-cols-[1.2fr_.8fr] gap-6">
+   <div className="space-y-5">
+    <section className={styles.panel+' p-5 sm:p-7 space-y-5'}>
+     <h2 className="text-xl font-extrabold text-[#FBF4FF]">1. Sube tu producto</h2>
+     <label>Foto real del producto
+      <input style={control} type="file" accept="image/jpeg,image/png,image/webp"
+       onChange={selectPhoto}/>
+     </label>
+     <div className={styles.softPanel+' p-4 space-y-3'}>
+      <p className="font-bold text-[#FBF4FF] text-sm">¿Quién decide la estrategia?</p>
+      <div className="grid sm:grid-cols-2 gap-2">
+       {[['ai','✦ IA decide todo','Investiga el producto y crea el anuncio'],
+         ['document','▤ Tengo información','Sube su ficha y extrae las características']].map(v=>
+         <button key={v[0]} type="button"
+          aria-pressed={form.source_mode===v[0]}
+          className={(form.source_mode===v[0]?styles.primary:styles.secondary)+' text-left'}
+          onClick={()=>update('source_mode',v[0])}>
+          <strong className="block text-[13px]">{v[1]}</strong>
+          <span className="block text-[11px] mt-1">{v[2]}</span>
+         </button>)}
+      </div>
+      {form.source_mode==='document'&&<>
+       <label>Documentación PDF, Word o TXT
+        <input style={control} type="file"
+         accept=".pdf,.docx,.txt,.md" onChange={e=>setDocument(e.target.files?.[0]||null)}/>
+       </label>
+       <button type="button" className={styles.secondary} onClick={analyzeDocument}
+        disabled={!document||docBusy}>{docBusy?'Leyendo documentación…':'Extraer información con IA'}</button>
+       {docResult&&<p className={styles.success+' text-xs'}>Ficha extraída. Puedes editar los campos si lo deseas.</p>}
+       <label>Producto
+        <input style={control} maxLength={90} value={form.product_name}
+         onChange={e=>update('product_name',e.target.value)}/>
+       </label>
+       <label>Características confirmadas
+        <textarea style={control} rows={3} maxLength={1200} value={form.description}
+         onChange={e=>update('description',e.target.value)}/>
+       </label>
+      </>}
+      {form.source_mode==='ai'&&<p className={small}>
+       Realizo investigará a partir de la foto. Si la identidad no es clara, solicitará más datos
+       en lugar de inventar características.</p>}
      </div>
-     <div className="space-y-5">
-       <section className={styles.panel+' p-5 sm:p-7 space-y-4'}>
-         <h2 className="text-xl font-extrabold text-[#FBF4FF]">Vista previa</h2>
-         <div className={styles.preview}>{preview?
-           <img src={preview} alt="Referencia visual del producto"/>:
-           <p className={styles.muted+' p-5 text-center'}>Tu producto aparecerá aquí</p>}</div>
-         {prepared?.scenes?.length?<div>
-           <p className={styles.muted+' font-bold mb-2'}>{prepared.scenes.length} tomas · {seconds} segundos</p>
-           {prepared.scenes.map(shot=><div className={styles.timelineItem} key={shot.number}>
-             <span className={styles.stat}>{shot.number}</span>
-             <div><strong className="text-sm">{shot.title} · {shot.start}–{shot.end} s</strong>
-               <p className={caption}>{shot.action}</p></div>
-           </div>)}
-         </div>:<p className={styles.muted}>Completa el producto y prepara las escenas para ver la propuesta.</p>}
-       </section>
-       {prepared&&<section className={styles.panel+' p-5 sm:p-7 space-y-3'}>
-         <h3 className="text-xl font-extrabold text-[#FBF4FF]">3. Generar</h3>
-         <p className={styles.muted}>Verás el precio exacto antes de autorizar el descuento.</p>
-         <button type="button" className={styles.primary+' w-full'}
-           disabled={busy} onClick={generate}>{busy?'Procesando…':guest?'Iniciar sesión':'Cotizar y generar'}</button>
-         {busy&&<p role="status" className={styles.muted}>{phase}</p>}
-         {submittedJob&&<p className={caption}>Trabajo registrado: {submittedJob}. Revisa Mis creaciones.</p>}
-         {completed?.url&&<a href={completed.url} target="_blank" rel="noopener noreferrer"
-           className="text-[#D5B4FF] underline text-sm">Ver video</a>}
-         <button type="button" className={styles.secondary+' w-full'} onClick={onViewCreations}>Mis creaciones</button>
-       </section>}
-       {notice&&<div className={styles.success} role="status">{notice}</div>}
-       {error&&<div className={styles.error} role="alert">{error}</div>}
-       <p className={caption}>El realismo, los cortes y el audio dependen del modelo. En esta versión las tomas se dirigen dentro de una generación; aún no se montan clips independientes.</p>
+    </section>
+    <section className={styles.panel+' p-5 sm:p-7 space-y-5'}>
+     <h2 className="text-xl font-extrabold text-[#FBF4FF]">2. ¿Cómo quieres el video?</h2>
+     <div className="grid sm:grid-cols-2 gap-2">
+      {STYLES.map(s=><button key={s[0]} type="button" aria-pressed={form.creative_style===s[0]}
+       className={(form.creative_style===s[0]?styles.primary:styles.secondary)+' text-left'}
+       onClick={()=>update('creative_style',s[0])}>
+        <strong className="block text-[13px]">{s[1]}</strong>
+        <span className="block text-[11px] mt-1">{s[2]}</span>
+       </button>)}
      </div>
+     <div className="grid sm:grid-cols-3 gap-3">
+      <label>Duración
+       <select style={control} value={form.duration} onChange={e=>update('duration',Number(e.target.value))}>
+        {[15,30,45].map(n=><option key={n} value={n}>{n} segundos</option>)}
+       </select>
+      </label>
+      <label>Formato
+       <select style={control} value={form.aspect_ratio} onChange={e=>update('aspect_ratio',e.target.value)}>
+        <option value="9:16">9:16 vertical</option><option value="16:9">16:9 horizontal</option>
+       </select>
+      </label>
+      <label>Voz
+       <select style={control} value={form.audio_mode} onChange={e=>update('audio_mode',e.target.value)}>
+        <option value="camera">Habla a cámara</option>
+        <option value="voiceover">Narración en off</option>
+        <option value="none">Solo actividades</option>
+       </select>
+      </label>
+     </div>
+     <details className={styles.softPanel+' p-4'} open={modelsOpen}>
+      <summary onClick={e=>{e.preventDefault();setModelsOpen(v=>!v)}}>
+       Motor de video <span className="text-[#CDB7ED]">Kling 4.0</span> · Cambiar modelo
+      </summary>
+      {modelsOpen&&<div className="mt-3 space-y-2">
+       <label>Modelo de animación
+        <select style={control} value="kling" onChange={()=>{}}>
+         <option value="kling">Kling 4.0 · activo</option>
+         <option disabled>Seedance 2.5 · pendiente de verificar el montaje</option>
+         <option disabled>Veo 3.1 · pendiente de verificar el montaje</option>
+        </select>
+       </label>
+       <p className={small}>Nano Banana 2.1 Edit 4K prepara las imágenes automáticamente. Las opciones adicionales se habilitarán solo cuando su presupuesto y cadena por escenas estén probados.</p>
+      </div>}
+     </details>
+     <details className={styles.softPanel+' p-4'}>
+      <summary>Personalizar actor, público, ángulo y CTA (opcional)</summary>
+      <div className="space-y-3 mt-4">
+       <label>Público objetivo
+        <input style={control} maxLength={180} value={form.audience} onChange={e=>update('audience',e.target.value)}/>
+       </label>
+       <label>Ángulo comercial
+        <textarea style={control} rows={2} maxLength={350} value={form.angle}
+         placeholder="Si queda vacío, la IA decide" onChange={e=>update('angle',e.target.value)}/>
+       </label>
+       <label>Persona y escenario
+        <textarea style={control} rows={2} maxLength={220} value={form.actor}
+         placeholder="Ej. Hombre adulto de 30 años, casa real, luz natural"
+         onChange={e=>update('actor',e.target.value)}/>
+       </label>
+       <label>Llamado a la acción
+        <input style={control} maxLength={120} value={form.cta}
+         placeholder="Ej. Escríbenos para pedirlo" onChange={e=>update('cta',e.target.value)}/>
+       </label>
+      </div>
+     </details>
+     <button type="button" className={styles.primary+' w-full'} onClick={getQuote}
+      disabled={!photo||busy}>{busy?'Consultando precios…':'Ver presupuesto completo'}</button>
+     <p className={small}>Ver el presupuesto no cobra créditos. Ninguna imagen ni video se generará sin tu autorización.</p>
+    </section>
    </div>
+   <div className="space-y-5">
+    <section className={styles.panel+' p-5 sm:p-7 space-y-4'}>
+     <h2 className="text-xl font-extrabold text-[#FBF4FF]">Vista del producto</h2>
+     <div className={styles.preview}>{preview?
+      <img src={preview} alt="Fotografía real del producto"/>:
+      <p className={styles.muted+' p-6 text-center'}>Sube tu foto para comenzar</p>}</div>
+     <p className={styles.muted}>Identidad del envase y del personaje consistente a lo largo de todas las escenas.</p>
+    </section>
+    <section className={styles.panel+' p-5 sm:p-7 space-y-4'}>
+     <div className="flex items-center justify-between gap-2">
+      <h2 className="text-lg font-extrabold text-[#FBF4FF]">Mis producciones PRO</h2>
+      <button type="button" className={styles.secondary} onClick={reload}>Actualizar</button>
+     </div>
+     {!currentJobs.length?<p className={styles.muted}>Tus trabajos aparecerán aquí. Podrás cerrar la página y regresar a consultar su estado.</p>:
+      currentJobs.map(j=><div className={styles.softPanel+' p-4 space-y-2'} key={j.id}>
+       <div className="flex justify-between items-center gap-2">
+        <strong className="text-[#F7EEFF] text-sm">{j.duration} s · {STATUS[j.status]||j.status}</strong>
+        <span className={small}>{money(j.price_cents)}</span>
+       </div>
+       <p className={small}>{STAGE[j.stage]||j.stage}</p>
+       {j.status==='processing'&&<p className={small}>
+        Imágenes: {j.image_count}/{j.scene_count+1} · Clips: {j.video_count}/{j.scene_count}</p>}
+       {j.has_video&&<a className="text-[#D7B7FF] underline text-sm font-bold"
+        href={'/api/realizo/hyperreal/prepare?download='+j.id} target="_blank" rel="noopener noreferrer">
+         Ver y descargar MP4 final
+        </a>}
+       {j.status==='failed'&&<p className={small}>La reserva se libera automáticamente cuando el fallo queda confirmado.</p>}
+       {j.status==='needs_review'&&<p className={small}>El proveedor requiere conciliación antes de continuar. No se generará un cobro doble.</p>}
+      </div>)}
+    </section>
+    {progress&&<p role="status" className={styles.muted}>{progress}</p>}
+    {error&&<div role="alert" className={styles.error}>{error}</div>}
+   </div>
+  </div>
+  {quote&&<div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 p-4">
+   <div className="w-full max-w-[475px] rounded-[24px] border border-[#6A527D] bg-[#191621] p-6 text-[#FDF6FF] shadow-2xl space-y-4">
+    <h3 className="text-[22px] font-extrabold">Producción Hiperrealista PRO</h3>
+    <p className="text-[#CFC2DC] text-[13px]">Un solo presupuesto para todo el anuncio. No es solo Kling.</p>
+    <div className="space-y-2 text-[13px]">
+     {[['Investigación y dirección comercial',quote.quote.director_and_research_cents],
+       ['Fotografías hiperrealistas 4K ('+quote.quote.image_count+')',quote.quote.image_cents],
+       ['Animaciones de escenas ('+quote.quote.scene_count+')',quote.quote.video_cents],
+       ['Montaje y revisión',quote.quote.montage_and_quality_cents],
+       ['Servicio Realizo',quote.quote.service_margin_cents]].map(v=>
+      <div className="flex justify-between gap-3" key={v[0]}>
+       <span>{v[0]}</span><strong>{money(v[1])}</strong>
+      </div>)}
+     <div className="flex justify-between border-t border-[#655270] pt-3 font-bold text-[17px]">
+      <span>Precio máximo autorizado</span><span>{money(quote.quote.total_cents)}</span>
+     </div>
+     <p className={small}>Saldo: {money(quote.available_cents)}. Nada se descuenta si cancelas.</p>
+    </div>
+    <div className="flex gap-2">
+     <button type="button" className={styles.primary+' flex-1'} disabled={busy||!quote.affordable}
+      onClick={confirm}>Confirmar todo el paquete</button>
+     <button type="button" className={styles.secondary} disabled={busy} onClick={()=>setQuote(null)}>Cancelar</button>
+    </div>
+    {!quote.affordable&&<p className={styles.error}>Saldo insuficiente para este presupuesto.</p>}
+   </div>
+  </div>}
  </section>;
 }
