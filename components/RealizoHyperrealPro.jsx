@@ -2,7 +2,7 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {optimizeImage} from '@/lib/realizo-creative/optimize-image';
 import {normalizeHyperrealProBrief,planHyperrealProScenes} from '@/lib/realizo-creative/hyperreal-pro';
-import {hyperrealModelFamilies} from '@/lib/realizo-creative/hyperreal-model-routing';
+import {hyperrealModelFamilies,resolveHyperrealModelFamily} from '@/lib/realizo-creative/hyperreal-model-routing';
 import styles from './RealizoHyperrealPro.module.css';
 
 const initial={product_name:'',description:'',audience:'',angle:'',actor:'',location:'',cta:'',
@@ -36,8 +36,10 @@ export default function RealizoHyperrealPro({guest=false,onWalletGenerate,onGene
  const docRequestKey=useRef('');
  const families=useMemo(()=>hyperrealModelFamilies(config?.video_options||[]),[config]);
  const seconds=Number(brief.duration),hasImage=Boolean(photo);
- const available=f=>f.variants.some(v=>v.durations?.includes(seconds)&&
-   v.image_role===(hasImage?'product_reference':'none'));
+ const available=f=>{try{
+   resolveHyperrealModelFamily(config?.video_options||[],f.id,seconds,{hasImage});
+   return true;
+ }catch{return false;}};
  const selected=families.find(f=>f.id===familyId);
  const validModel=Boolean(selected&&available(selected));
  const failText=msg=>failures[msg]||String(msg||'No se pudo continuar.');
