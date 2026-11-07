@@ -14,6 +14,7 @@ const ERRORS={
  invalid_media_reference:'La referencia caducó. Vuelve a seleccionar la foto.',
  hyperreal_quote_provider_unavailable:'MuAPI no pudo confirmar todos los precios. No se cobró nada.',
  hyperreal_engine_not_verified:'La cadena automática de imágenes, videos y montaje aún está en validación. No hay cargos.',
+ hyperreal_pilot_owner_only:'Esta primera fase está habilitada solo para la cuenta de pruebas del propietario. No se realizó ningún cobro.',
  hyperreal_quote_expired:'La cotización caducó. Vuelve a cotizar antes de pagar.',
  insufficient_wallet_credits:'No tienes créditos suficientes para el paquete.',
  hyperreal_active_job_limit:'Espera a terminar alguno de tus tres proyectos activos.',
