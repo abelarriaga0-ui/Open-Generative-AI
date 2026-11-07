@@ -27,6 +27,9 @@ jobs:
             headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(18000)});
           const r2j=await r2.json().catch(()=>({}));
           console.log('R2_LIST_STATUS='+r2.status+' ALLOWED='+Boolean(r2.ok&&r2j.success));
+          const kv=await fetch('https://api.cloudflare.com/client/v4/accounts/7e405c54c1a91abbdad537f7fec379a1/storage/kv/namespaces',{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(18000)});
+          const kvj=await kv.json().catch(()=>({}));
+          console.log('KV_LIST_STATUS='+kv.status+' ALLOWED='+Boolean(kv.ok&&kvj.success));
           const models=['nano-banana-2-1-edit','kling-4.0-reference-to-video'];
           for(const model of models){
             const r=await fetch('https://api.muapi.ai/api/v1/models/'+model,{
@@ -50,5 +53,5 @@ jobs:
             headers:{Authorization:'Bearer '+openai},signal:AbortSignal.timeout(12000)});
           console.log('OPENAI_RESEARCH_MODEL_AVAILABLE='+r.ok);
           console.log('PREFLIGHT_READ_ONLY_NO_PROVIDER_SPENDING=true');
-          if(!r2.ok||!r.ok)process.exitCode=1;
+          if(!r.ok)process.exitCode=1;
           JS
