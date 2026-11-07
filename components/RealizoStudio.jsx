@@ -7,6 +7,7 @@ import { downloadRealizoVideo } from '@/lib/realizo-creative/download-video';
 import { VideoStudio } from 'studio';
 import RealizoCreator from '@/components/RealizoCreator';
 import RealizoPremium from '@/components/RealizoPremium';
+import RealizoHyperrealPro from '@/components/RealizoHyperrealPro';
 import RealizoVisualGallery from '@/components/RealizoVisualGallery';
 import RealizoTemplateLibrary from '@/components/RealizoTemplateLibrary';
 import RealizoTemplateCreator from '@/components/RealizoTemplateCreator';
@@ -235,6 +236,7 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
        <button type="button" aria-current={page==='templates'?'page':undefined} onClick={()=>{setTemplateId(null);setPage('templates')}}>Plantillas</button>
        <button type="button" aria-current={page==='images'?'page':undefined} onClick={()=>setPage('images')}>Imágenes</button>
        <button type="button" onClick={startNewVideo}>Crear video</button>
+       <button type="button" aria-current={page==='hyperreal'?'page':undefined} onClick={()=>setPage('hyperreal')}>Hiperrealista PRO</button>
        <button type="button" onClick={()=>setPage('videos')}>Mis creaciones</button>
       </nav>
      <div className="flex items-center gap-3">
@@ -255,6 +257,7 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
       <nav aria-label="Menú de Realizo" className="space-y-2">
        {nav('home','Inicio','video')}
        {nav('create','Crear video','video',startNewVideo)}
+       {nav('hyperreal','Hiperrealista PRO','sliders')}
        {nav('templates','Plantillas','sliders',()=>setTemplateId(null))}
        {nav('images','Imágenes que venden','sliders')}
        {nav('videos','Mis creaciones','folder')}
@@ -272,7 +275,7 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
     <div className="realizo-content flex-1 min-w-0 px-4 sm:px-7 lg:px-10 py-8">
      <div className="realizo-contextbar max-w-[1420px] mx-auto" aria-label="Espacio actual">
       <span>WORKSPACE</span><span aria-hidden="true">/</span>
-      <strong>{page==='home'?'Inicio':page==='create'?'Crear anuncio':page==='templates'?(templateId?'Usar plantilla':'Plantillas'):page==='images'?'Imágenes que venden':'Mis creaciones'}</strong>
+      <strong>{page==='home'?'Inicio':page==='create'?'Crear anuncio':page==='templates'?(templateId?'Usar plantilla':'Plantillas'):page==='images'?'Imágenes que venden':page==='hyperreal'?'Hiperrealista PRO':'Mis creaciones'}</strong>
       <span className="realizo-contextbar-right">REALIZO AI STUDIO</span>
      </div>
      {page==='home'&&<RealizoMotionHome
@@ -298,6 +301,10 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
         </>}
       </div>}
      {page==='images'&&<ConversionTemplatesStudio guest={guest} onViewCreations={()=>setPage('videos')} onGenerationComplete={refreshWallet} onGenerationEnd={refreshWallet} />}
+     {page==='hyperreal'&&<RealizoHyperrealPro guest={guest} onWalletGenerate={onWalletGenerate}
+       onWalletRefresh={refreshWallet}
+       onGenerationComplete={()=>{setPage('videos');setCreationsRefresh(n=>n+1);refreshWallet();}}
+       onViewCreations={()=>{setPage('videos');setCreationsRefresh(n=>n+1);}}/>}
      {page==='create'&&<>
       <section className="realizo-page-heading max-w-[1230px] mx-auto mb-8">
         <p className="uppercase tracking-[.19em] text-[#B28059] font-bold text-[10px]">REALIZO STUDIO</p>
