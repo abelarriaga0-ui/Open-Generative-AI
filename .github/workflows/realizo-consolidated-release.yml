@@ -56,6 +56,9 @@ on:
       - "migrations/0030_realizo_video_settings.sql"
       - "lib/realizo-creative/premium-video-settings.js"
       - "lib/realizo-creative/premium-live-models.js"
+      - "scripts/refresh-realizo-muapi-catalog.mjs"
+      - ".github/workflows/realizo-muapi-catalog-daily.yml"
+      - "migrations/0035_realizo_muapi_video_catalog.sql"
       - "lib/realizo-creative/video-specs.js"
       - "packages/studio/src/modelFamilies.js"
       - "packages/studio/src/klingModels.js"
@@ -164,6 +167,11 @@ jobs:
         run: node --test tests/realizo-research-503-recovery.test.mjs tests/realizo-ai-premium.test.mjs tests/realizo-premium-recovery.test.mjs
       - name: Verify Image Studio creative rules, contracts and user privacy
         run: node --test tests/realizo-images.test.mjs tests/realizo-image-recovery.test.mjs tests/realizo-creations.test.mjs
+      - name: Verify syntax of dynamic provider selectors and project approval before build
+        run: |
+          node --check app/api/realizo/ai-premium/[id]/approve/route.js
+          node --check lib/realizo-creative/premium-live-models.js
+          node --check scripts/refresh-realizo-muapi-catalog.mjs
       - name: Compile current Realizo application, including studio and all user workflows
         run: |
           npm pkg set 'devDependencies.@tailwindcss/vite=4.3.3'
