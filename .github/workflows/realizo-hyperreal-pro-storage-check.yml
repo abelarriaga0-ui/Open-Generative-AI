@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/realizo-hyperreal-pro-storage-check.yml'
+      - 'scripts/hyperreal-pro-storage-probe.mjs'
   workflow_dispatch:
 permissions:
   contents: read
