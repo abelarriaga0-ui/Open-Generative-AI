@@ -15,6 +15,7 @@ import {
  masterImageInput,sceneImageInput,sceneVideoInput
 } from '../lib/realizo-creative/hyperreal-production.js';
 import {HyperrealD1,sqlValue} from './hyperreal-pro-db.mjs';
+import {montageHyperrealScenes} from './hyperreal-pro-montage.mjs';
 
 const env=process.env;
 const cloudflare=env.CLOUDFLARE_API_TOKEN;
@@ -170,21 +171,6 @@ async function fetchProviderVideo(url,file,maxBytes){
  catch{throw new Failure('provider_clip_download_failed');}
  if(bytes<5000)throw new Failure('provider_clip_empty');
 }
-function exec(bin,args){
- const r=spawnSync(bin,args,{encoding:'utf8',maxBuffer:1024*1024,timeout:300000});
- if(r.error||r.status!==0)throw new Failure('video_montage_failed');
- return r.stdout||'';
-}
-function probe(file){
- const raw=exec('ffprobe',['-v','error','-show_entries',
-  'stream=codec_type:format=duration','-of','json',file]);
- let info;try{info=JSON.parse(raw);}catch{throw new Failure('video_probe_failed');}
- const duration=Number(info.format?.duration);
- if(!Number.isFinite(duration)||duration<2.5||duration>35)
-  throw new Failure('provider_clip_duration_invalid');
- return {duration,video:(info.streams||[]).some(s=>s.codec_type==='video'),
-  audio:(info.streams||[]).some(s=>s.codec_type==='audio')};
-}
 async function render(job,brief,progress,clips,plan){
  const dir=await mkdtemp(join(tmpdir(),'realizo-hyperreal-'));
  const files=[];
@@ -192,47 +178,15 @@ async function render(job,brief,progress,clips,plan){
  for(let i=0;i<clips.length;i++){
   const file=join(dir,'clip-'+i+'.mp4');
   await fetchProviderVideo(clips[i],file,OUTPUT_CAP);
-  const meta=probe(file);
-  if(!meta.video)throw new Failure('provider_video_stream_missing');
-  if(brief.audio_mode!=='none'&&!meta.audio)
-   throw new Failure('scene_speech_audio_missing');
-  if(Math.abs(meta.duration-plan[i].seconds)>2)
-   throw new Failure('scene_duration_not_respected');
-  expected+=plan[i].seconds;
   files.push(file);
  }
- const vertical=brief.aspect_ratio==='9:16';
- const width=vertical?1080:1920,height=vertical?1920:1080;
- const withAudio=brief.audio_mode!=='none';
- const inputs=files.flatMap(file=>['-i',file]);
- const filters=[];
- for(let i=0;i<files.length;i++){
-  filters.push('['+i+':v]fps=30,scale='+width+':'+height+
-   ':force_original_aspect_ratio=increase,crop='+width+':'+height+
-   ',setsar=1,format=yuv420p,setpts=PTS-STARTPTS[v'+i+']');
-  if(withAudio)filters.push('['+i+':a]aresample=async=1:first_pts=0,asetpts=PTS-STARTPTS[a'+i+']');
- }
- const streams=files.map((_,i)=>'[v'+i+']'+(withAudio?'[a'+i+']':'')).join('');
- filters.push(streams+'concat=n='+files.length+':v=1:a='+(withAudio?'1':'0')+
-  '[outv]'+(withAudio?'[outa]':''));
  const out=join(dir,'realizo-hyperreal-final.mp4');
- const args=['-y','-hide_banner','-loglevel','error',...inputs,
-  '-filter_complex',filters.join(';'),'-map','[outv]',
-  ...(withAudio?['-map','[outa]','-c:a','aac','-b:a','128k']:['-an']),
-  '-c:v','libx264','-preset','veryfast','-crf','26',
-  '-pix_fmt','yuv420p','-movflags','+faststart','-r','30',out];
- exec('ffmpeg',args);
- const result=probe(out);
- if(Math.abs(result.duration-expected)>1.8)
-  throw new Failure('montage_length_not_accurate');
- if(withAudio){
-  const r=spawnSync('ffmpeg',['-hide_banner','-i',out,'-af',
-    'silencedetect=noise=-50dB:d=2','-f','null','-'],{
-     encoding:'utf8',maxBuffer:200000,timeout:90000});
-  if(r.status!==0)throw new Failure('montage_audio_not_readable');
-  if(/silence_duration:\s*(?:[3-9]|[1-9]\d)/.test(r.stderr||''))
-   throw new Failure('montage_long_silent_gap');
- }
+ try{
+  montageHyperrealScenes(files,{
+   aspectRatio:brief.aspect_ratio,audioMode:brief.audio_mode,
+   expectedDurations:plan.map(s=>s.seconds)
+  },out);
+ }catch(e){throw new Failure(e.message||'video_montage_failed');}
  const size=statSync(out).size;
  if(size>OUTPUT_CAP||size<10000)throw new Failure('montage_output_size_invalid');
  const bytes=readFileSync(out),sha=createHash('sha256').update(bytes).digest('hex');
