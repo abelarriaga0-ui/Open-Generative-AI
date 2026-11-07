@@ -210,6 +210,9 @@ export async function POST(request){
  }catch(e){return jsonError(e);}
 }
 export async function GET(request){
+ const mode=new URL(request.url).searchParams;
+ if(!mode.has('list')&&!mode.has('job_id')&&!mode.has('download'))
+  return new Response(null,{status:405,headers:{Allow:'POST'}});
  try{
   const env=await getWalletEnvironment(),user=await requireWalletUser(request,env);
   if(!user)return error('not_authenticated',401);
