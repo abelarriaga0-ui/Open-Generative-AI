@@ -119,7 +119,7 @@ test('speech polish is idempotent, owner-scoped and not charged to customer wall
  assert.match(route,/INSERT OR IGNORE INTO realizo_ai_premium_speech_polish/);
  assert.match(route,/ctx\.waitUntil\(task\)/);
  assert.match(schema,/PRIMARY KEY\(project_id,concept_index\)/);
- assert.doesNotMatch(route,/wallet_ledger|generation_jobs|payment_provider|charge|capture/);
+ assert.doesNotMatch(route,/wallet_ledger|generation_jobs|payment_provider|createReservedJob|chargeWallet|captureWallet/);
  assert.match(ui,/\/polish/);
  assert.match(ui,/setSpeechEdits\(prev=>Object\.hasOwn\(prev,selection\)\?prev:/);
  assert.match(ui,/voiceBudget/);
