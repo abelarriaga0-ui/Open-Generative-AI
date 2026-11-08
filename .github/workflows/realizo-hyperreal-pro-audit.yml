@@ -1,0 +1,46 @@
+name: Realizo Hiperrealista PRO - read-only queue and wallet settlement audit
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/realizo-hyperreal-pro-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Inspect D1 job and reservation counts without logging personal data
+        run: |
+          node --input-type=module <<'JS'
+          import {HyperrealD1} from './scripts/hyperreal-pro-db.mjs';
+          const db=new HyperrealD1(process.env.CLOUDFLARE_API_TOKEN);
+          const rows=await db.query(
+            "SELECT status,stage,COUNT(*) AS n, "+
+            "SUM(CASE WHEN price_cents=1140 THEN 1 ELSE 0 END) AS target_price_n, "+
+            "SUM(CASE WHEN lease_owner IS NULL THEN 1 ELSE 0 END) AS unleased_n, "+
+            "SUM(CASE WHEN lease_expires_at IS NULL OR lease_expires_at<unixepoch() THEN 1 ELSE 0 END) AS eligible_n, "+
+            "MIN(created_at) AS earliest,MAX(created_at) AS latest "+
+            "FROM realizo_hyperreal_pro_jobs GROUP BY status,stage ORDER BY status,stage");
+          console.log('HYPERREAL_AGGREGATED_QUEUE='+JSON.stringify(rows));
+          const settlements=await db.query(
+            "SELECT j.status,j.price_cents,COUNT(*) AS n, "+
+            "SUM(CASE WHEN EXISTS(SELECT 1 FROM wallet_ledger l WHERE l.external_reference='hyperreal:'||j.id||':reserve') THEN 1 ELSE 0 END) AS reserved_in_ledger, "+
+            "SUM(CASE WHEN EXISTS(SELECT 1 FROM wallet_ledger l WHERE l.external_reference='hyperreal:'||j.id||':release') THEN 1 ELSE 0 END) AS refunded_in_ledger, "+
+            "SUM(CASE WHEN EXISTS(SELECT 1 FROM wallet_ledger l WHERE l.external_reference='hyperreal:'||j.id||':capture') THEN 1 ELSE 0 END) AS captured_in_ledger "+
+            "FROM realizo_hyperreal_pro_jobs j WHERE j.price_cents=1140 "+
+            "GROUP BY j.status,j.price_cents ORDER BY j.status");
+          console.log('HYPERREAL_1140_SETTLEMENTS='+JSON.stringify(settlements));
+          const switchRows=await db.query('SELECT enabled,engine_version FROM realizo_hyperreal_pro_release_gate WHERE slot=1');
+          console.log('HYPERREAL_ENGINE_SWITCH='+JSON.stringify(switchRows));
+          console.log('AUDIT_IS_READ_ONLY=true; NO_PERSONAL_INFO_LOGGED=true; NO_MUAPI_CALLS=true');
+          JS
