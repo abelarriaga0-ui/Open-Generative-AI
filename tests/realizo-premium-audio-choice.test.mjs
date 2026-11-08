@@ -42,7 +42,7 @@ test('Dialogue requires people, a defined script, and non-UGC cinematic acting',
  assert.throws(()=>create('dialogue','product_only'),/premium_audio_cast_conflict/);
  const f=create('dialogue','with_people');
  assert.match(f.prompt,/MANDATORY ON-SCENE DIALOGUE MODE/);
- assert.match(f.prompt,/speak a brief believable exchange/);
+ assert.match(f.prompt,/speak a believable exchange/);
  assert.doesNotMatch(f.prompt,/ABSOLUTE NO-VOICE AUDIO LOCK/);
  assert.throws(()=>filmAudioDirection('voiceover','product_only','es',''),/premium_audio_script_required/);
  assert.equal(normalizeAudioMode(null),'no_voice');
