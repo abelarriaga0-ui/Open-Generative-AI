@@ -19,7 +19,6 @@ export const metadata = {
   description: 'Crea y prueba videos e imágenes publicitarias con inteligencia artificial en Realizo.',
   applicationName: 'Realizo',
   manifest: '/manifest.webmanifest',
-  themeColor: '#100c12',
   icons: {
     icon: [
       { url: '/icons/realizo-192.png', type: 'image/png', sizes: '192x192' },
@@ -29,6 +28,8 @@ export const metadata = {
   },
   appleWebApp: { capable: true, title: 'Realizo', statusBarStyle: 'black-translucent' },
 };
+
+export const viewport = { themeColor: '#100c12' };
 
 export default async function RootLayout({ children }) {
   // Locale is derived from the URL path by middleware.js and passed
