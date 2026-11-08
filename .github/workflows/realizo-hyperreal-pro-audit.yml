@@ -40,6 +40,16 @@ jobs:
             "FROM realizo_hyperreal_pro_jobs j WHERE j.price_cents=1140 "+
             "GROUP BY j.status,j.price_cents ORDER BY j.status");
           console.log('HYPERREAL_1140_SETTLEMENTS='+JSON.stringify(settlements));
+          const queueProgress=await db.query(
+            "SELECT status,stage,updated_at, "+
+            "CASE WHEN lease_owner IS NOT NULL THEN 1 ELSE 0 END AS runner_has_lease, "+
+            "CASE WHEN lease_expires_at>unixepoch() THEN 1 ELSE 0 END AS lease_active, "+
+            "CASE WHEN json_extract(progress_json,'$.pending.id') IS NOT NULL THEN 1 ELSE 0 END AS provider_request_checkpointed, "+
+            "CASE WHEN json_extract(progress_json,'$.story') IS NOT NULL THEN 1 ELSE 0 END AS research_finished, "+
+            "coalesce(json_array_length(progress_json,'$.images'),0) AS images_prepared, "+
+            "coalesce(json_array_length(progress_json,'$.videos'),0) AS clips_prepared "+
+            "FROM realizo_hyperreal_pro_jobs WHERE price_cents=1140 ORDER BY created_at DESC LIMIT 2");
+          console.log('HYPERREAL_1140_SAFE_PROGRESS='+JSON.stringify(queueProgress));
           const switchRows=await db.query('SELECT enabled,engine_version FROM realizo_hyperreal_pro_release_gate WHERE slot=1');
           console.log('HYPERREAL_ENGINE_SWITCH='+JSON.stringify(switchRows));
           console.log('AUDIT_IS_READ_ONLY=true; NO_PERSONAL_INFO_LOGGED=true; NO_MUAPI_CALLS=true');
