@@ -188,7 +188,7 @@ test('Kling 4.0 UGC 30s keeps full speech, researched angle and every second whe
   const concept={
    name:'Una conexión diferente',creative_style:'ugc',
    hook:'¿Te imaginas una primera impresión diferente?',
-   buyer_motive:'Show a physically credible adult encounter with visible reciprocal interest, linked to the user's chosen sensual sales angle.',
+   buyer_motive:'Show a physically credible adult encounter with visible reciprocal interest, linked to the selected sensual sales angle.',
    requested_sales_angle:'Sensual / seduction for adult customers, tasteful but visibly flirtatious',
    sales_angle_code:'seduction',spoken_script:voice,
    video_prompt:'An adult first approaches the camera, describes the specific purchasing desire, handles the original item naturally, and continues to speak while a second adult responds with a meaningful look. '.repeat(9),
