@@ -1,0 +1,47 @@
+name: Realizo Android PWA - verify live installability
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/realizo-pwa-live-smoke.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify published manifest, Android icons, and studio install metadata
+        run: |
+          node --input-type=module <<'JS'
+          const root='https://realizo-auth-sandbox.abelarriaga0.workers.dev';
+          async function get(path) {
+            let last;
+            for (let i=0; i<5; i++) {
+              try {
+                const r=await fetch(root+path,{cache:'no-store',redirect:'follow',signal:AbortSignal.timeout(15000)});
+                if (r.ok) return r;
+                last=new Error(path+' returned HTTP '+r.status);
+              } catch(e) {last=e;}
+              await new Promise(r=>setTimeout(r,2500));
+            }
+            throw last;
+          }
+          const mResponse=await get('/manifest.webmanifest');
+          const m=await mResponse.json();
+          if (m.name!=='Realizo'||m.short_name!=='Realizo'||m.display!=='standalone'||
+              m.start_url!=='/studio'||m.scope!=='/') throw Error('Invalid Realizo PWA manifest: '+JSON.stringify(m));
+          for(const [size,p] of [[192,'/icons/realizo-192.png'],[512,'/icons/realizo-512.png']]){
+            if(!m.icons.some(i=>i.src===p && i.sizes===size+'x'+size))throw Error('Manifest icon missing '+p);
+            const res=await get(p);
+            if(!(res.headers.get('content-type')||'').toLowerCase().includes('image/png'))throw Error('Wrong PNG content type: '+p);
+            const b=Buffer.from(await res.arrayBuffer());
+            if(b.length<40||b.subarray(0,8).toString('hex')!=='89504e470d0a1a0a'||
+                b.readUInt32BE(16)!==size||b.readUInt32BE(20)!==size)throw Error('Invalid PNG data or dimensions '+p);
+          }
+          const studio=await get('/studio');
+          const html=await studio.text();
+          if(!html.includes('manifest.webmanifest'))throw Error('Studio does not reference install manifest');
+          console.log('LIVE PWA PASS: /manifest.webmanifest is valid; both Android PNG icons load; /studio advertises PWA. NO PAYMENTS OR GENERATION TRIGGERED.');
+          JS
