@@ -250,3 +250,43 @@ test('Kling 4.0 keeps specific researched actions in a compact UGC scene rather 
  assert.match(result.prompt,/ONE-SECOND DIRECTOR TIMELINE/);
  assert.match(result.prompt,/reference|referencia/i);
 });
+
+test('six 30s Kling UGC shots map exact speech to selected bold adult buyer angle without a generic montage',()=>{
+ const spoken=[
+  '¿Quieres que tu presencia marque una primera impresión diferente? Antes de salir,',
+  'elige una rutina con un aroma que realmente vaya con tu estilo.',
+  'Hoy quiero mostrarte el producto Goda y cómo lo incorporo a ese momento.',
+  'Mira el envase original mientras lo preparo y lo utilizo como corresponde.',
+  'Después hay una reunión social entre adultos, con miradas recíprocas y cercanía natural.',
+  'No te prometo provocar una reacción, solo elegir tu presentación personal.',
+  'Escríbenos para conocer Goda y hacer tu pedido ahora mismo.'
+ ].join(' ');
+ const scenes=[
+  'Adult presenter speaks the hook while getting ready for a date',
+  'Presenter reveals original GODA bottle naturally beside mirror',
+  'Presenter demonstrates only seller-confirmed application',
+  'Second consenting adult enters; two exchange meaningful flirtatious glances',
+  'Adult couple enjoys natural mutually welcomed proximity in a public social space',
+  'Presenting actor returns to the camera for an exact spoken CTA'
+ ];
+ const prepared=buildCommercialDirectorPackage({
+  concept:{name:'Atracción con personalidad',creative_style:'ugc',hook:'¿Quieres que tu presencia marque una primera impresión diferente?',
+   requested_sales_angle:'Sensualidad y atracción consensuada entre adultos',
+   sales_angle_code:'seduction',buyer_motive:'Encuentro íntimo adulto con deseo recíproco claramente visible',
+   video_prompt:'Two consenting adults meet; a natural reciprocal glance becomes a flirtatious moment. The filmed product remains real and identical to the customer reference.',
+   spoken_script:spoken,shots:scenes,cta:'Escríbenos para conocer Goda y hacer tu pedido ahora mismo.'},
+  productName:'Goda',description:'Esencia de perfume de uso personal para momentos sociales adultos',
+  style:'ugc',castMode:'with_people',audioMode:'no_voice',duration:30,market:'EC',
+  modelId:'kling-4.0-reference-to-video',workflowId:'references',
+  imageProvided:true,promptMaxLength:7900
+ });
+ assert.equal(prepared.shot_count,6,'30-second spoken ad needs six motivated scene changes');
+ assert.ok(prepared.prompt.length<=5800,'Kling provider margin preserved');
+ assert.ok(prepared.prompt.includes(spoken),'spoken copy must not be shortened');
+ assert.match(prepared.prompt,/SPEECH-TO-VISUAL SCENE MAP/);
+ for(let i=1;i<=6;i++)assert.match(prepared.prompt,new RegExp('S'+i+' \\d+-\\d+s'));
+ assert.match(prepared.prompt,/consensual|reciprocal|flirtatious/i);
+ assert.match(prepared.prompt,/original GODA bottle|original product/i);
+ assert.match(prepared.prompt,/IMMUTABLE PRODUCT SKU/);
+ assert.match(prepared.prompt,/no explicit sex|no nudity/i);
+});
