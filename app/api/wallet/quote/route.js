@@ -22,7 +22,7 @@ export async function POST(request) {
     const body=await request.json();
     const premiumError=await verifyPremiumGeneration(env.WALLETS_DB,user.id,body.model_id,body.input,body.creative_context);
     if(premiumError)return Response.json({error:premiumError},{status:422});
-    const renderInput=applyRealismToVideoInput(body.input);
+    const renderInput=applyRealismToVideoInput(body.input,{creativeContext:body.creative_context});
     await ensureOwnedMedia(env,user,renderInput);
     const quote=await quoteLiveVideo(body.model_id,renderInput,env.MUAPI_API_KEY,{requireLivePostRoute:true});
     // Display the full customer amount, including Realizo's 5% service margin.
