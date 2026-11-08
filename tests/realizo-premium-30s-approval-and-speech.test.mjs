@@ -69,7 +69,7 @@ test('30s Premium movie no longer throws on an 8k model despite rich angle and 6
   modelId:'kling-4.0-reference-to-video',workflowId:'references',
   imageProvided:true,promptMaxLength:8000
  });
- assert.ok(result.prompt.length<=8000);
+ assert.ok(result.prompt.length<=5800,'Kling 4.0 keeps a safe buffer below the nominal 8k ceiling');
  assert.match(result.prompt,/REALIZO LUXURY FILM CONTRACT v2/);
  assert.match(result.prompt,/P0 \/ IMMUTABLE PRODUCT SKU/);
  assert.match(result.prompt,/MANDATORY NARRATION MODE/);
@@ -157,7 +157,7 @@ test('Kling 4.0 approval fits a saturated Premium commercial without discarding 
    workflowId:modelId.includes('keyframe')?'animate_image':'references',
    imageProvided:true,productGeometry:geometry,promptMaxLength:7900
   });
-  assert.ok(result.prompt.length<=7900,modelId+' '+result.prompt.length);
+  assert.ok(result.prompt.length<=5800,modelId+' '+result.prompt.length);
   assert.ok(result.prompt.includes(speech),modelId+' must retain every spoken word');
   assert.match(result.prompt,/P0 \/ IMMUTABLE PRODUCT SKU/);
   assert.match(result.prompt,/P0 \/ UNIVERSAL BUYER-ANGLE VISUAL CONTRACT/);
@@ -209,7 +209,7 @@ test('Kling 4.0 UGC 30s keeps full speech, researched angle and every second whe
    imageProvided:true,productGeometry:geometry,
    promptMaxLength:7900,
   });
-  assert.ok(director.prompt.length<=7900,modelId+': '+director.prompt.length);
+  assert.ok(director.prompt.length<=5800,modelId+': '+director.prompt.length);
   assert.ok(director.prompt.includes(voice),'must preserve every word from the researched 30s dialogue');
   assert.match(director.prompt,/P0 \/ IMMUTABLE PRODUCT SKU/);
   assert.match(director.prompt,/P0 \/ UNIVERSAL BUYER-ANGLE VISUAL CONTRACT/);
@@ -220,4 +220,33 @@ test('Kling 4.0 UGC 30s keeps full speech, researched angle and every second whe
   assert.match(director.prompt,/IMAGE|REFERENCE|START FRAME/i);
   assert.match(director.prompt,/final second/i);
  }
+});
+
+test('Kling 4.0 keeps specific researched actions in a compact UGC scene rather than reducing it to generic beauty',()=>{
+ const speech=Array.from({length:82},(_,i)=>
+   i===0?'¿Quieres':i===81?'Escríbenos.':'palabra'+i).join(' ');
+ const scene='La persona termina de arreglarse, se detiene antes de salir, toma el envase original de Goda y lo utiliza como parte de su rutina. La cámara conserva su rostro al hablar. Más tarde entra en un encuentro social y se muestra confianza natural sin prometer atracción garantizada.';
+ const result=buildCommercialDirectorPackage({
+  concept:{name:'Llegar siendo tú',creative_style:'ugc',hook:'¿Quieres impresionar?',
+   buyer_motive:'Cuidar la primera impresión mediante el aroma personal.',
+   requested_sales_angle:'Cuidado de la presentación personal',sales_angle_code:'confidence',
+   spoken_script:speech,video_prompt:scene,
+   shots:['Persona frente al espejo preparándose','Producto auténtico en la mano',
+    'Persona termina de hablar mirando a cámara'],
+   cta:'Escríbenos.'},
+  productName:'goda',description:'Aroma personal, presentación original.',
+  market:'EC',videoLanguage:'es',duration:30,
+  style:'ugc',castMode:'with_people',audioMode:'no_voice',
+  modelId:'kling-4.0-reference-to-video',workflowId:'references',
+  imageProvided:true,promptMaxLength:7900
+ });
+ assert.ok(result.prompt.length<=5800,'deliberate 2.2k character buffer');
+ assert.ok(result.prompt.includes(speech),'complete approved speech');
+ assert.match(result.prompt,/P0 \/ IMMUTABLE PRODUCT SKU/);
+ assert.match(result.prompt,/P0 \/ UNIVERSAL BUYER-ANGLE VISUAL CONTRACT/);
+ assert.match(result.prompt,/P0 \/ APPROVED CONCEPT STORYBOARD/);
+ assert.match(result.prompt,/persona termina de arreglarse/i);
+ assert.match(result.prompt,/persona frente al espejo/i);
+ assert.match(result.prompt,/ONE-SECOND DIRECTOR TIMELINE/);
+ assert.match(result.prompt,/reference|referencia/i);
 });
