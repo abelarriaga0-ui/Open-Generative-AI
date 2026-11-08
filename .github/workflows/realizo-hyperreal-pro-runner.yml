@@ -1,11 +1,15 @@
 name: Realizo Hiperrealista PRO - autonomous queued production
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    # Five-minute cadence offset from the top of the hour. Re-enable the
+    # owner-only autonomous runner without any client-page dependence.
+    - cron: '2-59/5 * * * *'
   push:
     branches: [main]
     paths:
       - '.github/workflows/realizo-hyperreal-pro-runner.yml'
+      - 'scripts/hyperreal-pro-runner.mjs'
+      - 'scripts/hyperreal-pro-db.mjs'
   workflow_dispatch:
 permissions:
   contents: read
@@ -26,6 +30,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Check only existing confirmed reservations; never create or charge a new job
+        run: |
+          node --check scripts/hyperreal-pro-runner.mjs
+          node --check scripts/hyperreal-pro-db.mjs
       - name: Read-only D1 queue check; skip models and video renderer when empty
         id: queue
         shell: bash
