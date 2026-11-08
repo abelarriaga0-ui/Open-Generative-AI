@@ -15,9 +15,21 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: 'Open Generative AI — Free AI Image & Video Studio',
-  description: 'Generate AI images and videos using 200+ models — Flux, Midjourney, Kling, Veo, Seedance and more.',
+  title: 'Realizo | Estudio creativo con IA',
+  description: 'Crea y prueba videos e imágenes publicitarias con inteligencia artificial en Realizo.',
+  applicationName: 'Realizo',
+  manifest: '/manifest.webmanifest',
+  icons: {
+    icon: [
+      { url: '/icons/realizo-192.png', type: 'image/png', sizes: '192x192' },
+      { url: '/icons/realizo-512.png', type: 'image/png', sizes: '512x512' },
+    ],
+    apple: [{ url: '/icons/realizo-192.png', sizes: '192x192' }],
+  },
+  appleWebApp: { capable: true, title: 'Realizo', statusBarStyle: 'black-translucent' },
 };
+
+export const viewport = { themeColor: '#100c12' };
 
 export default async function RootLayout({ children }) {
   // Locale is derived from the URL path by middleware.js and passed
