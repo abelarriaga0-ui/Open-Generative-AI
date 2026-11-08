@@ -271,8 +271,10 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
    });
    const json=await r.json().catch(()=>({}));
    if(!r.ok)throw Error(
-    json.error==='ugc_speech_timing_invalid'||json.error==='ugc_speech_quality_invalid'?
-      'El guion de este concepto no se ajusta a la duración. Elige otro concepto; no se cobra otra investigación.':
+    json.error==='ugc_speech_timing_invalid'||json.error==='ugc_speech_quality_invalid'||json.error==='premium_speech_timing_invalid'?
+      'El guion todavía no cubre la duración elegida. Realizo lo optimiza antes de generar; no se cobró el video.':
+    json.error==='premium_direction_cannot_be_prepared'?
+      'No se pudo ajustar el guion visual al modelo elegido. No se cobró el video.':
     json.error==='image_expired_reupload'?
       'La fotografía original caducó y debe cargarse otra vez.':
     json.error==='invalid_video_configuration'?
