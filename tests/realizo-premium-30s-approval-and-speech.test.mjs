@@ -127,3 +127,51 @@ test('speech polish is idempotent, owner-scoped and not charged to customer wall
  assert.match(approve,/premium_direction_cannot_be_prepared/);
  assert.match(approve,/commercial_direction_prompt_too_long/);
 });
+
+test('Kling 4.0 approval fits a saturated Premium commercial without discarding the exact spoken hook or sales angle',()=>{
+ // Adversarial but legal: long reference storyboard, product map and 84-word
+ // narration. The 8k provider ceiling must compress editor prose, not deny
+ // the project or remove the researched concept.
+ const speech=Array.from({length:84},(_,i)=>i===0?'¿Quieres':i===83?'Escríbenos.':'palabraextensacomercial'+String(i).padStart(2,'0')).join(' ');
+ assert.ok(speech.length>1900&&speech.length<3200);
+ const scene='Two adult customers exchange a distinctive romantic glance and move closer while experiencing the real product naturally. Their actions must tell a progressing attraction story, not an isolated packshot. '.repeat(9);
+ const concept={
+  name:'Una conexión visible',creative_style:'premium',
+  requested_sales_angle:'Seduction / sensuality with adults, tasteful and credible',
+  sales_angle_code:'seduction',hook:'¿Quieres que tu presencia se recuerde?',
+  buyer_motive:'An intimate, playful adult encounter that moves from preparation to reciprocal interest without guaranteeing results.',
+  spoken_script:speech,cta:'Escríbenos.',
+  video_prompt:scene,shots:Array.from({length:8},(_,i)=>'Scene '+i+': a distinct adult reaction and real physical product interaction; visible progression and continuity, not a duplicate shot. '.repeat(3)),
+ };
+ const geometry={products:Array.from({length:4},(_,i)=>({
+  name:'Real Producto '+i,container_type:'a matte glass bottle with a faithfully printed label',
+  body_shape:'tall precise cylinder, straight sides and authentic scale in adult hands',
+  closure_type:'original matching cap and closure geometry',
+  main_colors:'dark blue, subtle silver, deep graphite, and identical packaging artwork'
+ }))};
+ for(const modelId of ['kling-4.0-reference-to-video','kling-4.0-keyframe-to-video','kling-4.0-flash-reference-to-video']){
+  const result=buildCommercialDirectorPackage({
+   concept,productName:'Producto de prueba',description:project.description,
+   duration:modelId.includes('flash')?20:30,market:'EC',style:'premium',videoLanguage:'es',
+   audioMode:'voiceover',castMode:'with_people',modelId,
+   workflowId:modelId.includes('keyframe')?'animate_image':'references',
+   imageProvided:true,productGeometry:geometry,promptMaxLength:7900
+  });
+  assert.ok(result.prompt.length<=7900,modelId+' '+result.prompt.length);
+  assert.ok(result.prompt.includes(speech),modelId+' must retain every spoken word');
+  assert.match(result.prompt,/P0 \/ IMMUTABLE PRODUCT SKU/);
+  assert.match(result.prompt,/P0 \/ UNIVERSAL BUYER-ANGLE VISUAL CONTRACT/);
+  assert.match(result.prompt,/P0 \/ APPROVED CONCEPT STORYBOARD/);
+  assert.match(result.prompt,/sensual|seduct|attraction/i);
+  assert.match(result.prompt,/same|exact|packaging|original/i);
+ }
+});
+test('Kling approval persists approved status only after the media and final model request are valid',()=>{
+ const route=readFileSync('app/api/realizo/ai-premium/[id]/approve/route.js','utf8');
+ const media=route.indexOf('const asset=await db.prepare(');
+ const packet=route.indexOf('readyForGeneration=liveContract?');
+ const approved=route.indexOf("UPDATE realizo_ai_projects SET status='approved'");
+ assert.ok(media>0&&packet>media&&approved>packet,
+  'failed media/model preparation must never leave the project prematurely approved');
+ assert.match(route,/premium_direction_cannot_be_prepared/);
+});
