@@ -16,7 +16,7 @@ test('all Realizo videos receive a per-frame physical and product-identity conti
  assert.match(output.prompt,/REALIZO_VISUAL_CONTINUITY_V2/);
  assert.match(output.prompt,/cap\/dropper\/dispenser/i);
  assert.match(output.prompt,/plausible supports, grip, contact shadows/);
- assert.match(output.prompt,/Each visible action must match the words spoken/);
+ assert.match(output.prompt,/Show the filmed action when its phrase is spoken/);
  assert.equal(output.duration,30);
  assert.equal(output.image_url,input.image_url);
  assert.equal(input.prompt,'An adult opens the correct physical product and talks to camera.');
