@@ -27,6 +27,9 @@ on:
       - "tests/realizo-premium-cast-director.test.mjs"
       - "tests/realizo-premium-film-contract.test.mjs"
       - "tests/realizo-live-premium-catalog-kling4.test.mjs"
+      - "tests/realizo-premium-30s-approval-and-speech.test.mjs"
+      - "lib/realizo-creative/premium-speech-polish.js"
+      - "app/api/realizo/ai-premium/[id]/polish/route.js"
       - "scripts/refresh-realizo-muapi-catalog.mjs"
       - ".github/workflows/realizo-muapi-catalog-daily.yml"
       - "lib/realizo-creative/premium-live-models.js"
@@ -73,7 +76,7 @@ jobs:
           npm run test:wallet
           node --check app/api/realizo/ai-premium/[id]/approve/route.js
           node --check scripts/refresh-realizo-muapi-catalog.mjs
-          node --test tests/realizo-live-premium-catalog-kling4.test.mjs tests/realizo-ugc15-omni-template.test.mjs tests/realizo-direct-premium-generation.test.mjs tests/realizo-funded-usage-muapi-failures.test.mjs tests/realizo-ai-research-complimentary.test.mjs tests/realizo-universal-angle-director.test.mjs
+          node --test tests/realizo-premium-30s-approval-and-speech.test.mjs tests/realizo-live-premium-catalog-kling4.test.mjs tests/realizo-ugc15-omni-template.test.mjs tests/realizo-direct-premium-generation.test.mjs tests/realizo-funded-usage-muapi-failures.test.mjs tests/realizo-ai-research-complimentary.test.mjs tests/realizo-universal-angle-director.test.mjs
           node --test tests/realizo-paypal-live-preflight.test.mjs tests/realizo-paypal-inline-checkout.test.mjs
 
   deploy-realizo-sandbox:

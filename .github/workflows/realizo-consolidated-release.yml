@@ -65,6 +65,10 @@ on:
       - "packages/studio/src/kling4VideoModels.js"
       - "tests/realizo-live-premium-catalog-kling4.test.mjs"
       - "tests/realizo-direct-premium-generation.test.mjs"
+      - "tests/realizo-premium-30s-approval-and-speech.test.mjs"
+      - "lib/realizo-creative/premium-speech-polish.js"
+      - "app/api/realizo/ai-premium/[id]/polish/route.js"
+      - "migrations/0036_realizo_premium_speech_polish.sql"
       - "tests/realizo-muapi-master-ugc30.test.mjs"
       - "lib/realizo-creative/research-lifecycle.js"
       - "app/api/realizo/ai-premium/route.js"
@@ -152,7 +156,7 @@ jobs:
       - name: Verify realistic video appearance across all director styles before deployment
         run: node --test tests/realizo-ugc15-omni-template.test.mjs tests/realizo-physical-realism.test.mjs tests/realizo-luxury-template.test.mjs tests/realizo-seedance-20-endpoint.test.mjs tests/realizo-live-models.test.mjs tests/realizo-muapi-endpoint.test.mjs tests/realizo-user-templates.test.mjs tests/realizo-sales-director.test.mjs
       - name: Check product identity and spoken-script integrity
-        run: node --test tests/realizo-live-premium-catalog-kling4.test.mjs tests/realizo-product-identity-voice.test.mjs tests/realizo-direct-premium-generation.test.mjs tests/realizo-universal-angle-director.test.mjs
+        run: node --test tests/realizo-premium-30s-approval-and-speech.test.mjs tests/realizo-live-premium-catalog-kling4.test.mjs tests/realizo-product-identity-voice.test.mjs tests/realizo-direct-premium-generation.test.mjs tests/realizo-universal-angle-director.test.mjs
       - name: Verify hyperreal commercial storyboards across all styles before shipping
         run: node --test tests/realizo-hyperreal-commercial.test.mjs tests/realizo-hyperreal-pro.test.mjs tests/realizo-hyperreal-routing-policy.test.mjs tests/realizo-hyperreal-model-routing.test.mjs tests/realizo-muapi-master-ugc30.test.mjs tests/realizo-sales-director.test.mjs tests/realizo-premium-film-contract.test.mjs
       - name: Verify visible wallet and research spendable balance agree before publishing

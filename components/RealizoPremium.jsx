@@ -3,6 +3,7 @@ import {useEffect,useRef,useState} from 'react';
 import {optimizeImage} from '@/lib/realizo-creative/optimize-image';
 import {getAdTemplate,templatePlan} from '@/lib/realizo-creative/ad-templates';
 import {SALES_ANGLE_CHOICES} from '@/lib/realizo-creative/sales-angle';
+import {voiceBudget,speechWords,spokenHook} from '@/lib/realizo-creative/sales-storyboard';
 
 const markets=[['EC','Ecuador'],['CO','Colombia'],['MX','México'],['PE','Perú'],
  ['CL','Chile'],['GT','Guatemala'],['US','Estados Unidos'],['ES','España'],
@@ -62,7 +63,8 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
  const [researchConfirm,setResearchConfirm]=useState(false);
  const [speechEdits,setSpeechEdits]=useState({}),[jobId,setJobId]=useState(null),[completed,setCompleted]=useState(false),[generationFailed,setGenerationFailed]=useState(false);
- useEffect(()=>{setSpeechEdits({});setJobId(null);setCompleted(false);setGenerationFailed(false)},[project?.id]);
+ const [speechPolish,setSpeechPolish]=useState({index:-1,status:'idle'});
+ useEffect(()=>{setSpeechEdits({});setJobId(null);setCompleted(false);setGenerationFailed(false);setSpeechPolish({index:-1,status:'idle'})},[project?.id]);
  const fileRef=useRef(null),keyRef=useRef(null);
  useEffect(()=>{
   let active=true;
@@ -131,6 +133,58 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
    setSelection(i);
   }
  },[project?.id,project?.concepts]);
+ // Fix underwritten long-form speech automatically at Realizo's expense.
+ // This never repeats research or changes the video model or wallet funds.
+ useEffect(()=>{
+  if(!project?.id||!['ready','needs_review','approved'].includes(project.status)||
+     Number(project.video_duration_seconds)<20||Object.hasOwn(speechEdits,selection))return;
+  const concept=project.concepts?.[selection];
+  if(!concept)return;
+  const style=project.creative_style==='auto'?concept.creative_style:project.creative_style;
+  if(['premium','cinematic'].includes(style)&&project.audio_mode==='no_voice')return;
+  const original=String(concept.spoken_script||concept.script||'');
+  const short=speechWords(original)<voiceBudget(project.video_duration_seconds,style).minimum;
+  const weak=/^(?:que tu|deja que|haz que|cada detalle|tu llegada|tu estilo)/i.test(spokenHook(original));
+  if(!short&&!weak)return;
+  let live=true,timer=null;
+  const base='/api/realizo/ai-premium/'+encodeURIComponent(project.id)+'/polish';
+  const settle=result=>{
+   if(!live)return;
+   if(result?.status==='completed'&&typeof result.spoken_script==='string'){
+     setSpeechEdits(prev=>Object.hasOwn(prev,selection)?prev:{...prev,[selection]:result.spoken_script});
+     setSpeechPolish({index:selection,status:'completed'});
+     if(timer){clearInterval(timer);timer=null;}
+   }else if(result?.status==='failed'||result?.status==='not_needed'){
+     setSpeechPolish({index:selection,status:result.status});
+     if(timer){clearInterval(timer);timer=null;}
+   }
+  };
+  const poll=async()=>{
+    try{
+      const res=await fetch(base+'?index='+selection,{credentials:'same-origin',cache:'no-store'});
+      if(!res.ok)throw Error('copy_unavailable');
+      settle(await res.json());
+    }catch{
+      if(live){setSpeechPolish({index:selection,status:'failed'});
+       if(timer){clearInterval(timer);timer=null;}}
+    }
+  };
+  const launch=async()=>{
+   try{
+    setSpeechPolish({index:selection,status:'processing'});
+    const res=await fetch(base,{method:'POST',credentials:'same-origin',
+     headers:{'Content-Type':'application/json'},body:JSON.stringify({index:selection})});
+    if(!res.ok)throw Error('copy_unavailable');
+    const result=await res.json();
+    settle(result);
+    if(live&&result.status==='processing')timer=setInterval(poll,4000);
+   }catch{if(live)setSpeechPolish({index:selection,status:'failed'});}
+  };
+  launch();
+  return()=>{live=false;if(timer)clearInterval(timer)};
+ },[project?.id,project?.status,project?.video_duration_seconds,project?.creative_style,
+    project?.audio_mode,project?.concepts,selection,speechEdits[selection]]);
+
  const change=(k,v)=>{setProduct(p=>({...p,[k]:v}));keyRef.current=null};
  const upload=async(file)=>{
   if(!file)return;
@@ -217,8 +271,10 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
    });
    const json=await r.json().catch(()=>({}));
    if(!r.ok)throw Error(
-    json.error==='ugc_speech_timing_invalid'||json.error==='ugc_speech_quality_invalid'?
-      'El guion de este concepto no se ajusta a la duración. Elige otro concepto; no se cobra otra investigación.':
+    json.error==='ugc_speech_timing_invalid'||json.error==='ugc_speech_quality_invalid'||json.error==='premium_speech_timing_invalid'?
+      'El guion todavía no cubre la duración elegida. Realizo lo optimiza antes de generar; no se cobró el video.':
+    json.error==='premium_direction_cannot_be_prepared'?
+      'No se pudo ajustar el guion visual al modelo elegido. No se cobró el video.':
     json.error==='image_expired_reupload'?
       'La fotografía original caducó y debe cargarse otra vez.':
     json.error==='invalid_video_configuration'?
@@ -244,6 +300,8 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
  const activeStyle=project?.creative_style==='auto'?chosenConcept?.creative_style:project?.creative_style;
  const hasSpokenAudio=Boolean(chosenConcept)&&(!['premium','cinematic'].includes(activeStyle)||project?.audio_mode!=='no_voice');
  const activeSpeech=Object.hasOwn(speechEdits,selection)?speechEdits[selection]:String(chosenConcept?.spoken_script||chosenConcept?.script||'');
+ const speechWordBudget=voiceBudget(project?.video_duration_seconds||8,activeStyle);
+ const speechPolishing=speechPolish.index===selection&&speechPolish.status==='processing';
  const videoOptions=config?.video_options||[];
  const selectedModel=videoOptions.find(m=>m.id===product.video_model_id);
  const availableDurations=selectedModel?.durations||[];
@@ -596,13 +654,15 @@ export default function RealizoPremium({onPrepare,onOpenAdvanced,onUseAutomatic,
        <textarea className={field+' mt-2 min-h-[100px] text-sm'} aria-label="Editar guion de este concepto"
         value={activeSpeech} maxLength={3200} disabled={busy}
         onChange={e=>setSpeechEdits(d=>({...d,[selection]:e.target.value}))}/>
-       <span className="block text-xs font-normal text-[#806D90] mt-1">Puedes cambiar las frases de este concepto. Cada propuesta conserva su propio guion, sin repetir la investigación.</span>
+       <span className="block text-xs font-normal text-[#806D90] mt-1">{speechWords(activeSpeech)} palabras · objetivo {speechWordBudget.minimum}–{speechWordBudget.maximum} para {project.video_duration_seconds} segundos.
+         {speechPolishing?' Realizo está reforzando automáticamente el gancho y el ritmo, sin otro cobro.':''}
+         {!speechPolishing&&speechPolish.index===selection&&speechPolish.status==='failed'?' No fue posible optimizar el texto automáticamente; puedes editarlo sin repetir la investigación.':''}</span>
       </label>}
       {jobId&&<p role="status" className="text-sm text-[#6B4B8C]">Video registrado en Mis creaciones. Solicitud: {jobId}. {completed?'Generación completada.':generationFailed?'El proveedor no completó el video; revisa el motivo indicado arriba.':'El proveedor está procesando el video.'}</p>}
       {jobId&&<button type="button" onClick={onViewCreations} className="text-sm font-bold text-[#6D48CB] underline">Ver Mis creaciones</button>}
-      <button type="button" onClick={approve} disabled={busy||completed}
+      <button type="button" onClick={approve} disabled={busy||completed||speechPolishing}
        className="rounded-2xl bg-[#6D48CB] text-white font-bold py-3.5 px-6 disabled:opacity-50">
-       {busy?'Preparando o generando…':'Aprobar concepto y generar'}
+       {busy?'Preparando o generando…':speechPolishing?'Afinando guion de venta…':'Aprobar concepto y generar'}
       </button>
       <p className="text-xs text-[#86788F]">Al aprobar autorizas el concepto y sus afirmaciones comerciales. Confirmarás el precio aquí mismo, sin pasar por otro editor. No se cobrarán créditos sin tu confirmación.</p>
     </>}
