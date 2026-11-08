@@ -175,3 +175,49 @@ test('Kling approval persists approved status only after the media and final mod
   'failed media/model preparation must never leave the project prematurely approved');
  assert.match(route,/premium_direction_cannot_be_prepared/);
 });
+
+test('Kling 4.0 UGC 30s keeps full speech, researched angle and every second when 8k limit is tight',()=>{
+ const cases=[
+  {modelId:'kling-4.0-reference-to-video',workflowId:'references',seconds:30},
+  {modelId:'kling-4.0-keyframe-to-video',workflowId:'animate_image',seconds:30},
+  {modelId:'kling-4.0-flash-reference-to-video',workflowId:'references',seconds:20},
+ ];
+ for(const {modelId,workflowId,seconds} of cases){
+  const count=seconds===30?86:56;
+  const voice=Array.from({length:count},(_,i)=>i===0?'¿Te imaginas':i===count-1?'Escríbenos ahora.':'palabraextensacomercial'+String(i).padStart(2,'0')).join(' ');
+  const concept={
+   name:'Una conexión diferente',creative_style:'ugc',
+   hook:'¿Te imaginas una primera impresión diferente?',
+   buyer_motive:'Show a physically credible adult encounter with visible reciprocal interest, linked to the selected sensual sales angle.',
+   requested_sales_angle:'Sensual / seduction for adult customers, tasteful but visibly flirtatious',
+   sales_angle_code:'seduction',spoken_script:voice,
+   video_prompt:'An adult first approaches the camera, describes the specific purchasing desire, handles the original item naturally, and continues to speak while a second adult responds with a meaningful look. '.repeat(9),
+   shots:Array.from({length:8},(_,i)=>'Distinct spoken beat '+i+' with an observable cause-and-effect action and authentic product handoff. '.repeat(3)),
+   cta:'Escríbenos ahora.'
+  };
+  const geometry={products:Array.from({length:4},(_,i)=>({
+   name:'Producto real '+i,container_type:'opaque painted cylinder with original printed label',
+   body_shape:'rectangular or cylindrical as reference photo exactly documents',
+   closure_type:'original factory cap/dropper as verified',
+   main_colors:'genuine saturated tones, authentic readable label and no invented logo'
+  }))};
+  const director=buildCommercialDirectorPackage({
+   concept,productName:'Producto real de prueba',
+   description:'Artículo físico de presentación personal para un comprador adulto, sin resultados garantizados. '.repeat(5),
+   market:'EC',videoLanguage:'es',duration:seconds,
+   modelId,workflowId,style:'ugc',castMode:'with_people',audioMode:'no_voice',
+   imageProvided:true,productGeometry:geometry,
+   promptMaxLength:7900,
+  });
+  assert.ok(director.prompt.length<=7900,modelId+': '+director.prompt.length);
+  assert.ok(director.prompt.includes(voice),'must preserve every word from the researched 30s dialogue');
+  assert.match(director.prompt,/P0 \/ IMMUTABLE PRODUCT SKU/);
+  assert.match(director.prompt,/P0 \/ UNIVERSAL BUYER-ANGLE VISUAL CONTRACT/);
+  assert.match(director.prompt,/P0 \/ APPROVED CONCEPT STORYBOARD/);
+  assert.match(director.prompt,/ONE-SECOND DIRECTOR TIMELINE/);
+  assert.match(director.prompt,/speak|SPEAK/);
+  assert.match(director.prompt,/sensual|seduct|attraction|flirt/i);
+  assert.match(director.prompt,/IMAGE|REFERENCE|START FRAME/i);
+  assert.match(director.prompt,/final second/i);
+ }
+});
