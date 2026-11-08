@@ -135,11 +135,6 @@ export async function POST(request,{params}){
   // Keep the exact validated director prompt for pricing AND generation.
   const finalPrompt=director.prompt+referenceTag;
   if(finalPrompt.length>promptLimit)return Response.json({error:'invalid_video_configuration'},{status:422});
-  await db.prepare(
-    "UPDATE realizo_ai_projects SET status='approved',video_model_id=?,video_workflow_id=?,video_duration_seconds=?,selected_concept=?,approved_prompt=?,creative_style=?,cast_mode=?,audio_mode=?,updated_at=datetime('now') WHERE id=? AND user_id=?"
-  ).bind(modelId,workflowId,duration,selection,finalPrompt,finalStyle,castMode,audioMode,id,user.id).run();
-  project=await db.prepare('SELECT * FROM realizo_ai_projects WHERE id=? AND user_id=?')
-    .bind(id,user.id).first();
   const asset=await db.prepare(
     'SELECT expires_at FROM realizo_media_assets WHERE id=? AND user_id=? AND deleted_at IS NULL'
   ).bind(project.primary_asset_id,user.id).first();
@@ -158,6 +153,12 @@ export async function POST(request,{params}){
   }catch{
    return Response.json({error:'invalid_video_configuration'},{status:422});
   }
+  await db.prepare(
+    "UPDATE realizo_ai_projects SET status='approved',video_model_id=?,video_workflow_id=?,video_duration_seconds=?,selected_concept=?,approved_prompt=?,creative_style=?,cast_mode=?,audio_mode=?,updated_at=datetime('now') WHERE id=? AND user_id=?"
+  ).bind(modelId,workflowId,duration,selection,finalPrompt,finalStyle,castMode,audioMode,id,user.id).run();
+  project=await db.prepare('SELECT * FROM realizo_ai_projects WHERE id=? AND user_id=?')
+    .bind(id,user.id).first();
+
   return Response.json({
     ...safeResearchResponse(project),ready_for_editor:{
       prompt:finalPrompt,images:director.model_capabilities.imageRole==='none'?[]:[image],

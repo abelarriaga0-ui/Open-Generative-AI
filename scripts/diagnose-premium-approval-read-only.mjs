@@ -12,9 +12,10 @@ import {scriptReadiness,improveSalesScript,speechWords} from '../lib/realizo-cre
 import {premiumVideoOptions} from '../lib/realizo-creative/video-specs.js';
 
 const db=new HyperrealD1(process.env.CLOUDFLARE_API_TOKEN);
-const rows=await db.query("SELECT * FROM realizo_ai_projects WHERE LOWER(TRIM(product_name))='goda' AND video_duration_seconds=30 AND status IN ('ready','needs_review','approved') ORDER BY created_at DESC LIMIT 3");
+const rows=await db.query("SELECT * FROM realizo_ai_projects WHERE video_model_id LIKE 'kling-4.0-%' AND status IN ('ready','needs_review','approved') ORDER BY created_at DESC LIMIT 4");
 console.log('PREMIUM_DIAGNOSTIC_PROJECT_COUNT='+rows.length);
 for(const p of rows){
+ for(const conceptIndex of [0,1,2]){
  let phase='loading',outcome='ok';
  let speechCount=0,minimum=0,maximum=0;
  let existingAsset=false,aliveAsset=false,modelAvailable=false;
@@ -22,7 +23,7 @@ for(const p of rows){
  try{
   phase='metadata';
   const concepts=JSON.parse(p.concepts_json||'[]');
-  const c=concepts[Math.max(0,Number(p.selected_concept)||0)];
+  const c=concepts[conceptIndex];
   if(!c)throw Error('concept_unavailable');
   const research=p.findings_json?JSON.parse(p.findings_json):{};
   const initial=['auto','ugc','cinematic','premium','demo'].includes(p.creative_style)?p.creative_style:'auto';
@@ -57,7 +58,7 @@ for(const p of rows){
    market:p.market_code,videoLanguage:p.video_language||'es',style:finalStyle,
    shotPreference:'auto',castMode,audioMode,duration:seconds,
    imageProvided:true,modelId:model,workflowId:workflow,
-   promptMaxLength:Math.max(4000,Math.min(12500,promptMax)),
+   promptMaxLength:Math.max(4000,Math.min(12500,promptMax-(workflow==='references'?99:workflow==='animate_image'?83:0))),
    productGeometry:research.product_visual_geometry||null,
    templateId:template?.id||null,templateActor:p.template_actor||'auto',
    templateSetting:p.template_setting||'auto',templateChangeRequest:p.template_change_request||''
@@ -79,8 +80,9 @@ for(const p of rows){
   console.log('PREMIUM_APPROVAL_STACK_LOCATION='+String(e?.stack||'').split('\n').slice(1,2).join('').replace(/\((?:.*[/\\])?(.*:\d+:\d+)\)/,'($1)').slice(0,155));
  }
  console.log('PREMIUM_APPROVAL_AUDIT='+JSON.stringify({
-  outcome,finalStyle,audioMode,castMode,modelAvailable,speechCount,minimum,maximum,
+  conceptIndex,modelKind:String(p.video_model_id||'').includes('flash')?'flash':String(p.video_model_id||'').includes('keyframe')?'keyframe':'reference',outcome,finalStyle,audioMode,castMode,modelAvailable,speechCount,minimum,maximum,
   checks,existingAsset,aliveAsset
  }));
+ }
 }
 console.log('PREMIUM_APPROVAL_AUDIT_READ_ONLY=true');
