@@ -94,14 +94,16 @@ export async function POST(request,{params}){
     spoken_script:isFilmStyle(finalStyle)&&audioMode==='no_voice'?'':userSpeech};
   // Verify spoken dialogue fills the chosen runtime BEFORE any video charge.
   // A short, sparse script should be edited, not stretched with silent shots.
-  if(spokenStyle==='ugc'||(spokenStyle==='demo'&&userSpeech)){
+  if(spokenStyle==='ugc'||(spokenStyle==='demo'&&userSpeech)||
+    (isFilmStyle(finalStyle)&&audioMode!=='no_voice'&&duration>=20)){
    const timing=scriptReadiness(userSpeech,{seconds:duration,style:spokenStyle,description:project.description||''});
    if(timing.tooShort||timing.tooLong)
-    return Response.json({error:'ugc_speech_timing_invalid',words:timing.words,
+    return Response.json({error:spokenStyle==='ugc'||spokenStyle==='demo'?
+      'ugc_speech_timing_invalid':'premium_speech_timing_invalid',words:timing.words,
      minimum:timing.budget.minimum,maximum:timing.budget.maximum},{status:422});
    // Reject paid generation only for clear commercial failures, not subjective
    // hook preferences. No additional AI query or charge is performed.
-   if(timing.qualityIssues.length)
+   if((spokenStyle==='ugc'||spokenStyle==='demo')&&timing.qualityIssues.length)
     return Response.json({error:'ugc_speech_quality_invalid',
      issues:timing.qualityIssues},{status:422});
   }
@@ -176,5 +178,14 @@ export async function POST(request,{params}){
       creative_director_version:director.quality_version,
     },
   },{headers:{'Cache-Control':'private,no-store'}});
- }catch(e){return jsonError(e)}
+ }catch(e){
+  const safeErrors=new Set([
+    'commercial_direction_prompt_too_long','spoken_script_prompt_too_long',
+    'premium_audio_script_required','premium_audio_cast_conflict',
+    'invalid_spoken_script','invalid_video_configuration',
+  ]);
+  if(safeErrors.has(e?.message))
+   return Response.json({error:'premium_direction_cannot_be_prepared',stage:e.message},{status:422});
+  return jsonError(e);
+ }
 }
