@@ -14,8 +14,8 @@ test('all Realizo videos receive a per-frame physical and product-identity conti
  const output=applyRealismToVideoInput(input);
  assert.match(output.prompt,/REALIZO_REALISM_STANDARD v1/);
  assert.match(output.prompt,/REALIZO_VISUAL_CONTINUITY_V2/);
- assert.match(output.prompt,/cap, dropper, dispenser, closure/i);
- assert.match(output.prompt,/gravity, grip, shadows and contact/);
+ assert.match(output.prompt,/cap\/dropper\/dispenser/i);
+ assert.match(output.prompt,/plausible supports, grip, contact shadows/);
  assert.match(output.prompt,/Each visible action must match the words spoken/);
  assert.equal(output.duration,30);
  assert.equal(output.image_url,input.image_url);
