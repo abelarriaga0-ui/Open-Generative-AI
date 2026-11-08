@@ -38,6 +38,7 @@ on:
       - "packages/studio/src/klingModels.js"
       - "packages/studio/src/modelFamilies.js"
       - "tests/realizo-premium-audio-choice.test.mjs"
+      - "tests/realizo-universal-video-qa-v2.test.mjs"
       - "lib/realizo-creative/audio-mode.js"
       - "scripts/realizo-premium-audio-sandbox.sql"
       - "lib/realizo-creative/premium-generation-gate.js"
@@ -76,6 +77,7 @@ jobs:
           npm run test:wallet
           node --check app/api/realizo/ai-premium/[id]/approve/route.js
           node --check scripts/refresh-realizo-muapi-catalog.mjs
+          node --test tests/realizo-universal-video-qa-v2.test.mjs tests/realizo-physical-realism.test.mjs tests/realizo-premium-audio-choice.test.mjs
           node --test tests/realizo-premium-30s-approval-and-speech.test.mjs tests/realizo-live-premium-catalog-kling4.test.mjs tests/realizo-ugc15-omni-template.test.mjs tests/realizo-direct-premium-generation.test.mjs tests/realizo-funded-usage-muapi-failures.test.mjs tests/realizo-ai-research-complimentary.test.mjs tests/realizo-universal-angle-director.test.mjs
           node --test tests/realizo-paypal-live-preflight.test.mjs tests/realizo-paypal-inline-checkout.test.mjs
 
