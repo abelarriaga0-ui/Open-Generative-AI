@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {premiumVideoOptions} from '../lib/realizo-creative/video-specs.js';
 import {validatePremiumInput,premiumBetaEnabled,premiumBetaOwner,
- buildResearchRequest,parseResearchResult,researchSchema} from '../lib/realizo-creative/ai-premium.js';
+ buildResearchRequest,parseResearchResult,researchSchema,safeResearchResponse} from '../lib/realizo-creative/ai-premium.js';
 
 const selectedVideo=premiumVideoOptions()[0];
 const form={
@@ -98,4 +98,48 @@ test('general paid eligibility is strictly live-funded and price fixed at 49 cen
  const id={assetId:'a',productName:'NOIL',description:'x',market:'EC',angle:'auto',audience:'',cta:''};
  assert.equal(await researchFingerprint(id),await researchFingerprint(id));
  assert.notEqual(await researchFingerprint(id),await researchFingerprint({...id,assetId:'b'}));
+});
+
+test('real commercial research studies seller-selected adult attraction and storyboard speech-to-image correspondence',()=>{
+ const project={...form,product_name:'Goda',description:'Esencia de aroma masculino para una primera impresión sensual entre adultos',
+  market_code:'EC',sales_angle:'seduction',creative_style:'ugc',video_duration_seconds:30,
+  video_language:'es',signedImage:'https://example.test/private-photo',
+  video_model_id:'kling-4.0-reference-to-video',video_workflow_id:'references'};
+ const req=buildResearchRequest({OPENAI_PREMIUM_MODEL:'test-research-model'},project);
+ assert.match(req.instructions,/ESTUDIO DE CONVERSI[ÓO]N Y DIRECCI[ÓO]N VISUAL/);
+ assert.match(req.instructions,/GUION A IMAGEN EN SECUENCIA/);
+ assert.match(req.instructions,/consentimiento|consensu|rec[ií]proc/i);
+ assert.match(req.instructions,/20–30 s busca 4–6 escenas/);
+ assert.match(req.instructions,/sin genitales|actos sexuales expl[ií]citos/i);
+ assert.match(req.instructions,/no cambies formato, motor, personas, audio ni duraci[oó]n/i);
+ assert.equal(req.tools[0].type,'web_search');
+ assert.equal(req.max_tool_calls,5,'no extra paid research stage');
+});
+test('old paid projects preserve complete researched adult storyboards even if spoken copy needs a free repair',()=>{
+ const specific='An adult attends a gathering and exchanges a real, reciprocal, clearly consenting glance with another adult. The real perfume is shown in use when its name is said; no guaranteed attraction.';
+ const shots=[
+  'Present actor speaks to lens while preparing for social event',
+  'Original product is used naturally without altering packaging',
+  'Two adults exchange a visible mutual flirtatious glance',
+  'They move a little closer with an inviting gesture',
+  'Natural conversation with mutual smiles',
+  'Return to main actor for spoken purchase CTA'
+ ];
+ const concept={name:'Aroma y conexión real',creative_style:'ugc',
+  buyer_motive:'Atracción adulta y primera impresión sensual',
+  spoken_script:'¿Quieres una primera impresión diferente? Conoce Goda. Escríbenos.',
+  hook:'¿Quieres una primera impresión diferente?',cta:'Escríbenos para pedirlo.',
+  video_prompt:specific,shots};
+ const response=safeResearchResponse({
+  id:'already-paid-sample',status:'ready',product_name:'Goda',
+  description:'Aroma masculino para primera impresión romántica y atraer mujeres adultas',
+  market_code:'EC',sales_angle:'auto',creative_style:'ugc',
+  video_duration_seconds:30,video_model_id:'kling-4.0-reference-to-video',
+  video_language:'es',findings_json:JSON.stringify({product_dossier:{actual_category:'perfume'}}),
+  concepts_json:JSON.stringify([concept,{...concept,name:'Otro encuentro'},{...concept,name:'Último encuentro'}])
+ });
+ assert.equal(response.concepts[0].video_prompt,specific,'never replace researched choreography with a generic perfume scene');
+ assert.deepEqual(response.concepts[0].shots,shots,'retain researched and paid scene count');
+ assert.equal(response.concepts[0].buyer_motive,concept.buyer_motive,'retain the original emotional purchase motive');
+ assert.equal(response.concepts.length,3);
 });
