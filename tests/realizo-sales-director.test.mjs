@@ -73,7 +73,7 @@ test('Premium approved brief actually selects provider reference workflow and ch
  assert.doesNotMatch(bridge,/window\.confirm/);
 });
 
-test('12-second UGC prioritizes a spoken buyer review over a five-shot silent montage',()=>{
+test('12-second UGC adds short motivated cuts while preserving continuous buyer speech',()=>{
  const source={name:'Combo NOIL + GODA',angle:'beneficio directo',
   hook:'¿Listo para salir?',spoken_script:'¿Te falta el toque final? NOIL para tu rutina capilar y GODA como esencia perfumada. Elige tu combo y pídelo hoy.',
   cta:'Pide el combo hoy',
@@ -84,7 +84,7 @@ test('12-second UGC prioritizes a spoken buyer review over a five-shot silent mo
    description:'Shampoo perfumado NOIL más esencia concentrada de perfume GODA',
    style:'ugc',shotPreference:'multi',duration:12,modelId:'seedance-2.5-intl-omni-reference'
  });
- assert.equal(result.shot_count,2);
+ assert.equal(result.shot_count,3);
  assert.match(result.prompt,/0-1\.8s speaker says a concise compelling hook/i);
  assert.match(result.prompt,/70-85%/);
  assert.match(result.prompt,/SPOKEN SCRIPT \(Spanish, target market EC\)/);
