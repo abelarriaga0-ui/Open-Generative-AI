@@ -86,7 +86,7 @@ export async function POST(request) {
     const premiumError=await verifyPremiumGeneration(env.WALLETS_DB,user.id,body.model_id,body.input,body.creative_context);
     if(premiumError)return Response.json({error:premiumError},{status:422});
     // Enforce the same video realism contract used during the price quote.
-    const renderInput=applyRealismToVideoInput(body.input);
+    const renderInput=applyRealismToVideoInput(body.input,{creativeContext:body.creative_context});
     phase='model-lookup';
     const pilot=env.REALIZO_ENV==='sandbox';
     const multiModel=!pilot || await isOwnerMultiModelSandbox(env,user);
