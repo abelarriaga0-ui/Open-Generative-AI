@@ -23,7 +23,6 @@ const longNarration=[
  'Por eso incorpora Producto de prueba en tu preparación cotidiana. Es',
  'un accesorio de cuidado personal pensado para acompañar ese momento.',
  'Úsalo como parte de tu propia rutina y decide cómo quieres presentarte.',
- 'No necesitas cambiar quién eres, sino prestar atención a lo que eliges.',
  'Escríbenos para conocerlo y pedir el tuyo hoy.'
 ].join(' ');
 test('long spoken Premium has a natural 30-second word budget',()=>{
