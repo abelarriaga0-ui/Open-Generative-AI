@@ -35,6 +35,8 @@ jobs:
           node --test tests/realizo-studio-routing.test.mjs
           node --test tests/realizo-creator.test.mjs
           node --test tests/realizo-premium-studio.test.mjs
+          node --test tests/realizo-wallet-engine.test.mjs
+          node --test tests/realizo-ai-premium.test.mjs
       - name: Compile sandbox application; do not deploy
         env:
           CI: 'true'
