@@ -30,9 +30,9 @@ test('native Studio renders public showcase but gates video creation and private
   assert.match(s,/RealizoStudio accountId=\{user\?\.id\|\|null\} guest=\{!user\}/);
   assert.doesNotMatch(s,/if \(!user\) redirect\('\/login'\)/);
   const editor=readFileSync('components/RealizoStudio.jsx','utf8');
-  assert.match(editor,/VideoStudio/);
-  assert.match(editor,/persistenceScope=\{accountId\}/);
-  assert.match(editor,/previewOnly/);
+  assert.match(editor,/RealizoSeedanceFlow/);
+  assert.match(editor,/uploadAsset=\{uploadAsset\}/);
+  assert.match(editor,/onWalletRefresh=\{refreshWallet\}/);
   assert.match(editor,/function startNewVideo\(\)\{\s*if\(guest\)return requireLogin\(\)/);
   assert.match(editor,/if\(guest\|\|page!=='videos'\)return/);
   const wallet=readFileSync('app/api/wallet/route.js','utf8');
