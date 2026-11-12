@@ -1,0 +1,50 @@
+name: Realizo Seedance 2.0 - validate guided creator (no deployment)
+on:
+  push:
+    branches:
+      - feature/realizo-seedance2-guided-20261112
+  pull_request:
+    branches: [main]
+    paths:
+      - 'components/RealizoSeedanceFlow.jsx'
+      - 'components/RealizoStudio.jsx'
+      - 'components/RealizoMotionHome.jsx'
+      - 'tests/realizo-seedance-guided.test.mjs'
+      - '.github/workflows/realizo-seedance-guided-qa.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Structural and regression tests without billable calls
+        run: |
+          node --test tests/realizo-seedance-guided.test.mjs
+          node --test tests/realizo-studio-routing.test.mjs
+          node --test tests/realizo-creator.test.mjs
+          node --test tests/realizo-premium-studio.test.mjs
+      - name: Compile sandbox application; do not deploy
+        env:
+          CI: 'true'
+          NEXT_TELEMETRY_DISABLED: '1'
+          REALIZO_ENV: sandbox
+          REALIZO_AUTH_PROVIDER: native
+          REALIZO_WALLET_ONLY: 'true'
+          PAYPAL_MODE: sandbox
+          MUAPI_GENERATION_ENABLED: 'false'
+          REALIZO_AUTH_ORIGIN: https://realizo-auth-sandbox.abelarriaga0.workers.dev
+        run: npm run cloudflare:build:realizo-auth-sandbox
+      - name: Assert validation made no production changes
+        run: echo 'No Cloudflare deployment, D1 migration, PayPal transaction or MuAPI generation was executed.'
