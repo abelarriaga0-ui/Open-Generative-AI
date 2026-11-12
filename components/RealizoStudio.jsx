@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { optimizeImage } from '@/lib/realizo-creative/optimize-image';
 import { generateWithRealizoWallet } from '@/lib/realizo-creative/wallet-generation';
 import { downloadRealizoVideo } from '@/lib/realizo-creative/download-video';
+import { VideoStudio } from 'studio';
 import RealizoPremium from '@/components/RealizoPremium';
 import RealizoHyperrealPro from '@/components/RealizoHyperrealPro';
 import RealizoVisualGallery from '@/components/RealizoVisualGallery';
@@ -335,12 +336,22 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
              <div className="mb-5 rounded-2xl bg-white border border-[#e8dfe9] p-4 text-[13px] text-[#776482]">
                Estás reabriendo un proyecto anterior. Para empezar uno nuevo con Seedance 2.0, selecciona Crear video.
              </div>
-             <RealizoPremium key={'legacy-'+resumeProjectId+'-'+createKey} initialProjectId={resumeProjectId}
-               initialStyle={formatPreset} onPrepare={setBrief} onOpenAdvanced={openEditor}
-               onCreateNew={startNewVideo} onWalletGenerate={onWalletGenerate}
-               onGenerationComplete={()=>{setPage('videos');setCreationsRefresh(n=>n+1);refreshWallet();}}
-               onViewCreations={()=>{setPage('videos');setCreationsRefresh(n=>n+1);}}
-               onWalletRefresh={refreshWallet}/>
+             {editorOpen?
+               <div className="space-y-4">
+                 <button type="button" onClick={()=>setEditorOpen(false)} className="rounded-2xl border border-[#e5d8e4] bg-white px-5 py-3 font-bold text-sm text-[#6845ab]">← Volver al proyecto anterior</button>
+                 <div className="realizo-native-video rounded-[26px] overflow-hidden h-[min(790px,calc(100vh-190px))] min-h-[605px]">
+                   <VideoStudio locale="en" apiKey={null} persistenceScope={accountId} preparedBrief={brief}
+                     realizoBrand previewOnly freshCreation uploadAsset={uploadAsset}
+                     onWalletGenerate={onWalletGenerate} onSaveTemplate={savePersonalTemplate}
+                     generationReady={generationReady} billableModelIds={billableModelIds}/>
+                 </div>
+               </div>:
+               <RealizoPremium key={'legacy-'+resumeProjectId+'-'+createKey} initialProjectId={resumeProjectId}
+                 initialStyle={formatPreset} onPrepare={setBrief} onOpenAdvanced={openEditor}
+                 onCreateNew={startNewVideo} onWalletGenerate={onWalletGenerate}
+                 onGenerationComplete={()=>{setPage('videos');setCreationsRefresh(n=>n+1);refreshWallet();}}
+                 onViewCreations={()=>{setPage('videos');setCreationsRefresh(n=>n+1);}}
+                 onWalletRefresh={refreshWallet}/>}
            </section>
          : <RealizoSeedanceFlow key={'seedance-'+createKey} accountId={accountId}
              initialStyle={formatPreset}
