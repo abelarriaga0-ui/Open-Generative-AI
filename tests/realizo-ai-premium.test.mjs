@@ -70,14 +70,16 @@ test('report yields exactly three concepts and only tool-provided verified sourc
  assert.throws(()=>parseResearchResult({...response,output:[{type:'message',
    content:[{type:'output_text',text:JSON.stringify({...report,concepts:[template]})}]}]}),/research_invalid_content/);
 });
-test('native route guard keeps Premium API private and the UI exposes all three creation modes',async()=>{
+test('native route guard keeps Premium API private while new public wizard uses one model',async()=>{
  const {walletPilotAction}=await import('../lib/wallet/request-policy.js');
  assert.equal(walletPilotAction('/api/realizo/ai-premium',true,true),'allow');
  assert.equal(walletPilotAction('/api/realizo/ai-premium/123/approve',true,true),'allow');
  assert.equal(walletPilotAction('/api/realizo/ai-premium',true,false),'deny');
  const studio=readFileSync('components/RealizoStudio.jsx','utf8');
  assert.match(studio,/RealizoPremium/);
- for(const option of ['automatic','manual','premium'])assert.ok(studio.includes("'"+option+"'"));
+ assert.match(studio,/RealizoSeedanceFlow/);
+ const guided=readFileSync('components/RealizoSeedanceFlow.jsx','utf8');
+ assert.match(guided,/const MODEL_ID='seedance-2-omni-reference'/);
  const schema=readFileSync('migrations/0012_realizo_ai_premium.sql','utf8');
  assert.doesNotMatch(schema,/UPDATE wallets|INSERT INTO wallet_ledger/);
 });
