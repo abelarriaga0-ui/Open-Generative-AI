@@ -21,7 +21,7 @@ test('native account only can view its videos; unknown APIs blocked by proxy',()
  assert.match(api,/requireWalletUser/);
  assert.doesNotMatch(api,/searchParams\.get\(['"]user_id/);
 });
-test('original multi-model picker remains available while paid requests require wallet readiness',()=>{
+test('legacy editor remains protected while public Seedance flow requires wallet readiness',()=>{
  const editor=readFileSync('packages/studio/src/components/VideoStudio.jsx','utf8');
  assert.match(editor,/previewOnly && !generationReady/);
  assert.match(editor,/onWalletGenerate && generationReady/);
@@ -29,7 +29,10 @@ test('original multi-model picker remains available while paid requests require 
  const wrapper=readFileSync('components/RealizoStudio.jsx','utf8');
  assert.match(wrapper,/setGenerationReady\(Boolean\(x\?\.generation_enabled &&/);
  assert.match(wrapper,/onWalletGenerate=\{onWalletGenerate\}/);
- assert.match(wrapper,/billableModelIds=\{billableModelIds\}/);
+ assert.match(wrapper,/<RealizoSeedanceFlow/);
+ const wizard=readFileSync('components/RealizoSeedanceFlow.jsx','utf8');
+ assert.match(wizard,/const MODEL_ID='seedance-2-omni-reference'/);
+ assert.match(wizard,/max_price_cents:quote\.price_cents/);
  const flags=JSON.parse(readFileSync('wrangler.auth-sandbox.jsonc','utf8')).vars;
  assert.equal(flags.REALIZO_MULTI_MODEL_SANDBOX,'true');
  assert.equal(flags.REALIZO_MUAPI_PILOT_ACCOUNT_ID,undefined);

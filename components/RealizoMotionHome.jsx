@@ -56,7 +56,7 @@ export default function RealizoMotionHome({onCreate,onTemplates,onUseTemplate,on
     <div className="realizo-motion-stage-halo" aria-hidden="true"/>
     <div className="realizo-motion-stage-orbit orbit-one" aria-hidden="true"/>
     <div className="realizo-motion-stage-orbit orbit-two" aria-hidden="true"/>
-    <div className="realizo-motion-stage-back-card back-one" aria-hidden="true"><span>30s</span></div>
+    <div className="realizo-motion-stage-back-card back-one" aria-hidden="true"><span>IA</span></div>
     <div className="realizo-motion-stage-back-card back-two" aria-hidden="true"><span>9:16</span></div>
     <div className="realizo-motion-film">
      <video ref={video} src={TEMPLATE_HOVER_SRC} poster={TEMPLATE_POSTER_SRC}
@@ -116,11 +116,11 @@ export default function RealizoMotionHome({onCreate,onTemplates,onUseTemplate,on
     <div className="realizo-motion-featured-copy">
      <span className="realizo-motion-featured-eyebrow"><span/> PLANTILLA REAL</span>
      <h3>Un anuncio.<br/><em>Tu producto.</em></h3>
-     <p>UGC Vendedor · 30 segundos</p>
+     <p>UGC natural · ejemplo visual (el nuevo generador crea hasta 15 s)</p>
      <button type="button" onClick={()=>onUseTemplate('ugc-vendedor')}>
       Usar plantilla <span aria-hidden="true">↗</span>
      </button>
-     <div className="realizo-motion-mini-specs"><span>30s</span><span>9:16</span><span>ES</span></div>
+     <div className="realizo-motion-mini-specs"><span>Seedance 2.0</span><span>9:16</span><span>ES</span></div>
     </div>
     <div className="realizo-motion-featured-video">
       <RealizoTemplateLibrary featured onChoose={onUseTemplate}/>

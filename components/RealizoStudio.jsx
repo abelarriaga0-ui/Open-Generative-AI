@@ -5,7 +5,6 @@ import { optimizeImage } from '@/lib/realizo-creative/optimize-image';
 import { generateWithRealizoWallet } from '@/lib/realizo-creative/wallet-generation';
 import { downloadRealizoVideo } from '@/lib/realizo-creative/download-video';
 import { VideoStudio } from 'studio';
-import RealizoCreator from '@/components/RealizoCreator';
 import RealizoPremium from '@/components/RealizoPremium';
 import RealizoHyperrealPro from '@/components/RealizoHyperrealPro';
 import RealizoVisualGallery from '@/components/RealizoVisualGallery';
@@ -14,6 +13,7 @@ import RealizoTemplateCreator from '@/components/RealizoTemplateCreator';
 import RealizoMotionHome from '@/components/RealizoMotionHome';
 import ConversionTemplatesStudio from '@/components/ConversionTemplatesStudio';
 import RealizoCreationsGallery from '@/components/RealizoCreationsGallery';
+import RealizoSeedanceFlow from '@/components/RealizoSeedanceFlow';
 import {getAdTemplate} from '@/lib/realizo-creative/ad-templates';
 
 function Mark() {
@@ -149,8 +149,8 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
      creative_style:t.category==='cine_premium'?'premium':t.category==='ugc'?'ugc':'commercial',
    });
    setTemplateId(null);setFormatPreset(t.category==='cine_premium'?'premium':'ugc');
-   setResumeProjectId(null);setCreatorMode('manual');
-   setEditorOpen(true);setPage('create');setCreateKey(n=>n+1);setSidebar(false);
+   setResumeProjectId(null);setCreatorMode('seedance');
+   setEditorOpen(false);setPage('create');setCreateKey(n=>n+1);setSidebar(false);
  }
  useEffect(()=>{
    if(guest||page!=='videos')return;
@@ -173,6 +173,31 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
    }).finally(()=>{if(!cancelled)setJobsLoading(false)});
    return ()=>{cancelled=true};
  },[page,guest,creationsRefresh]);
+ // Reconciliar los videos pendientes al abrir Mis videos desde cualquier dispositivo.
+ // La generación ocurre en MuAPI y sigue aunque la pantalla se cierre; el resultado
+ // vuelve a D1 al consultar el ID autenticado, sin reenviar ni cobrar el trabajo.
+ useEffect(()=>{
+   if(guest||page!=='videos')return;
+   const pending=jobs.filter(job=>['sent','reserved'].includes(job.status)).slice(0,6);
+   if(!pending.length)return;
+   let cancelled=false,timeout;
+   const reconcile=async()=>{
+     try{
+       const checks=await Promise.allSettled(pending.map(item=>
+         fetch('/api/wallet/jobs/'+encodeURIComponent(item.id),{
+           credentials:'same-origin',cache:'no-store'
+         }).then(r=>r.ok||r.status===202?r.json():Promise.reject(new Error('status_unavailable')))
+       ));
+       if(cancelled)return;
+       const finalized=checks.some(item=>item.status==='fulfilled'&&
+         ['completed','failed'].includes(item.value.status));
+       if(finalized){setCreationsRefresh(count=>count+1);return;}
+     }catch{}
+     if(!cancelled)timeout=setTimeout(reconcile,5500);
+   };
+   reconcile();
+   return ()=>{cancelled=true;clearTimeout(timeout);};
+ },[page,guest,jobs]);
 
  async function exit(){
    try{await fetch('/api/auth/logout',{method:'POST',credentials:'same-origin'});}
@@ -202,7 +227,7 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
    setPage('create');setSidebar(false);
    setBrief(null);setResumeProjectId(null);setTemplateId(null);setCreateKey(current=>current+1);
    setCreatorMode(mode);
-   if(mode==='manual')openEditor();
+   // El creador público utiliza un único flujo guiado Seedance 2.0.
  }
  function chooseVisualFormat(format){
   if(guest)return requireLogin();
@@ -216,7 +241,7 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
   if(!item)return;
   setBrief(null);setEditorOpen(false);setResumeProjectId(null);
   setTemplateId(item.id);setFormatPreset(item.style);
-  setCreatorMode('premium');setPage('templates');setSidebar(false);
+  setCreatorMode('seedance');setPage('create');setSidebar(false);
   setCreateKey(x=>x+1);
  }
  const nav=(id,label,icon,action)=>(
@@ -305,80 +330,35 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
        onWalletRefresh={refreshWallet}
        onGenerationComplete={()=>{setPage('videos');setCreationsRefresh(n=>n+1);refreshWallet();}}
        onViewCreations={()=>{setPage('videos');setCreationsRefresh(n=>n+1);}}/>}
-     {page==='create'&&<>
-      <section className="realizo-page-heading max-w-[1230px] mx-auto mb-8">
-        <p className="uppercase tracking-[.19em] text-[#B28059] font-bold text-[10px]">REALIZO STUDIO</p>
-        <div className="flex flex-wrap items-center justify-between gap-5 mt-2">
-          <div><h1 className="text-[33px] sm:text-[42px] tracking-[-.045em] font-extrabold leading-tight">{editorOpen?'Editor':'Crear video'}<span className="text-[#EB8A87]">.</span></h1>
-</div>
-          <button type="button" onClick={()=>{
-            if(editorOpen && brief?.project_id){
-              setResumeProjectId(brief.project_id);setCreatorMode('premium');
-              setCreateKey(current=>current+1);
-            }
-            setEditorOpen(open=>!open);
-          }} className="inline-flex gap-2 items-center text-[#6845AB] font-semibold text-sm bg-white rounded-full border border-[#E5D8E4] px-5 py-3 hover:bg-[#F1E9FC]">
-            <Icon name={editorOpen?'arrow':'sliders'} size={18}/>{editorOpen?'Volver':'Avanzado'}
-          </button>
-        </div>
-      </section>
-
-      {!editorOpen?<section className="realizo-create-flow max-w-[1230px] mx-auto space-y-6">
-        {templateId&&<div className="realizo-v11-selected-template">
-          <span>PLANTILLA SELECCIONADA</span><strong>{getAdTemplate(templateId)?.name}</strong>
-          <p>La estructura, el ritmo y las transiciones quedan preparados. Cambia el producto, actor, escenario o mensaje.</p>
-          <button type="button" onClick={()=>{setPage('templates');setTemplateId(null)}}>Cambiar plantilla</button>
-        </div>}
-        <div className="realizo-modes flex flex-wrap gap-3 rounded-[22px] p-3" aria-label="Modalidad de creación">
-          {[
-            ['premium','✦ Con IA'],
-            ['automatic','Automático'],
-            ['manual','Manual']
-          ].map(([id,label])=><button key={id} type="button"
-            onClick={()=>chooseCreatorMode(id)}
-            aria-pressed={creatorMode===id}
-            data-primary-mode={id==='premium'?'true':undefined}
-            className={'rounded-2xl px-5 py-3 text-sm font-bold transition '+
-              (creatorMode===id?'bg-[#6E4BD2] text-white':'bg-[#F8F4FB] text-[#6B5092] hover:bg-[#EDE1FA]')}>
-            {label}
-          </button>)}
-        </div>
-        {creatorMode==='premium'?
-          <RealizoPremium initialStyle={formatPreset} initialTemplateId={templateId} key={'premium-'+createKey+'-'+(resumeProjectId||'new')+'-'+(templateId||'free')}
-            initialProjectId={resumeProjectId}
-            onPrepare={setBrief} onOpenAdvanced={openEditor} onCreateNew={newPremiumProject}
-            onWalletGenerate={onWalletGenerate}
-            onGenerationComplete={()=>{setPage('videos');setCreationsRefresh(n=>n+1);refreshWallet();}}
-            onViewCreations={()=>{setPage('videos');setCreationsRefresh(n=>n+1);}}
-            onWalletRefresh={refreshWallet}
-            onUseAutomatic={()=>chooseCreatorMode('automatic')}/>:
-          <RealizoCreator accountId={accountId} onPrepare={setBrief} onOpenAdvanced={openEditor}/>}
-       </section>:
-       <section className="max-w-[1550px] mx-auto space-y-4">
-        {brief&&<div className="rounded-2xl bg-[#E9DDFB] px-5 py-3 flex flex-wrap items-center justify-between gap-3">
-          <span className="text-[13px] text-[#624496] font-semibold">✓ Producto y ángulo de venta aplicados al editor</span>
-          <button type="button" onClick={()=>{
-            if(brief?.project_id){
-              setResumeProjectId(brief.project_id);setCreatorMode('premium');
-              setCreateKey(current=>current+1);
-            }
-            setEditorOpen(false);
-          }} className="text-[#6E4BD2] text-[13px] font-bold hover:underline">Editar concepto</button>
-        </div>}
-        <div className="realizo-native-video rounded-[26px] overflow-hidden h-[min(790px,calc(100vh-190px))] min-h-[605px]">
-          <VideoStudio locale="en" apiKey={null} persistenceScope={accountId} preparedBrief={brief}
-            realizoBrand previewOnly freshCreation uploadAsset={uploadAsset}
-            onWalletGenerate={onWalletGenerate} onSaveTemplate={savePersonalTemplate} generationReady={generationReady}
-            billableModelIds={billableModelIds} />
-        </div>
-        {pilotAvailable&&!generationReady&&<div className="rounded-2xl border border-[#EBD7C8] bg-[#FFF4E9] px-5 py-3 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-[13px] text-[#7A5663] font-semibold">Para generar necesitas al menos {usd(pilotPrice||35)} en tu billetera.</p>
-          <Link href="/wallet" className="font-bold text-[#6845AB] text-sm underline">Recargar créditos</Link>
-        </div>}
-
-        {!pilotAvailable&&<p className="text-[12px] text-[#9A8B9B]">Selecciona un modelo y confirma el costo antes de generar.</p>}
-       </section>}
-     </>}
+     {page==='create'&&(
+       resumeProjectId
+         ? <section className="max-w-[1230px] mx-auto">
+             <div className="mb-5 rounded-2xl bg-white border border-[#e8dfe9] p-4 text-[13px] text-[#776482]">
+               Estás reabriendo un proyecto anterior. Para empezar uno nuevo con Seedance 2.0, selecciona Crear video.
+             </div>
+             {editorOpen?
+               <div className="space-y-4">
+                 <button type="button" onClick={()=>setEditorOpen(false)} className="rounded-2xl border border-[#e5d8e4] bg-white px-5 py-3 font-bold text-sm text-[#6845ab]">← Volver al proyecto anterior</button>
+                 <div className="realizo-native-video rounded-[26px] overflow-hidden h-[min(790px,calc(100vh-190px))] min-h-[605px]">
+                   <VideoStudio locale="en" apiKey={null} persistenceScope={accountId} preparedBrief={brief}
+                     realizoBrand previewOnly freshCreation uploadAsset={uploadAsset}
+                     onWalletGenerate={onWalletGenerate} onSaveTemplate={savePersonalTemplate}
+                     generationReady={generationReady} billableModelIds={billableModelIds}/>
+                 </div>
+               </div>:
+               <RealizoPremium key={'legacy-'+resumeProjectId+'-'+createKey} initialProjectId={resumeProjectId}
+                 initialStyle={formatPreset} onPrepare={setBrief} onOpenAdvanced={openEditor}
+                 onCreateNew={startNewVideo} onWalletGenerate={onWalletGenerate}
+                 onGenerationComplete={()=>{setPage('videos');setCreationsRefresh(n=>n+1);refreshWallet();}}
+                 onViewCreations={()=>{setPage('videos');setCreationsRefresh(n=>n+1);}}
+                 onWalletRefresh={refreshWallet}/>}
+           </section>
+         : <RealizoSeedanceFlow key={'seedance-'+createKey} accountId={accountId}
+             initialStyle={formatPreset}
+             initialNotes={brief?.prompt||''}
+             uploadAsset={uploadAsset} onWalletRefresh={refreshWallet}
+             onViewVideos={()=>{setPage('videos');setCreationsRefresh(n=>n+1);}}/>
+     )}
 
      {page==='videos'&&<section className="realizo-videos-page max-w-[1250px] mx-auto">
       {templateNotice&&<p role="status" className="rounded-xl bg-[#ECE4F8] px-4 py-3 text-[#694A9A] text-sm mb-3">{templateNotice}</p>}
