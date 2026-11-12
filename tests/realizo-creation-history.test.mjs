@@ -12,7 +12,7 @@ test('Crear video starts a fresh project and never auto-opens the previous Premi
  assert.match(studio,/nav\('create','Crear video','video',startNewVideo\)/);
  assert.match(studio,/setResumeProjectId\(null\)/);
  assert.match(studio,/setCreateKey\(current=>current\+1\)/);
- assert.match(studio,/key=\{'premium-'\+createKey/);
+ assert.match(studio,/key=\{'seedance-'\+createKey/);
 });
 test('Mis videos holds the real completed videos and a separate recoverable research history',()=>{
  const studio=readFileSync('components/RealizoStudio.jsx','utf8');
@@ -37,5 +37,5 @@ test('New project resets only UI state, not balance or saved research',()=>{
  const editor=readFileSync('packages/studio/src/components/VideoStudio.jsx','utf8');
  assert.match(editor,/if\(freshCreation\)\{hasRestored\.current=true;return;\}/);
  assert.match(editor,/if\(freshCreation\)return;/);
- assert.match(studio,/realizoBrand previewOnly freshCreation/);
+ assert.match(studio,/<RealizoSeedanceFlow/);
 });
