@@ -64,8 +64,8 @@ function Option({chosen,onClick,title,detail,icon}){
  </button>;
 }
 
-export default function RealizoSeedanceFlow({accountId,initialStyle='auto',uploadAsset,onWalletRefresh,onViewVideos}){
- const [d,setD]=useState({...INITIAL,style:STYLES.some(x=>x.id===initialStyle)?initialStyle:'auto'});
+export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initialNotes='',uploadAsset,onWalletRefresh,onViewVideos}){
+ const [d,setD]=useState({...INITIAL,style:STYLES.some(x=>x.id===initialStyle)?initialStyle:'auto',notes:initialNotes.slice(0,450)});
  const [step,setStep]=useState(0);
  const [photos,setPhotos]=useState([]);
  const [uploading,setUploading]=useState(false);
@@ -76,6 +76,7 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',uploa
  const [sending,setSending]=useState(false);
  const [jobId,setJobId]=useState('');
  const [jobStatus,setJobStatus]=useState('');
+ const [providerPercent,setProviderPercent]=useState(null);
  const [videoUrl,setVideoUrl]=useState('');
  const [jobError,setJobError]=useState('');
  const [pollError,setPollError]=useState('');
@@ -183,6 +184,7 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',uploa
        else {
          setPollError('');
          setJobStatus(body.status||'sent');
+         setProviderPercent(Number.isInteger(body.provider_progress_percent)?body.provider_progress_percent:null);
          if(body.status==='completed'){
            const url=extractGeneratedVideoUrl(body);
            if(url)setVideoUrl(url);
@@ -211,9 +213,9 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',uploa
  },[jobId,videoUrl,jobError,savedJobKey]);
 
  function restart(){
-   setPhotos([]);setD({...INITIAL,style:STYLES.some(x=>x.id===initialStyle)?initialStyle:'auto'});
+   setPhotos([]);setD({...INITIAL,style:STYLES.some(x=>x.id===initialStyle)?initialStyle:'auto',notes:initialNotes.slice(0,450)});
    setQuote(null);setQuoteError('');setJobId('');setJobStatus('');setVideoUrl('');
-   setJobError('');setPollError('');setStep(0);keyRef.current=null;
+   setJobError('');setPollError('');setProviderPercent(null);setStep(0);keyRef.current=null;
    try{sessionStorage.removeItem(savedJobKey);}catch{}
  }
  const percentage=Math.round(step/6*100);
@@ -344,8 +346,10 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',uploa
        <p className="text-sm text-[#84768e] mt-3">{jobError||'Realizo ya envió tu solicitud. Puedes salir de esta pantalla; el trabajo se guarda en Mis videos.'}</p>
        {!jobError&&<><div role="status" aria-live="polite" className="mt-7 rounded-2xl border border-[#e9dfef] bg-[#fbf8fd] px-4 py-4">
          <div className="flex items-center justify-between text-[13px]"><span className="font-bold">Generación con Seedance 2.0</span><span className="text-[#875bb0] animate-pulse">● Procesando</span></div>
-         <div className="mt-3 h-2.5 w-full bg-[#e7ddef] overflow-hidden rounded-full"><div className="h-full w-[42%] bg-gradient-to-r from-[#d8bdf7] to-[#8352d2] rounded-full animate-pulse"/></div>
-         <p className="text-xs text-[#897c92] mt-3">La barra indica actividad, no un porcentaje inventado.</p>
+         <div className="mt-3 h-2.5 w-full bg-[#e7ddef] overflow-hidden rounded-full" role={providerPercent!==null?'progressbar':'status'} aria-valuenow={providerPercent!==null?providerPercent:undefined} aria-valuemin={providerPercent!==null?0:undefined} aria-valuemax={providerPercent!==null?100:undefined}>
+           <div className={'h-full bg-gradient-to-r from-[#d8bdf7] to-[#8352d2] rounded-full transition-all '+(providerPercent===null?'animate-pulse':'')} style={{width:(providerPercent!==null?providerPercent:42)+'%'}}/>
+         </div>
+         <p className="text-xs text-[#897c92] mt-3">{providerPercent!==null?'Avance informado por el proveedor: '+providerPercent+'%':'Generación activa. El proveedor todavía no ha enviado un porcentaje verificable.'}</p>
        </div>{pollError&&<p role="status" className="mt-3 text-xs text-[#856f9a]">{pollError}</p>}</>}
        {jobId&&<p className="mt-4 text-[11px] text-[#978b9f] break-all">Trabajo: {jobId} · Estado: {jobStatus||'enviado'}</p>}
        <div className="flex flex-wrap justify-center gap-3 mt-7"><button type="button" onClick={onViewVideos} className="bg-[#7650c7] text-white px-6 py-3 rounded-2xl font-bold">Ver Mis videos</button>
