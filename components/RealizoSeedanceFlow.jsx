@@ -40,7 +40,9 @@ function scriptFor(d){
   const context='Mercado: '+d.market+'. Público: '+(d.audience.trim()||'personas interesadas en el producto')+'. Objetivo: '+(OBJECTIVES.find(x=>x.id===d.objective)?.name||'Generar ventas')+'.';
   const facts='Producto: '+name+'. Información verificada por el vendedor: '+(d.description.trim()||'sin características adicionales confirmadas')+'. No inventes ingredientes, eficacia, testimonios, precios, descuentos, disponibilidad ni resultados.';
   const common='Filmación hiperrealista con física, piel, manos y materiales naturales. Un solo anuncio continuo con luz, vestuario, reparto, espacios, escala del producto y sonido coherentes entre cortes. Hook visual inmediato, producto visible temprano, demostración o detalle observable, beneficio fundamentado y cierre claro. Sin animar el envase flotando, rotaciones CGI, etiquetas deformadas, escenas decorativas repetidas ni letras inventadas. Composición legible para anuncio móvil.';
-  const style=(d.style==='ugc'||d.style==='auto')
+  const style=d.style==='auto'
+    ?'IA creativa: elige automáticamente el enfoque comercial más adecuado para la información disponible entre UGC hablado a cámara, demostración o mini-historia visual. Prioriza claridad del uso del producto, deseo del público y continuidad de tomas. Si hay una persona, conserva siempre su identidad. No inventes pruebas, datos ni testimonios.'
+    :d.style==='ugc'
     ?'UGC creíble: adulto natural mirando y hablando directamente a cámara desde el primer segundo. Sonido y labios sincronizados, español latinoamericano conversacional, 1 o 2 acciones reales y producto en mano. Alterna rostro y detalle manteniendo al mismo personaje. Nada de falso testimonio real ni voz de locutor exagerada.'
     :d.style==='demo'
     ?'Demostración: muestra el producto funcionando de forma físicamente plausible en un contexto cotidiano, con planos útiles, manos naturales y continuidad de la misma acción. Narración breve en español si ayuda.'
