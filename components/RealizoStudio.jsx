@@ -172,6 +172,31 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
    }).finally(()=>{if(!cancelled)setJobsLoading(false)});
    return ()=>{cancelled=true};
  },[page,guest,creationsRefresh]);
+ // Reconciliar los videos pendientes al abrir Mis videos desde cualquier dispositivo.
+ // La generación ocurre en MuAPI y sigue aunque la pantalla se cierre; el resultado
+ // vuelve a D1 al consultar el ID autenticado, sin reenviar ni cobrar el trabajo.
+ useEffect(()=>{
+   if(guest||page!=='videos')return;
+   const pending=jobs.filter(job=>['sent','reserved'].includes(job.status)).slice(0,6);
+   if(!pending.length)return;
+   let cancelled=false,timeout;
+   const reconcile=async()=>{
+     try{
+       const checks=await Promise.allSettled(pending.map(item=>
+         fetch('/api/wallet/jobs/'+encodeURIComponent(item.id),{
+           credentials:'same-origin',cache:'no-store'
+         }).then(r=>r.ok||r.status===202?r.json():Promise.reject(new Error('status_unavailable')))
+       ));
+       if(cancelled)return;
+       const finalized=checks.some(item=>item.status==='fulfilled'&&
+         ['completed','failed'].includes(item.value.status));
+       if(finalized){setCreationsRefresh(count=>count+1);return;}
+     }catch{}
+     if(!cancelled)timeout=setTimeout(reconcile,5500);
+   };
+   reconcile();
+   return ()=>{cancelled=true;clearTimeout(timeout);};
+ },[page,guest,jobs]);
 
  async function exit(){
    try{await fetch('/api/auth/logout',{method:'POST',credentials:'same-origin'});}
