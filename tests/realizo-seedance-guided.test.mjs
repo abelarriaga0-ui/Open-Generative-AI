@@ -39,3 +39,11 @@ test('image references are required and output is restricted to supported length
   assert.match(wizard,/@image1/);
   assert.match(wizard,/NO es un fotograma inicial/);
 });
+
+test('Mis videos reconciles pending Seedance jobs after reopening on a different device',()=>{
+ assert.match(wrapper,/const pending=jobs\.filter/);
+ assert.match(wrapper,/\/api\/wallet\/jobs\//);
+ assert.match(wrapper,/setCreationsRefresh\(count=>count\+1\)/);
+ const jobs=readFileSync('app/api/realizo/jobs/route.js','utf8');
+ assert.match(jobs,/WHERE user_id=\?/);
+});
