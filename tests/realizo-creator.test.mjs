@@ -48,7 +48,7 @@ test('original editor accepts prepared image URLs and product brief',()=>{
   assert.match(editor,/setUploadedImageUrls\(images/);
   assert.match(editor,/uploadAsset\(file\)/);
   const wrapper=readFileSync('components/RealizoStudio.jsx','utf8');
-  assert.match(wrapper,/RealizoCreator/);
-  assert.match(wrapper,/persistenceScope=\{accountId\}/);
-  assert.match(wrapper,/previewOnly/);
+  assert.match(wrapper,/RealizoSeedanceFlow/);
+  assert.match(wrapper,/initialStyle=\{formatPreset\}/);
+  assert.match(wrapper,/onViewVideos=/);
 });
