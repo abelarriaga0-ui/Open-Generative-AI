@@ -26,19 +26,16 @@ test('huge product dossier does not overwhelm the video model or repeat outline 
   assert.ok(!result.prompt.includes('BLOQUE C'));
   assert.ok(result.prompt.includes('No inventar'));
 });
-test('premium Realizo video editor docks its controls instead of a black modal',()=>{
-  const editor=readFileSync('packages/studio/src/components/VideoStudio.jsx','utf8');
+test('new public video creator uses the guided Seedance 2.0 flow, retaining the legacy studio assets',()=>{
   const wrapper=readFileSync('components/RealizoStudio.jsx','utf8');
-  const styles=readFileSync('app/globals.css','utf8');
-  assert.match(wrapper,/realizo-native-video/);
-  assert.match(editor,/realizoBrand \? "realizo-docked-composer/);
-  assert.match(editor,/panelClassName=\{realizoBrand \? "realizo-premium-composer"/);
-  assert.match(editor,/realizo-visual-empty/);
-  assert.match(editor,/Tu idea cobra vida/);
+  const wizard=readFileSync('components/RealizoSeedanceFlow.jsx','utf8');
+  const editor=readFileSync('packages/studio/src/components/VideoStudio.jsx','utf8');
+  assert.match(wrapper,/<RealizoSeedanceFlow/);
+  assert.match(wizard,/const MODEL_ID='seedance-2-omni-reference'/);
+  assert.match(wizard,/images_list:photos\.map/);
+  assert.match(wizard,/provider_progress_percent/);
+  assert.match(wizard,/confirmar el cargo|Confirmar /i);
   assert.match(editor,/realizo-generation-action/);
-  assert.match(styles,/\.realizo-native-video \.realizo-premium-composer/);
-  assert.match(styles,/background: #fffefc !important/);
-  assert.match(styles,/background: #6e4bd2 !important/);
 });
 test('original engine and safe billing gates are preserved unchanged',()=>{
   const editor=readFileSync('packages/studio/src/components/VideoStudio.jsx','utf8');
