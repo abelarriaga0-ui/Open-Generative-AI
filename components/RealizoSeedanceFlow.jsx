@@ -5,12 +5,26 @@ import {useEffect,useMemo,useRef,useState} from 'react';
 import {extractGeneratedVideoUrl} from '@/lib/realizo-creative/wallet-generation';
 
 const MODEL_ID='seedance-2-omni-reference';
+const VIDEO_ENGINES=[
+ {id:'seedance',name:'Seedance 2.0',modelId:MODEL_ID,description:'Referencias · escenas comerciales ágiles',min:4,max:15,defaultDuration:15,maxImages:9,ratios:['9:16','1:1','16:9','3:4'],resolutions:[],quality:true},
+ {id:'veo',name:'Veo 3.1',modelId:'veo3.1-reference-to-video',description:'Referencias · video con voz · 8 s fijos',min:8,max:8,defaultDuration:8,maxImages:3,ratios:[],resolutions:['720p','1080p','4k'],quality:false},
+ {id:'kling',name:'Kling 4.0',modelId:'kling-4.0-reference-to-video',description:'Referencias · voz nativa · hasta 30 s',min:3,max:30,defaultDuration:15,maxImages:10,ratios:['9:16','1:1','16:9','21:9'],resolutions:['720p','1080p'],quality:false}
+];
+const engineById=id=>VIDEO_ENGINES.find(x=>x.id===id)||VIDEO_ENGINES[0];
+const durationsForEngine=engine=>Array.from({length:engine.max-engine.min+1},(_,i)=>engine.min+i);
+function inputForEngine(engine,d,prompt,photos){
+ const images=photos.map(p=>p.url);
+ const common={prompt,duration:Number(d.duration)};
+ if(engine.id==='veo')return {...common,images_list:images,resolution:d.resolution,generate_audio:true};
+ if(engine.id==='kling')return {...common,image_urls:images,aspect_ratio:d.ratio,resolution:d.resolution};
+ return {...common,images_list:images,aspect_ratio:d.ratio,quality:d.quality};
+}
 const QUESTIONS=[
   {title:'Muéstrame tu producto',hint:'Empezamos con una fotografía real. Se usará como referencia, no como primer fotograma.'},
   {title:'¿Qué vamos a anunciar?',hint:'Cuéntame lo importante. El video respetará los datos que proporciones.'},
   {title:'¿Qué estilo quieres?',hint:'Elige la manera de contar la historia. Cada estilo mantiene la identidad de tu producto.'},
   {title:'¿A quién queremos llegar?',hint:'Adaptaremos la historia al público y al país que elijas.'},
-  {title:'¿Cómo quieres verlo?',hint:'Define el formato del anuncio. Solo aparecen opciones compatibles con Seedance 2.0.'},
+  {title:'¿Cómo quieres verlo?',hint:'Define parámetros compatibles con el generador seleccionado.'},
   {title:'¿Qué debe decir el video?',hint:'Elige la acción final y añade indicaciones si quieres personalizar más.'},
   {title:'Todo preparado',hint:'Revisa la propuesta y el precio real antes de autorizar el cargo.'}
 ];
@@ -29,7 +43,7 @@ const OBJECTIVES=[
 ];
 const INPUT='w-full rounded-2xl border border-[#454052] bg-[#24242e] px-4 py-3.5 text-[#f6f2fc] placeholder:text-[#a59bb4] outline-none focus:border-[#aa84e6] focus:ring-2 focus:ring-[#7655b4]/40';
 const CARD='rounded-[26px] border border-[#35313f] bg-[#191a22] shadow-[0_14px_42px_rgba(0,0,0,.19)]';
-const DURATION_OPTIONS=Array.from({length:12},(_,i)=>i+4); // Seedance 2.0 supported range: 4–15 seconds
+const DURATION_OPTIONS=durationsForEngine(VIDEO_ENGINES[0]); // Seedance 2.0
 const usd=value=>new Intl.NumberFormat('es-EC',{style:'currency',currency:'USD'}).format((value||0)/100);
 const INITIAL={name:'',description:'',style:'auto',audience:'',market:'Ecuador',objective:'sales',
   ratio:'9:16',duration:8,resolution:'720p',quality:'high',cta:'Escríbenos por WhatsApp',notes:'',problem:'',benefit:'',sceneLines:{}};
@@ -66,7 +80,16 @@ function buildScenePlan(d){
   const cta=compactSpeech(d.cta,7)||'Escríbenos para conocerlo.';
   const isDirect=d.style==='ugc'||d.style==='auto';
   const voice=isDirect?'El mismo adulto habla directamente a cámara, boca sincronizada':'Voz en off audible sobre la acción, en español latino';
-  const specs=total<=7?[
+  const specs=total>15?[
+    {id:'hook',role:'HOOK VISUAL Y HABLADO',line:hook,visual:'Acción humana potente desde el primer fotograma, mostrando el producto pronto'},
+    {id:'context',role:'CONTEXTO COMERCIAL',line:compactSpeech(d.problem,8)||'¿Te ha pasado algo parecido?',visual:'Nuevo encuadre, presentar contexto cotidiano del público'},
+    {id:'problem',role:'PROBLEMA / DESEO',line:problem,visual:'Situación reconocible; un cambio claro respecto al plano anterior'},
+    {id:'solution',role:'PRODUCTO COMO RESPUESTA',line:productLine,visual:'Presentar el producto con marca, etiqueta y proporciones intactas'},
+    {id:'demo',role:'DEMO EN ACCIÓN',line:'Mira cómo se usa.',visual:'Manos usando el producto de manera correcta y físicamente plausible'},
+    {id:'benefit',role:'BENEFICIO REAL',line:benefit,visual:defaults.visual+'; sin resultados ni efectos inventados'},
+    {id:'proof',role:'DETALLE / OBJECIÓN',line:'Mira este detalle.',visual:'Segundo ángulo de un atributo observable, sin testimonios falsos'},
+    {id:'close',role:'CIERRE / CTA',line:cta,visual:'Actor de frente a cámara con producto visible; CTA hablado'}
+  ]:total<=7?[
     {id:'hook',role:'HOOK + PROBLEMA',line:'¿Buscas algo diferente?',visual:'Abrir con el problema o deseo reconocible, movimiento humano inmediato y producto en cuadro'},
     {id:'close',role:'PRODUCTO + SOLUCIÓN + CTA',line:'Conoce '+name+'. '+compactSpeech(d.cta,3),visual:'Mostrar producto real y una acción breve y plausible; cerrar con persona y producto'}
   ]:total<=11?[
@@ -92,12 +115,19 @@ function buildScenePlan(d){
   });
 }
 function scriptFor(d){
+  const engine=engineById(d.engine);
   const name=d.name.trim();
   const scenes=buildScenePlan(d);
-  const identity='@image1 REFERENCIA OBLIGATORIA DE IDENTIDAD de '+name+'. Conserva marca, etiqueta, tipografía, color, tapa, envase, geometría y proporciones. La imagen NO es un fotograma inicial; filma escenas nuevas realistas.';
-  const extra=Array.from({length:8},(_,i)=>i+2).filter(i=>i<=d.imageCount)
-    .map(i=>'@image'+i+' es referencia adicional, nunca sustituye @image1.').join(' ');
+  const token=engine.id==='kling'?'@image_1':engine.id==='veo'?'imagen de referencia 1':'@image1';
+  const identity=token+' REFERENCIA OBLIGATORIA DE IDENTIDAD de '+name+'. Conserva marca, etiqueta, tipografía, color, tapa, envase, geometría y proporciones. La imagen NO es un fotograma inicial; filma escenas nuevas realistas.';
+  const extra=Array.from({length:engine.maxImages-1},(_,i)=>i+2).filter(i=>i<=d.imageCount)
+    .map(i=>(engine.id==='kling'?'@image_'+i:engine.id==='veo'?'imagen de referencia '+i:'@image'+i)+' es referencia adicional, nunca sustituye '+token+'.').join(' ');
   const context='MERCADO: '+d.market+'. PÚBLICO: '+(d.audience.trim()||'compradores interesados')+'. OBJETIVO: '+(OBJECTIVES.find(x=>x.id===d.objective)?.name||'Generar ventas')+'.';
+  const engineInstruction=engine.id==='veo'
+    ?'VEO 3.1 REFERENCE-TO-VIDEO: clip de 8 segundos exactos; images_list son referencias de identidad, no fotogramas iniciales. generate_audio=true OBLIGATORIO. Voz española nativa, sincronización y 2-4 tomas de máximo 4 s. Este modo no admite aspect_ratio.'
+    :engine.id==='kling'
+    ?'KLING 4.0 REFERENCE-TO-VIDEO: referencias image_urls mencionadas como @image_1, @image_2, etc. Audio nativo, frases habladas y sincronía labial; 3–30 segundos, 720p/1080p. Cada toma <=4s, continuidad de actor y producto.'
+    :'SEEDANCE 2.0 OMNI REFERENCE: referencias images_list mencionadas @image1, @image2. Audio hablado español con diálogos por toma, acciones reales y cortes <=4s; high/basic. Foto de identidad no es primer fotograma.';
   const voice=d.style==='ugc'||d.style==='auto'
     ?'UGC: mismo actor adulto visible que MIRA Y HABLA A CÁMARA desde el primer segundo, sincronía labial y voz natural en ESPAÑOL LATINO.'
     :'NARRADOR: VOZ EN OFF clara y audible en español latino sobre las imágenes, sin montaje mudo.';
@@ -109,7 +139,7 @@ function scriptFor(d){
   const details='PRODUCTO: '+name+'. Datos aportados por el vendedor: '+(d.description.trim().slice(0,390)||'sin detalles adicionales')+'. Sin resultados clínicos, feromonas efectivas, atracción garantizada, testimonios, descuentos ni urgencia inventados.';
   const rules='CONTRATO EDITORIAL: anuncio de respuesta directa, NO video de producto decorativo. Hook audible y visual desde 0 s; plantear problema/deseo; presentar producto, uso visible, beneficio sustentado y CTA HABLADO al final. Audio verbal durante las escenas, sin silencios largos, sin voz solo al final, sin música que oculte la voz. CORTES REALES: cada escena dura como máximo 4 segundos y debe cambiar encuadre, acción e información. Mismo personaje, espacio, vestuario y objeto entre tomas. Física, manos y rostro naturales; nada de envases CGI flotando, mutación de etiquetas o gestos repetitivos. No generar subtítulos con letras falsas; dejar espacio seguro para subtítulos de edición.';
   const additional=d.notes.trim()?'NOTAS DEL USUARIO: '+d.notes.trim().slice(0,350):'';
-  return ['ANUNCIO COMERCIAL CON DIÁLOGO OBLIGATORIO. DURACIÓN TOTAL '+d.duration+' s.',identity,extra,context,voice,
+  return ['ANUNCIO COMERCIAL CON DIÁLOGO OBLIGATORIO. DURACIÓN TOTAL '+d.duration+' s.',engineInstruction,identity,extra,context,voice,
     'GUION TEMPORIZADO / STORYBOARD (obligatorio, no sugerencias):',shots,rules,details,additional].filter(Boolean).join('\n').slice(0,3900);
 }
 function Option({chosen,onClick,title,detail,icon}){
