@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {runInNewContext} from 'node:vm';
 
 const wizard=readFileSync('components/RealizoSeedanceFlow.jsx','utf8');
 const wrapper=readFileSync('components/RealizoStudio.jsx','utf8');
@@ -57,4 +58,40 @@ test('Mis videos reconciles pending Seedance jobs after reopening on a different
  assert.match(wrapper,/setCreationsRefresh\(count=>count\+1\)/);
  const jobs=readFileSync('app/api/realizo/jobs/route.js','utf8');
  assert.match(jobs,/WHERE user_id=\?/);
+});
+
+test('sales director produces spoken visual plan with every cut <= 4 seconds and no overlong default lines',()=>{
+ const source=wizard.slice(wizard.indexOf('function compactSpeech('),wizard.indexOf('function Option({'));
+ assert.ok(source.startsWith('function compactSpeech') && source.includes('function scriptFor('));
+ const {buildScenePlan,scriptFor}=runInNewContext(source+'\n({buildScenePlan,scriptFor})',{
+   OBJECTIVES:[{id:'sales',name:'Generar ventas'}]
+ });
+ const base={name:'GODA',description:'Perfume para hombre',problem:'',benefit:'',style:'ugc',
+  cta:'Escríbenos por WhatsApp',audience:'Hombres adultos',market:'Ecuador',
+  ratio:'9:16',resolution:'720p',quality:'high',imageCount:1,notes:'',sceneLines:{},
+  objective:'sales'};
+ for(let duration=4;duration<=15;duration++){
+   const input={...base,duration};
+   const scenes=buildScenePlan(input);
+   assert.equal(scenes[0].from,0);
+   assert.equal(scenes.at(-1).to,duration);
+   assert.ok(scenes.every(x=>x.seconds>0&&x.seconds<=4), 'max 4s cut at '+duration+'s');
+   assert.ok(scenes.every(x=>x.line.split(/\s+/).length<=x.maxWords),'dialogue must fit at '+duration+'s');
+   const prompt=scriptFor(input);
+   assert.ok(prompt.includes('GUION TEMPORIZADO / STORYBOARD'));
+   assert.ok(prompt.includes('AUDIO: pronunciar TEXTUALMENTE'));
+   assert.ok(prompt.includes('CORTES REALES'));
+   assert.ok(prompt.includes('NO es un fotograma inicial'));
+   assert.ok(prompt.includes('CTA'));
+   assert.ok(prompt.length<=3900);
+   assert.ok(prompt.includes('ESCENA '+scenes.length));
+ }
+ const full=buildScenePlan({...base,duration:15});
+ assert.deepEqual(Array.from(full,x=>x.role),['HOOK','PROBLEMA / DESEO','PRODUCTO / SOLUCIÓN','DEMOSTRACIÓN / BENEFICIO','CIERRE / CTA']);
+ assert.ok(scriptFor({...base,duration:15,style:'cine'}).includes('VOZ EN OFF clara y audible'));
+ assert.ok(scriptFor({...base,duration:15,style:'ugc'}).includes('MIRA Y HABLA A CÁMARA'));
+ const amended=buildScenePlan({...base,duration:15,sceneLines:{hook:'¡Mira mi producto hoy!'}});
+ assert.equal(amended[0].line,'¡Mira mi producto hoy!');
+ assert.ok(wizard.includes('dialogueTooLong||!quote'));
+ assert.ok(wizard.includes('aria-label={\'Diálogo hablado, escena \''));
 });
