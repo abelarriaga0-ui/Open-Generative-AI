@@ -29,6 +29,7 @@ const OBJECTIVES=[
 ];
 const INPUT='w-full rounded-2xl border border-[#454052] bg-[#24242e] px-4 py-3.5 text-[#f6f2fc] placeholder:text-[#a59bb4] outline-none focus:border-[#aa84e6] focus:ring-2 focus:ring-[#7655b4]/40';
 const CARD='rounded-[26px] border border-[#35313f] bg-[#191a22] shadow-[0_14px_42px_rgba(0,0,0,.19)]';
+const DURATION_OPTIONS=Array.from({length:12},(_,i)=>i+4); // Seedance 2.0 supported range: 4–15 seconds
 const usd=value=>new Intl.NumberFormat('es-EC',{style:'currency',currency:'USD'}).format((value||0)/100);
 const INITIAL={name:'',description:'',style:'auto',audience:'',market:'Ecuador',objective:'sales',
   ratio:'9:16',duration:8,resolution:'720p',quality:'high',cta:'Escríbenos por WhatsApp',notes:''};
@@ -229,6 +230,25 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
        <p className="text-[13px] text-[#c6bacf] mt-1">Un paso a la vez · Seedance 2.0 · imágenes de referencia</p></div>
      {step<7&&<span className="rounded-full border border-[#554469] bg-[#282132] px-4 py-2 text-[12px] font-bold text-[#d3b2ff]">Paso {step+1} de 7</span>}
    </div>
+   {step<7&&<div data-testid="realizo-duration-shortcut" className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-[22px] border border-[#56466d] bg-[#211d2c] px-5 py-4">
+     <div>
+       <p className="text-[10px] font-extrabold uppercase tracking-[.17em] text-[#cdb2f1]">Duración de tu video</p>
+       <p className="mt-1 text-[18px] font-extrabold text-[#faf8ff]">¿Cuánto debe durar?</p>
+       <p className="mt-1 text-[12px] text-[#c6b8d3]">Seedance 2.0 · entre 4 y 15 segundos por generación</p>
+     </div>
+     <div className="flex flex-wrap items-center gap-3">
+       <div className="rounded-2xl border border-[#635081] bg-[#30273e] px-4 py-2 text-center" role="status" aria-live="polite">
+         <strong className="block text-[22px] font-extrabold leading-none text-[#f6eaff]">{d.duration} s</strong>
+         <span className="text-[10px] text-[#cebadd]">Seleccionados</span>
+       </div>
+       <label className="block">
+         <span className="block text-[11px] font-bold text-[#ddd2eb] mb-1">Cambiar duración</span>
+         <select aria-label="Seleccionar duración del video en segundos" className="min-h-11 min-w-[144px] rounded-xl border border-[#8067a5] bg-[#30283c] px-3 py-2 text-[#fffafc] font-bold outline-none focus:ring-2 focus:ring-[#b292df]" value={d.duration} onChange={e=>change('duration',Number(e.target.value))}>
+           {DURATION_OPTIONS.map(n=><option key={n} value={n}>{n} segundos</option>)}
+         </select>
+       </label>
+     </div>
+   </div>}
    {step<7&&<div className="mb-6">
      <div className="flex items-center justify-between text-[12px] text-[#c3afda] mb-2"><strong>Preparación del anuncio</strong><span>{percentage}%</span></div>
      <div className="w-full h-2.5 rounded-full bg-[#302a3d] overflow-hidden" role="progressbar" aria-valuenow={percentage} aria-valuemin="0" aria-valuemax="100" aria-label="Preparación">
@@ -283,10 +303,11 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{[
            ['9:16','Vertical · Reels','▯'],['1:1','Cuadrado','□'],['16:9','Horizontal','▭'],['3:4','Vertical alternativo','▯']
          ].map(([v,label,ico])=><Option key={v} icon={ico} chosen={d.ratio===v} title={v} detail={label} onClick={()=>change('ratio',v)}/>)}</div></fieldset>
-       <fieldset><legend className="text-[13px] font-bold mb-3">Duración</legend>
-         <div className="grid grid-cols-4 gap-2">{[5,8,10,15].map(n=><button type="button" key={n} onClick={()=>change('duration',n)}
-           className={'rounded-2xl border py-3 text-sm font-bold '+(d.duration===n?'bg-[#7953ca] text-white border-[#7953ca]':'bg-[#22232d] border-[#454052] text-[#d2c7df]')}>{n} s</button>)}</div>
-         <p className="text-[12px] text-[#bcb0c9] mt-2">Seedance 2.0 genera hasta 15 segundos por solicitud. No se promete un video de 30 o 45 segundos en una sola generación.</p></fieldset>
+       <fieldset><legend className="text-[13px] font-bold mb-3">¿Cuánto dura mi video?</legend>
+         <div className="grid grid-cols-4 gap-2">{[5,8,10,15].map(n=><button type="button" key={n} aria-pressed={d.duration===n} aria-label={n+' segundos'} onClick={()=>change('duration',n)}
+           className={'min-h-[48px] rounded-2xl border py-3 text-sm font-bold transition '+(d.duration===n?'bg-[#7953ca] text-white border-[#a77ce7] ring-2 ring-[#ba9af0]':'bg-[#22232d] border-[#454052] text-[#d2c7df] hover:border-[#aa88d4]')}>{n} s</button>)}</div>
+         <p className="text-[12px] text-[#c2b0d3] mt-3">Elegiste <strong className="text-[#f6eaff]">{d.duration} segundos</strong>. Para elegir 4, 6, 7, 9, 11, 12, 13 o 14 segundos, usa el selector «Cambiar duración» de arriba.</p>
+         <p className="text-[12px] text-[#bcb0c9] mt-2">Seedance 2.0 admite de 4 a 15 segundos por solicitud. La cotización se ajustará a tu elección; para 30 o 45 segundos se necesitaría otro flujo de varias generaciones.</p></fieldset>
        <fieldset><legend className="text-[13px] font-bold mb-3">Calidad de imagen</legend>
          <div className="grid sm:grid-cols-2 gap-3">{[['720p','720p · equilibrado'],['1080p','1080p · alta definición']].map(([v,label])=><Option key={v} title={label} detail={v==='1080p'?'Mayor resolución y costo':'Buena calidad con menor costo'} chosen={d.resolution===v} onClick={()=>change('resolution',v)}/>)}</div></fieldset>
        <fieldset><legend className="text-[13px] font-bold mb-3">Modo de calidad</legend>
