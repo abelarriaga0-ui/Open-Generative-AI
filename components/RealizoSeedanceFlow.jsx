@@ -326,11 +326,26 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
  const percentage=Math.round(step/6*100);
  const styleName=STYLES.find(s=>s.id===d.style)?.name||'IA decide';
  return <div className="mx-auto max-w-[1070px] pb-14 text-[#f7f3fc]">
+ {!selectedEngine ? <section className={CARD+' px-5 py-7 sm:px-9 sm:py-9'} aria-label="Seleccionar generador de video">
+   <p className="uppercase tracking-[.2em] text-[#c5a6eb] font-extrabold text-[11px]">REALIZO · PASO 1 DE 8</p>
+   <h1 className="mt-3 text-[28px] sm:text-[36px] font-extrabold text-[#faf8ff]">¿Con qué IA creamos tu video?</h1>
+   <p className="mt-2 mb-6 text-[13px] text-[#d0c4da]">Primero elige el generador. Después sube tus imágenes y elige ajustes compatibles.</p>
+   <div className="grid gap-3 sm:grid-cols-3">
+     {VIDEO_ENGINES.map(engine=><button key={engine.id} type="button" onClick={()=>chooseEngine(engine.id)}
+       className="min-h-[180px] rounded-[20px] border border-[#655079] bg-[#25222e] p-5 text-left transition hover:bg-[#372a47] hover:border-[#bd91ef] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#c8a4ff]">
+       <span className="block text-[11px] uppercase tracking-[.12em] text-[#baa4cf]">{engine.id==='seedance'?'Creativo dinámico':engine.id==='veo'?'Cine con audio':'Versátil · larga duración'}</span>
+       <strong className="block mt-3 text-[21px] text-white">{engine.name}</strong>
+       <span className="block mt-2 text-[12px] leading-5 text-[#cfc4d8]">{engine.description}</span>
+       <span className="block mt-4 font-extrabold text-[12px] text-[#e2b8ff]">{engine.min===engine.max?engine.min+' segundos fijos':engine.min+' a '+engine.max+' segundos'}</span>
+     </button>)}
+   </div>
+   <p className="text-[12px] mt-5 text-[#bdb0cb]">Puedes elegir sin costo. Antes de generar verás la cotización real de MuAPI.</p>
+ </section> : <>
    <div className="rounded-[30px] border border-[#3c334a] bg-gradient-to-r from-[#181820] to-[#2b213a] px-6 py-5 sm:px-8 mb-6 flex flex-wrap items-center justify-between gap-3" style={{background:"linear-gradient(105deg,#181820 0%,#2b213a 100%)",color:"#faf8ff"}}>
      <div><p className="text-[10px] tracking-[.22em] font-extrabold uppercase text-[#c4a4f2]">Realizo · creación guiada</p>
        <h1 className="mt-1 text-[25px] sm:text-[32px] font-extrabold tracking-tight text-[#faf8ff]">Tu idea cobra vida<span className="text-[#ee9289]">.</span></h1>
-       <p className="text-[13px] text-[#c6bacf] mt-1">Un paso a la vez · Seedance 2.0 · imágenes de referencia</p></div>
-     {step<7&&<span className="rounded-full border border-[#554469] bg-[#282132] px-4 py-2 text-[12px] font-bold text-[#d3b2ff]">Paso {step+1} de 7</span>}
+       <p className="text-[13px] text-[#c6bacf] mt-1">Un paso a la vez · {activeEngine.name} · imágenes de referencia</p></div>
+     {step<7&&<div className="flex items-center gap-3"><button type="button" className="text-[12px] font-bold text-[#d5b8f6] underline" onClick={()=>{setSelectedEngine(null);setQuote(null);}}>Cambiar IA</button><span className="rounded-full border border-[#554469] bg-[#282132] px-4 py-2 text-[12px] font-bold text-[#d3b2ff]">Paso {step+2} de 8</span></div>}
    </div>
    {step<7&&<div data-testid="realizo-duration-shortcut" className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-[22px] border border-[#56466d] bg-[#211d2c] px-5 py-4">
      <div>
@@ -512,5 +527,6 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
      </>}
    </section>}
    <p className="mt-5 text-center text-[11px] leading-5 text-[#b4aabe]">Realizo respeta las referencias y el guion, pero la IA no puede garantizar fidelidad perfecta en cada fotograma.</p>
+  </>}
  </div>;
 }
