@@ -81,17 +81,17 @@ function buildScenePlan(d){
   const isDirect=d.style==='ugc'||d.style==='auto';
   const voice=isDirect?'El mismo adulto habla directamente a cámara, boca sincronizada':'Voz en off audible sobre la acción, en español latino';
   const specs=total>15?[
-    {id:'hook',role:'HOOK VISUAL Y HABLADO',line:hook,visual:'Acción humana potente desde el primer fotograma, mostrando el producto pronto'},
-    {id:'context',role:'CONTEXTO COMERCIAL',line:compactSpeech(d.problem,8)||'¿Te ha pasado algo parecido?',visual:'Nuevo encuadre, presentar contexto cotidiano del público'},
-    {id:'problem',role:'PROBLEMA / DESEO',line:problem,visual:'Situación reconocible; un cambio claro respecto al plano anterior'},
+    {id:'hook',role:'HOOK VISUAL Y HABLADO',line:total<22?'¿Buscas algo diferente?':hook,visual:'Acción humana potente desde el primer fotograma, mostrando el producto pronto'},
+    {id:'context',role:'CONTEXTO COMERCIAL',line:compactSpeech(d.problem,5)||'Entre tantas opciones, elegir cuesta.',visual:'Nuevo encuadre, presentar contexto cotidiano del público'},
+    {id:'problem',role:'PROBLEMA / DESEO',line:total<22?'¿Cuál va contigo?':problem,visual:'Situación reconocible; un cambio claro respecto al plano anterior'},
     {id:'solution',role:'PRODUCTO COMO RESPUESTA',line:productLine,visual:'Presentar el producto con marca, etiqueta y proporciones intactas'},
     {id:'demo',role:'DEMO EN ACCIÓN',line:'Mira cómo se usa.',visual:'Manos usando el producto de manera correcta y físicamente plausible'},
-    {id:'benefit',role:'BENEFICIO REAL',line:benefit,visual:defaults.visual+'; sin resultados ni efectos inventados'},
+    {id:'benefit',role:'BENEFICIO REAL',line:total<22?'Un detalle para tu rutina.':benefit,visual:defaults.visual+'; sin resultados ni efectos inventados'},
     {id:'proof',role:'DETALLE / OBJECIÓN',line:'Mira este detalle.',visual:'Segundo ángulo de un atributo observable, sin testimonios falsos'},
     {id:'close',role:'CIERRE / CTA',line:cta,visual:'Actor de frente a cámara con producto visible; CTA hablado'}
   ]:total<=7?[
     {id:'hook',role:'HOOK + PROBLEMA',line:'¿Buscas algo diferente?',visual:'Abrir con el problema o deseo reconocible, movimiento humano inmediato y producto en cuadro'},
-    {id:'close',role:'PRODUCTO + SOLUCIÓN + CTA',line:'Conoce '+name+'. '+compactSpeech(d.cta,3),visual:'Mostrar producto real y una acción breve y plausible; cerrar con persona y producto'}
+    {id:'close',role:'PRODUCTO + SOLUCIÓN + CTA',line:total<=3?name+'. Escríbenos.':'Conoce '+name+'. '+compactSpeech(d.cta,3),visual:'Mostrar producto real y una acción breve y plausible; cerrar con persona y producto'}
   ]:total<=11?[
     {id:'hook',role:'HOOK',line:'¿Buscas algo diferente?',visual:'Persona a cámara o problema visible desde el primer fotograma; producto temprano'},
     {id:'problem',role:'PROBLEMA',line:compactSpeech(d.problem,5)||'Elegir bien no siempre es fácil.',visual:'Situación cotidiana concreta que expresa el deseo, sin inventar una prueba'},
@@ -188,7 +188,7 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
  const legacySavedJobKey='realizo:seedance2:active:'+accountId;
  function chooseEngine(engineId){
    const engine=engineById(engineId);
-   setSelectedEngine(engine.id);
+   setSelectedEngine(engine.id);setStep(0);
    setD(prev=>({...prev,duration:engine.defaultDuration,ratio:engine.ratios[0]||'9:16',resolution:engine.resolutions[0]||'720p',quality:'high',sceneLines:{}}));
    setQuote(null);setQuoteError('');setUploadError('');setJobError('');keyRef.current=null;
  }
