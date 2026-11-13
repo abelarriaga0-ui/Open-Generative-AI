@@ -229,7 +229,7 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
  function back(){setUploadError('');setStep(old=>Math.max(0,old-1));}
 
  useEffect(()=>{
-   if(step!==6||!photos.length||!d.name.trim())return;
+   if(!selectedEngine||step!==6||!photos.length||!d.name.trim())return;
    const controller=new AbortController();
    setQuote(null);setQuoteError('');setQuoting(true);
    fetch('/api/wallet/quote',{method:'POST',credentials:'same-origin',
@@ -250,7 +250,7 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
      .catch(error=>{if(!controller.signal.aborted)setQuoteError(error.message||'No se pudo cotizar.');})
      .finally(()=>{if(!controller.signal.aborted)setQuoting(false)});
    return ()=>controller.abort();
- },[step,signature,modelId,activeEngine.name]);
+ },[selectedEngine,step,signature,modelId,activeEngine.name]);
 
  async function startGeneration(){
    if(sending||dialogueTooLong||!quote||quote.signature!==signature||!quote.affordable)return;
