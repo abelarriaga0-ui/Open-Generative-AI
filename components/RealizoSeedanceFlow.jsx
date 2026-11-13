@@ -27,8 +27,8 @@ const OBJECTIVES=[
   {id:'messages',name:'Recibir mensajes',detail:'Enfoque en conversaciones de WhatsApp'},
   {id:'awareness',name:'Presentar el producto',detail:'Mostrar características y uso'}
 ];
-const INPUT='w-full rounded-2xl border border-[#e6dce9] bg-white px-4 py-3.5 text-[#2b1e3c] outline-none focus:border-[#8866d8] focus:ring-2 focus:ring-[#d8c7f6]';
-const CARD='rounded-[26px] border border-[#e9dfea] bg-white shadow-[0_12px_35px_rgba(50,30,76,.045)]';
+const INPUT='w-full rounded-2xl border border-[#454052] bg-[#24242e] px-4 py-3.5 text-[#f6f2fc] placeholder:text-[#a59bb4] outline-none focus:border-[#aa84e6] focus:ring-2 focus:ring-[#7655b4]/40';
+const CARD='rounded-[26px] border border-[#35313f] bg-[#191a22] shadow-[0_14px_42px_rgba(0,0,0,.19)]';
 const usd=value=>new Intl.NumberFormat('es-EC',{style:'currency',currency:'USD'}).format((value||0)/100);
 const INITIAL={name:'',description:'',style:'auto',audience:'',market:'Ecuador',objective:'sales',
   ratio:'9:16',duration:8,resolution:'720p',quality:'high',cta:'Escríbenos por WhatsApp',notes:''};
@@ -59,10 +59,10 @@ function scriptFor(d){
 function Option({chosen,onClick,title,detail,icon}){
  return <button type="button" onClick={onClick} aria-pressed={chosen}
    className={'group rounded-[20px] border px-4 py-4 text-left transition flex gap-3 items-start min-h-[91px] '+
-     (chosen?'border-[#8657d6] bg-[#f3ebff] shadow-[0_5px_17px_rgba(116,77,187,.1)]':'border-[#e6dfeb] bg-white hover:border-[#c2a6ec] hover:bg-[#fcfaff]')}>
-   <span className={'h-10 w-10 shrink-0 rounded-xl grid place-items-center text-xl '+(chosen?'bg-[#7a50ce] text-white':'bg-[#f1eaf7] text-[#7655ae]')}>{icon||'✦'}</span>
-   <span className="min-w-0"><strong className="block text-sm text-[#342345]">{title}</strong><small className="block mt-1 text-[12px] leading-5 text-[#85758d]">{detail}</small></span>
-   {chosen&&<span className="ml-auto text-[#7951c7] font-extrabold">✓</span>}
+     (chosen?'border-[#a77ce7] bg-[#362a4b] shadow-[0_6px_22px_rgba(120,80,190,.17)]':'border-[#3b3547] bg-[#22232d] hover:border-[#906bc5] hover:bg-[#2a2636]')}>
+   <span className={'h-10 w-10 shrink-0 rounded-xl grid place-items-center text-xl '+(chosen?'bg-[#a67ced] text-[#160f24]':'bg-[#393047] text-[#d5bafb]')}>{icon||'✦'}</span>
+   <span className="min-w-0"><strong className="block text-sm text-[#f7f3fc]">{title}</strong><small className="block mt-1 text-[12px] leading-5 text-[#bbb1cb]">{detail}</small></span>
+   {chosen&&<span className="ml-auto text-[#d8bdff] font-extrabold">✓</span>}
  </button>;
 }
 
@@ -222,49 +222,49 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
  }
  const percentage=Math.round(step/6*100);
  const styleName=STYLES.find(s=>s.id===d.style)?.name||'IA decide';
- return <div className="mx-auto max-w-[1070px] pb-14 text-[#2d2141]">
-   <div className="rounded-[30px] border border-[#e9dfea] bg-gradient-to-r from-white to-[#f5effc] px-6 py-5 sm:px-8 mb-6 flex flex-wrap items-center justify-between gap-3">
-     <div><p className="text-[10px] tracking-[.22em] font-extrabold uppercase text-[#9369b5]">Realizo · creación guiada</p>
-       <h1 className="mt-1 text-[25px] sm:text-[32px] font-extrabold tracking-tight">Tu idea cobra vida<span className="text-[#ee9289]">.</span></h1>
-       <p className="text-[13px] text-[#786d82] mt-1">Un paso a la vez · Seedance 2.0 · imágenes de referencia</p></div>
-     {step<7&&<span className="rounded-full border border-[#d9cbeb] bg-white px-4 py-2 text-[12px] font-bold text-[#7550a5]">Paso {step+1} de 7</span>}
+ return <div className="mx-auto max-w-[1070px] pb-14 text-[#f7f3fc]">
+   <div className="rounded-[30px] border border-[#3c334a] bg-gradient-to-r from-[#181820] to-[#2b213a] px-6 py-5 sm:px-8 mb-6 flex flex-wrap items-center justify-between gap-3" style={{background:"linear-gradient(105deg,#181820 0%,#2b213a 100%)",color:"#faf8ff"}}>
+     <div><p className="text-[10px] tracking-[.22em] font-extrabold uppercase text-[#c4a4f2]">Realizo · creación guiada</p>
+       <h1 className="mt-1 text-[25px] sm:text-[32px] font-extrabold tracking-tight text-[#faf8ff]">Tu idea cobra vida<span className="text-[#ee9289]">.</span></h1>
+       <p className="text-[13px] text-[#c6bacf] mt-1">Un paso a la vez · Seedance 2.0 · imágenes de referencia</p></div>
+     {step<7&&<span className="rounded-full border border-[#554469] bg-[#282132] px-4 py-2 text-[12px] font-bold text-[#d3b2ff]">Paso {step+1} de 7</span>}
    </div>
    {step<7&&<div className="mb-6">
-     <div className="flex items-center justify-between text-[12px] text-[#7d698d] mb-2"><strong>Preparación del anuncio</strong><span>{percentage}%</span></div>
-     <div className="w-full h-2.5 rounded-full bg-[#e9dfef] overflow-hidden" role="progressbar" aria-valuenow={percentage} aria-valuemin="0" aria-valuemax="100" aria-label="Preparación">
-       <div className="h-full rounded-full bg-gradient-to-r from-[#925add] to-[#e998a8] transition-all duration-500" style={{width:percentage+'%'}}/>
+     <div className="flex items-center justify-between text-[12px] text-[#c3afda] mb-2"><strong>Preparación del anuncio</strong><span>{percentage}%</span></div>
+     <div className="w-full h-2.5 rounded-full bg-[#302a3d] overflow-hidden" role="progressbar" aria-valuenow={percentage} aria-valuemin="0" aria-valuemax="100" aria-label="Preparación">
+       <div className="h-full rounded-full bg-gradient-to-r from-[#a87aff] to-[#f6a16b] transition-all duration-500" style={{width:percentage+'%'}}/>
      </div>
    </div>}
-   {step<7&&<section className={CARD+' px-5 py-7 sm:px-9 sm:py-9'}>
-     <div className="mb-7"><p className="uppercase tracking-[.18em] text-[#986ab8] text-[10px] font-extrabold">Realizo te pregunta</p>
-       <h2 className="mt-2 text-[25px] sm:text-[32px] font-extrabold tracking-tight">{QUESTIONS[step].title}</h2>
-       <p className="mt-2 text-[13px] sm:text-sm text-[#82758c] leading-6">{QUESTIONS[step].hint}</p></div>
+   {step<7&&<section className={CARD+' px-5 py-7 sm:px-9 sm:py-9'} style={{backgroundColor:'#191a22',color:'#f7f3fc'}}>
+     <div className="mb-7"><p className="uppercase tracking-[.18em] text-[#bd9ce9] text-[10px] font-extrabold">Realizo te pregunta</p>
+       <h2 className="mt-2 text-[25px] sm:text-[32px] font-extrabold tracking-tight text-[#faf8ff]">{QUESTIONS[step].title}</h2>
+       <p className="mt-2 text-[13px] sm:text-sm text-[#c7bdcf] leading-6">{QUESTIONS[step].hint}</p></div>
 
      {step===0&&<div className="space-y-5">
        <input ref={fileInput} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden"
          onChange={e=>{addPhotos(e.target.files);e.target.value='';}}/>
        <button type="button" onClick={()=>fileInput.current?.click()} disabled={uploading||photos.length>=9}
-         className="w-full min-h-[175px] rounded-[24px] border-2 border-dashed border-[#bba6dd] bg-[#faf7ff] hover:bg-[#f2eaff] disabled:opacity-60 px-5 py-8 transition text-center">
-         <span className="mx-auto mb-2 h-12 w-12 rounded-2xl bg-[#e7d9fb] text-[#8055be] grid place-items-center text-2xl">＋</span>
-         <strong className="block text-sm">{uploading?'Subiendo imágenes…':photos.length?'Agregar más referencias':'Subir fotos de referencia'}</strong>
-         <span className="block text-[12px] text-[#907e9d] mt-2">JPG, PNG, WebP · máximo 8 MB por imagen · {photos.length}/9</span>
+         className="w-full min-h-[175px] rounded-[24px] border-2 border-dashed border-[#7f639f] bg-[#25222f] hover:border-[#b292df] hover:bg-[#30293e] disabled:opacity-60 px-5 py-8 transition text-center">
+         <span className="mx-auto mb-2 h-12 w-12 rounded-2xl bg-[#443157] text-[#e1c9ff] grid place-items-center text-2xl">＋</span>
+         <strong className="block text-sm text-[#f7f3fc]">{uploading?'Subiendo imágenes…':photos.length?'Agregar más referencias':'Subir fotos de referencia'}</strong>
+         <span className="block text-[12px] text-[#b7a9c8] mt-2">JPG, PNG, WebP · máximo 8 MB por imagen · {photos.length}/9</span>
        </button>
        {photos.length>0&&<div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
-         {photos.map((p,i)=><div key={p.id} className="relative aspect-square rounded-2xl overflow-hidden border border-[#e6d9ee] bg-[#f8f3fb]">
+         {photos.map((p,i)=><div key={p.id} className="relative aspect-square rounded-2xl overflow-hidden border border-[#443c50] bg-[#272330]">
            <img src={p.url} className="h-full w-full object-contain" alt={i===0?'Foto principal del producto':'Referencia adicional '+i}/>
-           <span className="absolute left-1 top-1 rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-bold text-[#634398]">{i===0?'Producto':'Ref. '+(i+1)}</span>
+           <span className="absolute left-1 top-1 rounded-full bg-[#231c30]/95 px-2 py-0.5 text-[10px] font-bold text-[#e1cbff]">{i===0?'Producto':'Ref. '+(i+1)}</span>
            <button type="button" onClick={()=>{setPhotos(items=>items.filter(x=>x.id!==p.id));setQuote(null);}} aria-label="Quitar imagen"
-             className="absolute top-1 right-1 h-6 w-6 rounded-full bg-white/95 text-[#b15771] font-bold">×</button>
+             className="absolute top-1 right-1 h-6 w-6 rounded-full bg-[#231c30]/95 text-[#ff9aab] font-bold">×</button>
          </div>)}
        </div>}
-       <p className="text-[12px] text-[#84798d]">La primera imagen identifica el producto. Las demás pueden mostrar una persona, un lugar u otros ángulos del mismo envase.</p>
+       <p className="text-[12px] text-[#bdb1c9]">La primera imagen identifica el producto. Las demás pueden mostrar una persona, un lugar u otros ángulos del mismo envase.</p>
      </div>}
      {step===1&&<div className="space-y-5">
        <label className="block"><span className="text-[13px] font-bold block mb-2">Nombre del producto *</span>
          <input autoFocus className={INPUT} maxLength={120} placeholder="Ej. GODA para hombre" value={d.name} onChange={e=>change('name',e.target.value)}/></label>
        <label className="block"><span className="text-[13px] font-bold block mb-2">¿Qué hace y cómo se usa?</span>
          <textarea rows={4} className={INPUT+' resize-y'} maxLength={1300} placeholder="Describe beneficios y usos que puedas respaldar…" value={d.description} onChange={e=>change('description',e.target.value)}/></label>
-       {preview&&<div className="flex items-center gap-3 rounded-2xl bg-[#faf7fb] p-3"><img src={preview} alt="" className="w-14 h-14 object-contain rounded-lg"/><span className="text-[12px] text-[#766682]">Tu producto se conservará visualmente en las tomas.</span></div>}
+       {preview&&<div className="flex items-center gap-3 rounded-2xl bg-[#25232e] border border-[#3e3649] p-3"><img src={preview} alt="" className="w-14 h-14 object-contain rounded-lg"/><span className="text-[12px] text-[#c4b8d0]">Tu producto se conservará visualmente en las tomas.</span></div>}
      </div>}
      {step===2&&<div className="grid sm:grid-cols-2 gap-3">
        {STYLES.map(s=><Option key={s.id} icon={s.icon} title={s.name} detail={s.detail} chosen={d.style===s.id}
@@ -285,8 +285,8 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
          ].map(([v,label,ico])=><Option key={v} icon={ico} chosen={d.ratio===v} title={v} detail={label} onClick={()=>change('ratio',v)}/>)}</div></fieldset>
        <fieldset><legend className="text-[13px] font-bold mb-3">Duración</legend>
          <div className="grid grid-cols-4 gap-2">{[5,8,10,15].map(n=><button type="button" key={n} onClick={()=>change('duration',n)}
-           className={'rounded-2xl border py-3 text-sm font-bold '+(d.duration===n?'bg-[#7953ca] text-white border-[#7953ca]':'bg-white border-[#e6ddeb] text-[#736287]')}>{n} s</button>)}</div>
-         <p className="text-[12px] text-[#8c7b98] mt-2">Seedance 2.0 genera hasta 15 segundos por solicitud. No se promete un video de 30 o 45 segundos en una sola generación.</p></fieldset>
+           className={'rounded-2xl border py-3 text-sm font-bold '+(d.duration===n?'bg-[#7953ca] text-white border-[#7953ca]':'bg-[#22232d] border-[#454052] text-[#d2c7df]')}>{n} s</button>)}</div>
+         <p className="text-[12px] text-[#bcb0c9] mt-2">Seedance 2.0 genera hasta 15 segundos por solicitud. No se promete un video de 30 o 45 segundos en una sola generación.</p></fieldset>
        <fieldset><legend className="text-[13px] font-bold mb-3">Calidad de imagen</legend>
          <div className="grid sm:grid-cols-2 gap-3">{[['720p','720p · equilibrado'],['1080p','1080p · alta definición']].map(([v,label])=><Option key={v} title={label} detail={v==='1080p'?'Mayor resolución y costo':'Buena calidad con menor costo'} chosen={d.resolution===v} onClick={()=>change('resolution',v)}/>)}</div></fieldset>
        <fieldset><legend className="text-[13px] font-bold mb-3">Modo de calidad</legend>
@@ -295,69 +295,69 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
      {step===5&&<div className="space-y-5">
        <label className="block"><span className="text-[13px] font-bold block mb-2">Llamado a la acción</span>
          <input className={INPUT} maxLength={150} value={d.cta} onChange={e=>change('cta',e.target.value)} placeholder="Ej. Escríbenos por WhatsApp"/></label>
-       <label className="block"><span className="text-[13px] font-bold block mb-2">¿Algo especial que quieras incluir? <span className="font-normal text-[#9a8fa3]">(opcional)</span></span>
+       <label className="block"><span className="text-[13px] font-bold block mb-2">¿Algo especial que quieras incluir? <span className="font-normal text-[#afa6bb]">(opcional)</span></span>
          <textarea className={INPUT+' resize-y'} rows={4} maxLength={450} value={d.notes} onChange={e=>change('notes',e.target.value)}
            placeholder="Ej. Dos planos con la misma persona y el producto en mano…"/></label>
-       <p className="text-[12px] text-[#87778c]">El sistema preparará un guion visual acorde con la duración, sin añadir datos comerciales que no proporcionaste.</p>
+       <p className="text-[12px] text-[#bdb2c9]">El sistema preparará un guion visual acorde con la duración, sin añadir datos comerciales que no proporcionaste.</p>
      </div>}
      {step===6&&<div className="space-y-5">
-       <div className="grid sm:grid-cols-[145px_1fr] gap-5 bg-[#fbf8fd] border border-[#efe6f2] rounded-[22px] p-4">
-         {preview&&<img src={preview} className="h-40 w-full rounded-2xl object-contain bg-white" alt="Producto seleccionado"/>}
+       <div className="grid sm:grid-cols-[145px_1fr] gap-5 bg-[#24232e] border border-[#42394f] rounded-[22px] p-4">
+         {preview&&<img src={preview} className="h-40 w-full rounded-2xl object-contain bg-[#171820]" alt="Producto seleccionado"/>}
          <div className="space-y-2"><strong className="text-lg">{d.name}</strong>
-           <p className="text-[13px] text-[#81748a]">{styleName} · {d.duration}s · {d.ratio} · {d.resolution} · {d.quality==='high'?'Alta calidad':'Económico'}</p>
-           <p className="text-[13px] text-[#81748a]">Dirigido a {d.market||'tu mercado'} · {OBJECTIVES.find(x=>x.id===d.objective)?.name}</p>
-           <p className="text-[12px] text-[#977ca3]">{photos.length} {photos.length===1?'referencia visual':'referencias visuales'} · Seedance 2.0</p>
+           <p className="text-[13px] text-[#c2b7ce]">{styleName} · {d.duration}s · {d.ratio} · {d.resolution} · {d.quality==='high'?'Alta calidad':'Económico'}</p>
+           <p className="text-[13px] text-[#c2b7ce]">Dirigido a {d.market||'tu mercado'} · {OBJECTIVES.find(x=>x.id===d.objective)?.name}</p>
+           <p className="text-[12px] text-[#c6a5de]">{photos.length} {photos.length===1?'referencia visual':'referencias visuales'} · Seedance 2.0</p>
          </div>
        </div>
-       <details className="rounded-2xl border border-[#e9deed] p-4 bg-white"><summary className="cursor-pointer text-[13px] font-bold text-[#7255a1]">Ver las instrucciones de tu video</summary>
-         <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap text-[11px] leading-5 text-[#675b73]">{prompt}</pre></details>
-       <div className="rounded-2xl bg-[#f2ebfa] p-5">
-         <p className="text-[12px] font-bold text-[#8461a7] mb-2">Cotización de generación</p>
+       <details className="rounded-2xl border border-[#44384e] p-4 bg-[#22212b]"><summary className="cursor-pointer text-[13px] font-bold text-[#d2b2ff]">Ver las instrucciones de tu video</summary>
+         <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap text-[11px] leading-5 text-[#c6bbd0]">{prompt}</pre></details>
+       <div className="rounded-2xl bg-[#2a2438] border border-[#4c3c63] p-5">
+         <p className="text-[12px] font-bold text-[#c8a4f2] mb-2">Cotización de generación</p>
          {quoting?<p role="status" className="font-bold animate-pulse">Consultando precio real…</p>:
            quote&&quote.signature===signature?<><p className="text-[29px] font-extrabold">{usd(quote.price_cents)}</p>
-             <p className="mt-1 text-[12px] text-[#786a87]">Saldo disponible: {usd(quote.available_cents)}. El cargo se reserva solo al confirmar.</p>
+             <p className="mt-1 text-[12px] text-[#c4b4d3]">Saldo disponible: {usd(quote.available_cents)}. El cargo se reserva solo al confirmar.</p>
              {!quote.affordable&&<Link href="/wallet" className="mt-3 inline-block underline font-bold text-[#784fbd]">Recargar créditos</Link>}</>:
-           <p role="alert" className="text-[#a04956] text-sm">{quoteError||'Precio no disponible. No puedes generar hasta obtener una cotización.'}</p>}
+           <p role="alert" className="text-[#ffadb4] text-sm">{quoteError||'Precio no disponible. No puedes generar hasta obtener una cotización.'}</p>}
        </div>
-       {jobError&&<p role="alert" className="text-[13px] text-[#a14a58]">{jobError}</p>}
+       {jobError&&<p role="alert" className="text-[13px] text-[#ffadb4]">{jobError}</p>}
        <button type="button" onClick={startGeneration} disabled={sending||quoting||!quote?.affordable||quote.signature!==signature}
          className="w-full rounded-2xl bg-[#7750c7] text-white disabled:opacity-45 hover:bg-[#6841b8] px-6 py-4 font-extrabold text-sm transition">
          {sending?'Enviando solicitud…':'Confirmar '+(quote?.price_cents?usd(quote.price_cents):'')+' y generar video'}
        </button>
-       <p className="text-center text-[11px] text-[#897d91]">Nunca se genera ni se cobra sin tu confirmación. Si el precio cambia, se pedirá una nueva aprobación.</p>
+       <p className="text-center text-[11px] text-[#bfb2c9]">Nunca se genera ni se cobra sin tu confirmación. Si el precio cambia, se pedirá una nueva aprobación.</p>
      </div>}
      {step<6&&uploadError&&<p className="mt-5 text-[13px] text-[#a64e60]" role="alert">{uploadError}</p>}
-     {step<6&&<div className="mt-9 flex flex-wrap justify-between gap-3 border-t border-[#eee5f0] pt-6">
+     {step<6&&<div className="mt-9 flex flex-wrap justify-between gap-3 border-t border-[#3d3549] pt-6">
        <button type="button" onClick={back} disabled={step===0||uploading}
-         className="rounded-2xl border border-[#e6ddec] px-5 py-3 font-bold text-sm text-[#766486] disabled:opacity-35">← Atrás</button>
+         className="rounded-2xl border border-[#4b415a] px-5 py-3 font-bold text-sm text-[#d0bfdc] disabled:opacity-35">← Atrás</button>
        <button type="button" onClick={next} disabled={uploading}
          className="rounded-2xl bg-[#7650c6] px-6 py-3 font-bold text-sm text-white hover:bg-[#653cb5] disabled:opacity-50">Continuar →</button>
      </div>}
-     {step===6&&<button type="button" onClick={back} className="mt-4 text-[13px] font-bold underline text-[#7650a9]">← Cambiar configuración</button>}
+     {step===6&&<button type="button" onClick={back} className="mt-4 text-[13px] font-bold underline text-[#d0aaff]">← Cambiar configuración</button>}
    </section>}
-   {step===7&&<section className={CARD+' p-6 sm:p-9 text-center'}>
-     {videoUrl?<><div className="mx-auto rounded-full bg-[#e5f7ee] w-14 h-14 grid place-items-center text-[#3f9864] text-2xl">✓</div>
+   {step===7&&<section className={CARD+' p-6 sm:p-9 text-center'} style={{backgroundColor:'#191a22',color:'#f7f3fc'}}>
+     {videoUrl?<><div className="mx-auto rounded-full bg-[#244334] w-14 h-14 grid place-items-center text-[#95edb9] text-2xl">✓</div>
        <h2 className="mt-4 text-2xl font-extrabold">¡Tu video está listo!</h2>
-       <p className="text-sm text-[#82768a] mt-2">Se guardó en tu biblioteca de creaciones.</p>
+       <p className="text-sm text-[#c7bdcf] mt-2">Se guardó en tu biblioteca de creaciones.</p>
        <video src={videoUrl} controls playsInline data-realizo-owned-video="true" className="mx-auto mt-6 w-full max-w-[360px] max-h-[570px] rounded-2xl bg-black"/>
        <div className="flex flex-wrap justify-center gap-3 mt-6"><button type="button" onClick={onViewVideos} className="bg-[#7550c7] text-white rounded-2xl px-6 py-3 font-bold">Ir a Mis videos</button>
-         <button type="button" onClick={restart} className="border border-[#dfd5e8] rounded-2xl px-6 py-3 font-bold">Crear otro video</button></div>
-     </>:<><div className="mx-auto h-20 w-20 rounded-[25px] bg-[#f0e6fa] grid place-items-center">
-       <span aria-hidden="true" className="h-10 w-10 rounded-full border-4 border-[#d8c2ef] border-t-[#764ac6] animate-spin"/></div>
+         <button type="button" onClick={restart} className="border border-[#55465f] rounded-2xl px-6 py-3 font-bold">Crear otro video</button></div>
+     </>:<><div className="mx-auto h-20 w-20 rounded-[25px] bg-[#392b4d] grid place-items-center">
+       <span aria-hidden="true" className="h-10 w-10 rounded-full border-4 border-[#68537d] border-t-[#764ac6] animate-spin"/></div>
        <h2 className="mt-5 text-2xl font-extrabold">{jobError?'Revisa tu generación':'Tu video está en proceso'}</h2>
-       <p className="text-sm text-[#84768e] mt-3">{jobError||'Realizo ya envió tu solicitud. Puedes salir de esta pantalla; el trabajo se guarda en Mis videos.'}</p>
-       {!jobError&&<><div role="status" aria-live="polite" className="mt-7 rounded-2xl border border-[#e9dfef] bg-[#fbf8fd] px-4 py-4">
+       <p className="text-sm text-[#c1b6cb] mt-3">{jobError||'Realizo ya envió tu solicitud. Puedes salir de esta pantalla; el trabajo se guarda en Mis videos.'}</p>
+       {!jobError&&<><div role="status" aria-live="polite" className="mt-7 rounded-2xl border border-[#43374e] bg-[#262330] px-4 py-4">
          <div className="flex items-center justify-between text-[13px]"><span className="font-bold">Generación con Seedance 2.0</span><span className="text-[#875bb0] animate-pulse">● Procesando</span></div>
-         <div className="mt-3 h-2.5 w-full bg-[#e7ddef] overflow-hidden rounded-full" role={providerPercent!==null?'progressbar':'status'} aria-valuenow={providerPercent!==null?providerPercent:undefined} aria-valuemin={providerPercent!==null?0:undefined} aria-valuemax={providerPercent!==null?100:undefined}>
-           <div className={'h-full bg-gradient-to-r from-[#d8bdf7] to-[#8352d2] rounded-full transition-all '+(providerPercent===null?'animate-pulse':'')} style={{width:(providerPercent!==null?providerPercent:42)+'%'}}/>
+         <div className="mt-3 h-2.5 w-full bg-[#3a2e49] overflow-hidden rounded-full" role={providerPercent!==null?'progressbar':'status'} aria-valuenow={providerPercent!==null?providerPercent:undefined} aria-valuemin={providerPercent!==null?0:undefined} aria-valuemax={providerPercent!==null?100:undefined}>
+           <div className={'h-full bg-gradient-to-r from-[#ad87f1] to-[#f39a74] rounded-full transition-all '+(providerPercent===null?'animate-pulse':'')} style={{width:(providerPercent!==null?providerPercent:42)+'%'}}/>
          </div>
-         <p className="text-xs text-[#897c92] mt-3">{providerPercent!==null?'Avance informado por el proveedor: '+providerPercent+'%':'Generación activa. El proveedor todavía no ha enviado un porcentaje verificable.'}</p>
-       </div>{pollError&&<p role="status" className="mt-3 text-xs text-[#856f9a]">{pollError}</p>}</>}
-       {jobId&&<p className="mt-4 text-[11px] text-[#978b9f] break-all">Trabajo: {jobId} · Estado: {jobStatus||'enviado'}</p>}
+         <p className="text-xs text-[#bbb0c9] mt-3">{providerPercent!==null?'Avance informado por el proveedor: '+providerPercent+'%':'Generación activa. El proveedor todavía no ha enviado un porcentaje verificable.'}</p>
+       </div>{pollError&&<p role="status" className="mt-3 text-xs text-[#c7a9e4]">{pollError}</p>}</>}
+       {jobId&&<p className="mt-4 text-[11px] text-[#baafc4] break-all">Trabajo: {jobId} · Estado: {jobStatus||'enviado'}</p>}
        <div className="flex flex-wrap justify-center gap-3 mt-7"><button type="button" onClick={onViewVideos} className="bg-[#7650c7] text-white px-6 py-3 rounded-2xl font-bold">Ver Mis videos</button>
-         {jobError&&<button type="button" onClick={restart} className="border border-[#e4d9eb] px-5 py-3 rounded-2xl font-bold">Crear nuevo</button>}</div>
+         {jobError&&<button type="button" onClick={restart} className="border border-[#50445d] px-5 py-3 rounded-2xl font-bold">Crear nuevo</button>}</div>
      </>}
    </section>}
-   <p className="mt-5 text-center text-[11px] leading-5 text-[#92869c]">Realizo respeta las referencias y el guion, pero la IA no puede garantizar fidelidad perfecta en cada fotograma.</p>
+   <p className="mt-5 text-center text-[11px] leading-5 text-[#b4aabe]">Realizo respeta las referencias y el guion, pero la IA no puede garantizar fidelidad perfecta en cada fotograma.</p>
  </div>;
 }
