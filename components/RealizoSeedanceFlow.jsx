@@ -351,7 +351,7 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
      <div>
        <p className="text-[10px] font-extrabold uppercase tracking-[.17em] text-[#cdb2f1]">Duración de tu video</p>
        <p className="mt-1 text-[18px] font-extrabold text-[#faf8ff]">¿Cuánto debe durar?</p>
-       <p className="mt-1 text-[12px] text-[#c6b8d3]">Seedance 2.0 · entre 4 y 15 segundos por generación</p>
+       <p className="mt-1 text-[12px] text-[#c6b8d3]">{activeEngine.name} · {activeEngine.min===activeEngine.max?activeEngine.min+" segundos fijos":activeEngine.min+" a "+activeEngine.max+" segundos por generación"}</p>
      </div>
      <div className="flex flex-wrap items-center gap-3">
        <div className="rounded-2xl border border-[#635081] bg-[#30273e] px-4 py-2 text-center" role="status" aria-live="polite">
@@ -361,7 +361,7 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
        <label className="block">
          <span className="block text-[11px] font-bold text-[#ddd2eb] mb-1">Cambiar duración</span>
          <select aria-label="Seleccionar duración del video en segundos" className="min-h-11 min-w-[144px] rounded-xl border border-[#8067a5] bg-[#30283c] px-3 py-2 text-[#fffafc] font-bold outline-none focus:ring-2 focus:ring-[#b292df]" value={d.duration} onChange={e=>change('duration',Number(e.target.value))}>
-           {DURATION_OPTIONS.map(n=><option key={n} value={n}>{n} segundos</option>)}
+           {durationsForEngine(activeEngine).map(n=><option key={n} value={n}>{n} segundos</option>)}
          </select>
        </label>
      </div>
@@ -380,11 +380,11 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
      {step===0&&<div className="space-y-5">
        <input ref={fileInput} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden"
          onChange={e=>{addPhotos(e.target.files);e.target.value='';}}/>
-       <button type="button" onClick={()=>fileInput.current?.click()} disabled={uploading||photos.length>=9}
+       <button type="button" onClick={()=>fileInput.current?.click()} disabled={uploading||photos.length>=activeEngine.maxImages}
          className="w-full min-h-[175px] rounded-[24px] border-2 border-dashed border-[#7f639f] bg-[#25222f] hover:border-[#b292df] hover:bg-[#30293e] disabled:opacity-60 px-5 py-8 transition text-center">
          <span className="mx-auto mb-2 h-12 w-12 rounded-2xl bg-[#443157] text-[#e1c9ff] grid place-items-center text-2xl">＋</span>
          <strong className="block text-sm text-[#f7f3fc]">{uploading?'Subiendo imágenes…':photos.length?'Agregar más referencias':'Subir fotos de referencia'}</strong>
-         <span className="block text-[12px] text-[#b7a9c8] mt-2">JPG, PNG, WebP · máximo 8 MB por imagen · {photos.length}/9</span>
+         <span className="block text-[12px] text-[#b7a9c8] mt-2">JPG, PNG, WebP · máximo 8 MB por imagen · {photos.length}/{activeEngine.maxImages}</span>
        </button>
        {photos.length>0&&<div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
          {photos.map((p,i)=><div key={p.id} className="relative aspect-square rounded-2xl overflow-hidden border border-[#443c50] bg-[#272330]">
@@ -421,19 +421,20 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
        <div className="grid sm:grid-cols-3 gap-3">{OBJECTIVES.map(o=><Option key={o.id} title={o.name} detail={o.detail} chosen={d.objective===o.id} onClick={()=>{change('objective',o.id);setStep(4);}}/>)}</div>
      </div>}
      {step===4&&<div className="space-y-6">
-       <fieldset><legend className="text-[13px] font-bold mb-3">Formato de pantalla</legend>
-         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{[
-           ['9:16','Vertical · Reels','▯'],['1:1','Cuadrado','□'],['16:9','Horizontal','▭'],['3:4','Vertical alternativo','▯']
-         ].map(([v,label,ico])=><Option key={v} icon={ico} chosen={d.ratio===v} title={v} detail={label} onClick={()=>change('ratio',v)}/>)}</div></fieldset>
-       <fieldset><legend className="text-[13px] font-bold mb-3">¿Cuánto dura mi video?</legend>
-         <div className="grid grid-cols-4 gap-2">{[5,8,10,15].map(n=><button type="button" key={n} aria-pressed={d.duration===n} aria-label={n+' segundos'} onClick={()=>change('duration',n)}
+       {activeEngine.ratios.length>0?<fieldset><legend className="text-[13px] font-bold mb-3">Formato de pantalla</legend>
+         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{activeEngine.ratios.map(v=><Option key={v} icon={v==='1:1'?'□':'▯'} chosen={d.ratio===v} title={v}
+           detail={v==='9:16'?'Vertical · Reels':v==='1:1'?'Cuadrado':v==='16:9'?'Horizontal':'Formato alternativo'} onClick={()=>change('ratio',v)}/>)}</div>
+       </fieldset>:<p className="text-[12px] text-[#d0bde0]">Veo 3.1 Reference-to-Video: este endpoint no admite elegir la proporción, por lo que no podemos prometer un video 9:16.</p>}
+       <fieldset><legend className="text-[13px] font-bold mb-3">Duración del anuncio</legend>
+         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">{[5,8,10,15,20,30].filter(n=>n>=activeEngine.min&&n<=activeEngine.max).map(n=><button type="button" key={n} aria-pressed={d.duration===n} aria-label={n+' segundos'} onClick={()=>change('duration',n)}
            className={'min-h-[48px] rounded-2xl border py-3 text-sm font-bold transition '+(d.duration===n?'bg-[#7953ca] text-white border-[#a77ce7] ring-2 ring-[#ba9af0]':'bg-[#22232d] border-[#454052] text-[#d2c7df] hover:border-[#aa88d4]')}>{n} s</button>)}</div>
-         <p className="text-[12px] text-[#c2b0d3] mt-3">Elegiste <strong className="text-[#f6eaff]">{d.duration} segundos</strong>. Para elegir 4, 6, 7, 9, 11, 12, 13 o 14 segundos, usa el selector «Cambiar duración» de arriba.</p>
-         <p className="text-[12px] text-[#bcb0c9] mt-2">Seedance 2.0 admite de 4 a 15 segundos por solicitud. La cotización se ajustará a tu elección; para 30 o 45 segundos se necesitaría otro flujo de varias generaciones.</p></fieldset>
-       <fieldset><legend className="text-[13px] font-bold mb-3">Calidad de imagen</legend>
-         <div className="grid sm:grid-cols-2 gap-3">{[['720p','720p · equilibrado'],['1080p','1080p · alta definición']].map(([v,label])=><Option key={v} title={label} detail={v==='1080p'?'Mayor resolución y costo':'Buena calidad con menor costo'} chosen={d.resolution===v} onClick={()=>change('resolution',v)}/>)}</div></fieldset>
-       <fieldset><legend className="text-[13px] font-bold mb-3">Modo de calidad</legend>
-         <div className="grid sm:grid-cols-2 gap-3">{[['high','Máxima calidad'],['basic','Más económico']].map(([v,label])=><Option key={v} title={label} detail={v==='high'?'Prioriza fidelidad y detalle':'Prioriza costo y rapidez'} chosen={d.quality===v} onClick={()=>change('quality',v)}/>)}</div></fieldset>
+         <p className="text-[12px] text-[#c2b0d3] mt-3">Elegiste <strong className="text-[#f6eaff]">{d.duration} segundos</strong>. El selector superior ofrece todos los tiempos permitidos por {activeEngine.name}.</p>
+         {activeEngine.id==='veo'&&<p className="text-[12px] text-[#d3bce2] mt-2">Con referencias, Veo 3.1 genera exactamente 8 segundos con audio habilitado.</p>}
+       </fieldset>
+       {activeEngine.resolutions.length>0&&<fieldset><legend className="text-[13px] font-bold mb-3">Resolución</legend>
+         <div className="grid sm:grid-cols-3 gap-3">{activeEngine.resolutions.map(v=><Option key={v} title={v==='4k'?'4K':v} detail={v==='720p'?'Más económico':v==='1080p'?'Mayor definición':'Alta definición; mayor costo'} chosen={d.resolution===v} onClick={()=>change('resolution',v)}/>)}</div></fieldset>}
+       {activeEngine.quality&&<fieldset><legend className="text-[13px] font-bold mb-3">Calidad y precio</legend>
+         <div className="grid sm:grid-cols-2 gap-3">{[['high','Alta calidad'],['basic','Modo económico']].map(([v,label])=><Option key={v} title={label} detail={v==='high'?'Prioriza calidad del resultado':'Menor costo por segundo'} chosen={d.quality===v} onClick={()=>change('quality',v)}/>)}</div></fieldset>}
      </div>}
      {step===5&&<div className="space-y-5">
        <label className="block"><span className="text-[13px] font-bold block mb-2">Llamado a la acción</span>
@@ -467,14 +468,14 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
          </div>
          {dialogueTooLong&&<p role="alert" className="mt-4 text-[12px] font-bold text-[#ffb3ac]">Acorta los diálogos marcados: las palabras deben caber en su escena. El cargo está bloqueado hasta corregirlos.</p>}
          {d.duration<12&&<p className="mt-3 text-[12px] text-[#d8bedc]">Para contar hook, problema, solución y cierre con claridad, recomendamos 12–15 segundos. En videos más breves se comprimen etapas.</p>}
-         <p className="mt-3 text-[12px] text-[#bfb0cc]">Seedance puede incumplir instrucciones de voz o montaje. El guion explícito reduce la ambigüedad, pero no garantiza sincronía ni audio final.</p>
+         <p className="mt-3 text-[12px] text-[#bfb0cc]">{activeEngine.name} puede incumplir instrucciones de voz o montaje. El guion explícito reduce la ambigüedad, pero no garantiza sincronía ni audio final.</p>
        </div>
        <div className="grid sm:grid-cols-[145px_1fr] gap-5 bg-[#24232e] border border-[#42394f] rounded-[22px] p-4">
          {preview&&<img src={preview} className="h-40 w-full rounded-2xl object-contain bg-[#171820]" alt="Producto seleccionado"/>}
          <div className="space-y-2"><strong className="text-lg">{d.name}</strong>
-           <p className="text-[13px] text-[#c2b7ce]">{styleName} · {d.duration}s · {d.ratio} · {d.resolution} · {d.quality==='high'?'Alta calidad':'Económico'}</p>
+           <p className="text-[13px] text-[#c2b7ce]">{activeEngine.name} · {styleName} · {d.duration}s {activeEngine.ratios.length?'· '+d.ratio:''} {activeEngine.resolutions.length?'· '+d.resolution:''} {activeEngine.quality?'· '+(d.quality==='high'?'Alta calidad':'Económico'):''}</p>
            <p className="text-[13px] text-[#c2b7ce]">Dirigido a {d.market||'tu mercado'} · {OBJECTIVES.find(x=>x.id===d.objective)?.name}</p>
-           <p className="text-[12px] text-[#c6a5de]">{photos.length} {photos.length===1?'referencia visual':'referencias visuales'} · Seedance 2.0</p>
+           <p className="text-[12px] text-[#c6a5de]">{photos.length} {photos.length===1?'referencia visual':'referencias visuales'} · {activeEngine.name}</p>
          </div>
        </div>
        <details className="rounded-2xl border border-[#44384e] p-4 bg-[#22212b]"><summary className="cursor-pointer text-[13px] font-bold text-[#d2b2ff]">Ver las instrucciones de tu video</summary>
@@ -515,7 +516,7 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
        <h2 className="mt-5 text-2xl font-extrabold">{jobError?'Revisa tu generación':'Tu video está en proceso'}</h2>
        <p className="text-sm text-[#c1b6cb] mt-3">{jobError||'Realizo ya envió tu solicitud. Puedes salir de esta pantalla; el trabajo se guarda en Mis videos.'}</p>
        {!jobError&&<><div role="status" aria-live="polite" className="mt-7 rounded-2xl border border-[#43374e] bg-[#262330] px-4 py-4">
-         <div className="flex items-center justify-between text-[13px]"><span className="font-bold">Generación con Seedance 2.0</span><span className="text-[#875bb0] animate-pulse">● Procesando</span></div>
+         <div className="flex items-center justify-between text-[13px]"><span className="font-bold">Generación con {activeEngine.name}</span><span className="text-[#875bb0] animate-pulse">● Procesando</span></div>
          <div className="mt-3 h-2.5 w-full bg-[#3a2e49] overflow-hidden rounded-full" role={providerPercent!==null?'progressbar':'status'} aria-valuenow={providerPercent!==null?providerPercent:undefined} aria-valuemin={providerPercent!==null?0:undefined} aria-valuemax={providerPercent!==null?100:undefined}>
            <div className={'h-full bg-gradient-to-r from-[#ad87f1] to-[#f39a74] rounded-full transition-all '+(providerPercent===null?'animate-pulse':'')} style={{width:(providerPercent!==null?providerPercent:42)+'%'}}/>
          </div>
