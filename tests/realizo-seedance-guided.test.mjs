@@ -40,6 +40,17 @@ test('image references are required and output is restricted to supported length
   assert.match(wizard,/NO es un fotograma inicial/);
 });
 
+test('duration can be selected immediately and supports all Seedance 2.0 4–15 second values',()=>{
+ const entry=wizard.indexOf('data-testid="realizo-duration-shortcut"');
+ const firstStep=wizard.indexOf('{step===0&&');
+ assert.ok(entry>=0 && entry<firstStep,'Duration control must be above the first step');
+ assert.match(wizard,/const DURATION_OPTIONS=Array\.from\(\{length:12\},\(_,i\)=>i\+4\)/);
+ assert.match(wizard,/value=\{d\.duration\} onChange=\{e=>change\('duration',Number\(e\.target\.value\)\)\}/);
+ assert.match(wizard,/aria-pressed=\{d\.duration===n\}/);
+ assert.match(wizard,/duration:Number\(d\.duration\)/);
+ assert.match(wizard,/const change=\(field,value\)=>\{setD\(old=>\(\{\.\.\.old,\[field\]:value\}\)\);setQuote\(null\)/);
+});
+
 test('Mis videos reconciles pending Seedance jobs after reopening on a different device',()=>{
  assert.match(wrapper,/const pending=jobs\.filter/);
  assert.match(wrapper,/\/api\/wallet\/jobs\//);
