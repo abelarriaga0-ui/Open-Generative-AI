@@ -155,6 +155,8 @@ function Option({chosen,onClick,title,detail,icon}){
 export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initialNotes='',uploadAsset,onWalletRefresh,onViewVideos}){
  const [d,setD]=useState({...INITIAL,style:STYLES.some(x=>x.id===initialStyle)?initialStyle:'auto',notes:initialNotes.slice(0,450)});
  const [step,setStep]=useState(0);
+ const [selectedEngine,setSelectedEngine]=useState(null);
+ const activeEngine=engineById(selectedEngine);
  const [photos,setPhotos]=useState([]);
  const [uploading,setUploading]=useState(false);
  const [uploadError,setUploadError]=useState('');
@@ -174,27 +176,39 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
  useEffect(()=>{doneRef.current=onWalletRefresh},[onWalletRefresh]);
 
  const change=(field,value)=>{setD(old=>({...old,[field]:value}));setQuote(null);setQuoteError('');};
- const data=useMemo(()=>({...d,imageCount:photos.length}),[d,photos.length]);
+ const data=useMemo(()=>({...d,engine:activeEngine.id,imageCount:photos.length}),[d,photos.length,activeEngine.id]);
  const scenePlan=useMemo(()=>buildScenePlan(d),[d]);
  const dialogueTooLong=scenePlan.some(scene=>scene.line.split(/\s+/).filter(Boolean).length>scene.maxWords);
  const prompt=useMemo(()=>scriptFor(data),[data]);
- const input=useMemo(()=>({prompt,images_list:photos.map(p=>p.url),aspect_ratio:d.ratio,
-   duration:Number(d.duration),resolution:d.resolution,quality:d.quality}),[prompt,photos,d.ratio,d.duration,d.resolution,d.quality]);
- const signature=JSON.stringify(input);
+ const input=useMemo(()=>inputForEngine(activeEngine,d,prompt,photos),[activeEngine,d,prompt,photos]);
+ const modelId=activeEngine.modelId;
+ const signature=JSON.stringify({modelId,input});
  const preview=photos[0]?.url;
- const savedJobKey='realizo:seedance2:active:'+accountId;
+ const savedJobKey='realizo:guided:active:'+accountId;
+ const legacySavedJobKey='realizo:seedance2:active:'+accountId;
+ function chooseEngine(engineId){
+   const engine=engineById(engineId);
+   setSelectedEngine(engine.id);
+   setD(prev=>({...prev,duration:engine.defaultDuration,ratio:engine.ratios[0]||'9:16',resolution:engine.resolutions[0]||'720p',quality:'high',sceneLines:{}}));
+   setQuote(null);setQuoteError('');setUploadError('');setJobError('');keyRef.current=null;
+ }
 
  useEffect(()=>{
    try{
-     const id=sessionStorage.getItem(savedJobKey);
-     if(id && /^[a-f0-9-]{30,70}$/i.test(id)){setJobId(id);setStep(7);}
+     const raw=sessionStorage.getItem(savedJobKey);
+     const saved=raw?JSON.parse(raw):null;
+     if(saved && /^[a-f0-9-]{30,70}$/i.test(saved.id) && VIDEO_ENGINES.some(x=>x.id===saved.engine)){
+       setSelectedEngine(saved.engine);setJobId(saved.id);setStep(7);return;
+     }
+     const legacy=sessionStorage.getItem(legacySavedJobKey);
+     if(legacy && /^[a-f0-9-]{30,70}$/i.test(legacy)){setSelectedEngine('seedance');setJobId(legacy);setStep(7);}
    }catch{}
- },[savedJobKey]);
+ },[savedJobKey,legacySavedJobKey]);
 
  async function addPhotos(files){
    if(!files?.length||uploading)return;
-   const available=9-photos.length;
-   if(available<=0){setUploadError('Puedes subir hasta nueve imágenes.');return;}
+   const available=activeEngine.maxImages-photos.length;
+   if(available<=0){setUploadError('Este modelo admite hasta '+activeEngine.maxImages+' imágenes.');return;}
    setUploadError('');setUploading(true);
    try{
      for(const file of Array.from(files).slice(0,available)){
@@ -202,13 +216,13 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
          throw Error('Cada imagen debe ser JPG, PNG o WebP de máximo 8 MB.');
        const url=await uploadAsset(file);
        if(!url)throw Error('No se recibió una referencia válida.');
-       setPhotos(current=>[...current,{url,name:file.name,id:crypto.randomUUID()}].slice(0,9));
+       setPhotos(current=>[...current,{url,name:file.name,id:crypto.randomUUID()}].slice(0,activeEngine.maxImages));
      }
    }catch(error){setUploadError(error.message||'No pudimos cargar las referencias.');}
    finally{setUploading(false);}
  }
  function next(){
-   if(step===0 && !photos.length){setUploadError('Sube al menos una imagen de referencia para comenzar.');return;}
+   if(step===0 && (!photos.length||photos.length>activeEngine.maxImages)){setUploadError('Sube entre 1 y '+activeEngine.maxImages+' imágenes para '+activeEngine.name+'.');return;}
    if(step===1 && !d.name.trim()){setUploadError('Escribe el nombre del producto para continuar.');return;}
    setUploadError('');setStep(old=>Math.min(6,old+1));
  }
@@ -220,23 +234,23 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
    setQuote(null);setQuoteError('');setQuoting(true);
    fetch('/api/wallet/quote',{method:'POST',credentials:'same-origin',
      headers:{'Content-Type':'application/json'},
-     body:JSON.stringify({model_id:MODEL_ID,input}),signal:controller.signal})
+     body:JSON.stringify({model_id:modelId,input}),signal:controller.signal})
      .then(async response=>{
        const body=await response.json().catch(()=>({}));
        if(!response.ok)throw Error(({
          invalid_media_reference:'Tus imágenes caducaron. Vuelve a cargarlas.',
-         unsupported_model:'Seedance 2.0 no está disponible actualmente.',
-         muapi_generation_route_not_found:'La ruta de Seedance 2.0 no está disponible en MuAPI.',
-         muapi_generation_route_unverifiable:'No se pudo verificar la conexión con Seedance 2.0.',
+         unsupported_model:activeEngine.name+' no está disponible actualmente.',
+         muapi_generation_route_not_found:'La ruta de '+activeEngine.name+' no está disponible en MuAPI.',
+         muapi_generation_route_unverifiable:'No se pudo verificar la conexión con '+activeEngine.name+'.',
          model_pricing_unavailable:'MuAPI no respondió con una cotización válida.',
-         provider_price_inputs_invalid:'Estos ajustes no son compatibles con Seedance 2.0.'
+         provider_price_inputs_invalid:'Estos ajustes no son compatibles con '+activeEngine.name+'.'
        })[body.error]||'No se pudo confirmar el precio. No se realizó ningún cobro.');
        return body;
      }).then(body=>{if(!controller.signal.aborted)setQuote({...body,signature});})
      .catch(error=>{if(!controller.signal.aborted)setQuoteError(error.message||'No se pudo cotizar.');})
      .finally(()=>{if(!controller.signal.aborted)setQuoting(false)});
    return ()=>controller.abort();
- },[step,signature]);
+ },[step,signature,modelId,activeEngine.name]);
 
  async function startGeneration(){
    if(sending||dialogueTooLong||!quote||quote.signature!==signature||!quote.affordable)return;
@@ -245,18 +259,18 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
    try{
      const response=await fetch('/api/wallet/generate',{
        method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
-       body:JSON.stringify({model_id:MODEL_ID,input,max_price_cents:quote.price_cents,idempotency_key:keyRef.current})
+       body:JSON.stringify({model_id:modelId,input,max_price_cents:quote.price_cents,idempotency_key:keyRef.current})
      });
      const body=await response.json().catch(()=>({}));
      if(!response.ok){
        if(body.error==='price_changed_confirm_again'){setQuote(null);setStep(5);keyRef.current=null;throw Error('El precio cambió. Revisa una nueva cotización antes de generar.');}
        if(body.error==='insufficient_funds')throw Error('Tu saldo es insuficiente. Recarga antes de generar.');
-       if(body.error==='generation_model_unavailable')throw Error('Seedance 2.0 no respondió. Revisa Mis videos y créditos antes de repetir.');
+       if(body.error==='generation_model_unavailable')throw Error(activeEngine.name+' no respondió. Revisa Mis videos y créditos antes de repetir.');
        throw Error('No se inició la generación ('+String(body.error||'error')+'). Revisa Mis videos y créditos.');
      }
      if(!body.job_id)throw Error('La solicitud no devolvió un identificador. Revisa Mis videos.');
      setJobId(body.job_id);setJobStatus(body.status||'reserved');setStep(7);
-     try{sessionStorage.setItem(savedJobKey,body.job_id);}catch{}
+     try{sessionStorage.setItem(savedJobKey,JSON.stringify({id:body.job_id,engine:activeEngine.id}));}catch{}
      doneRef.current?.();
    }catch(error){setJobError(error.message||'No se pudo enviar el video.');}
    finally{setSending(false);}
@@ -306,7 +320,8 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
    setPhotos([]);setD({...INITIAL,style:STYLES.some(x=>x.id===initialStyle)?initialStyle:'auto',notes:initialNotes.slice(0,450)});
    setQuote(null);setQuoteError('');setJobId('');setJobStatus('');setVideoUrl('');
    setJobError('');setPollError('');setProviderPercent(null);setStep(0);keyRef.current=null;
-   try{sessionStorage.removeItem(savedJobKey);}catch{}
+   try{sessionStorage.removeItem(savedJobKey);sessionStorage.removeItem(legacySavedJobKey);}catch{}
+   setSelectedEngine(null);
  }
  const percentage=Math.round(step/6*100);
  const styleName=STYLES.find(s=>s.id===d.style)?.name||'IA decide';
