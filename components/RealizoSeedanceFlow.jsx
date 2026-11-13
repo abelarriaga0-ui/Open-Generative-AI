@@ -63,17 +63,17 @@ function buildScenePlan(d){
   const problem=compactSpeech(d.problem,8)||defaults.problem;
   const benefit=compactSpeech(d.benefit,9)||defaults.benefit;
   const productLine='Te presento '+name+'.';
-  const cta=d.cta?.toLowerCase().includes('whatsapp')?'Escríbenos por WhatsApp.':'Escríbenos para conocerlo.';
+  const cta=compactSpeech(d.cta,7)||'Escríbenos para conocerlo.';
   const isDirect=d.style==='ugc'||d.style==='auto';
   const voice=isDirect?'El mismo adulto habla directamente a cámara, boca sincronizada':'Voz en off audible sobre la acción, en español latino';
   const specs=total<=7?[
     {id:'hook',role:'HOOK + PROBLEMA',line:'¿Buscas algo diferente?',visual:'Abrir con el problema o deseo reconocible, movimiento humano inmediato y producto en cuadro'},
-    {id:'close',role:'PRODUCTO + SOLUCIÓN + CTA',line:'Conoce '+name+'. Escríbenos.',visual:'Mostrar producto real y una acción breve y plausible; cerrar con persona y producto'}
+    {id:'close',role:'PRODUCTO + SOLUCIÓN + CTA',line:'Conoce '+name+'. '+compactSpeech(d.cta,3),visual:'Mostrar producto real y una acción breve y plausible; cerrar con persona y producto'}
   ]:total<=11?[
     {id:'hook',role:'HOOK',line:'¿Buscas algo diferente?',visual:'Persona a cámara o problema visible desde el primer fotograma; producto temprano'},
     {id:'problem',role:'PROBLEMA',line:compactSpeech(d.problem,5)||'Elegir bien no siempre es fácil.',visual:'Situación cotidiana concreta que expresa el deseo, sin inventar una prueba'},
-    {id:'solution',role:'SOLUCIÓN + DEMO',line:'Conoce '+name+'.',visual:'Presentar envase fiel, manos y uso real, con un corte claro'},
-    {id:'close',role:'BENEFICIO + CTA',line:'Escríbenos para conocerlo.',visual:'Resultado observable o utilidad real; persona cierra mirando a cámara'}
+    {id:'solution',role:'SOLUCIÓN + BENEFICIO + DEMO',line:name+'. '+(compactSpeech(d.benefit,4)||'Para tu rutina.'),visual:'Presentar envase fiel, manos y uso real, con un corte claro'},
+    {id:'close',role:'CIERRE / CTA',line:compactSpeech(d.cta,6)||'Escríbenos para conocerlo.',visual:'Resultado observable o utilidad real; persona cierra mirando a cámara'}
   ]:[
     {id:'hook',role:'HOOK',line:hook,visual:'Iniciar en acción desde 0.0s; persona a cámara, producto cercano y gesto que detiene el scroll'},
     {id:'problem',role:'PROBLEMA / DESEO',line:problem,visual:'Situación cotidiana y reconocible del comprador; acción distinta del primer plano'},
