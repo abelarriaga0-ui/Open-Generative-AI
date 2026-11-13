@@ -32,30 +32,85 @@ const CARD='rounded-[26px] border border-[#35313f] bg-[#191a22] shadow-[0_14px_4
 const DURATION_OPTIONS=Array.from({length:12},(_,i)=>i+4); // Seedance 2.0 supported range: 4–15 seconds
 const usd=value=>new Intl.NumberFormat('es-EC',{style:'currency',currency:'USD'}).format((value||0)/100);
 const INITIAL={name:'',description:'',style:'auto',audience:'',market:'Ecuador',objective:'sales',
-  ratio:'9:16',duration:8,resolution:'720p',quality:'high',cta:'Escríbenos por WhatsApp',notes:''};
+  ratio:'9:16',duration:8,resolution:'720p',quality:'high',cta:'Escríbenos por WhatsApp',notes:'',problem:'',benefit:'',sceneLines:{}};
 
+function compactSpeech(value,maxWords=9){
+  const words=String(value||'').replace(/\s+/g,' ').trim().split(' ').filter(Boolean);
+  if(!words.length)return '';
+  const selected=words.slice(0,maxWords).join(' ').replace(/[,;:\s]+$/,'');
+  return /[.!?…]$/.test(selected)?selected:selected+'.';
+}
+function productCategory(d){
+  const text=(d.name+' '+d.description).toLocaleLowerCase('es');
+  if(/perfume|fragancia|aroma|colonia|esencia|feromona|body wash|gel de ducha/.test(text))return 'aroma';
+  if(/shampoo|champú|cabello|capilar|caspa|cuero cabelludo|barba/.test(text))return 'cabello';
+  if(/limpieza|limpiar|desinfectar|hogar|cocina|ordenar/.test(text))return 'hogar';
+  if(/crema|piel|loción|cosmético/.test(text))return 'cuidado';
+  return 'general';
+}
+function buildScenePlan(d){
+  const total=Number(d.duration)||8;
+  const category=productCategory(d);
+  const name=d.name.trim()||'este producto';
+  const defaults={
+    aroma:{hook:'¿Buscas un aroma para tu estilo?',problem:'No cualquier fragancia va con tu rutina.',benefit:'Haz del aroma parte de tu estilo.',visual:'Aplicación real, aroma y preparación para salir'},
+    cabello:{hook:'¿Buscas renovar tu rutina capilar?',problem:'Elegir bien para tu cabello importa.',benefit:'Un paso más para tu cuidado diario.',visual:'Uso visible y correcto del producto en el cabello'},
+    hogar:{hook:'¿Quieres simplificar tu rutina?',problem:'Las tareas cotidianas requieren soluciones prácticas.',benefit:'Mira cómo integrarlo en tu día.',visual:'Manos mostrando el uso real y su resultado observable'},
+    cuidado:{hook:'¿Buscas algo para tu cuidado diario?',problem:'Tu rutina merece una elección consciente.',benefit:'Un paso práctico en tu rutina.',visual:'Textura y aplicación real, sin prometer resultados'},
+    general:{hook:'¿Buscas algo útil para tu rutina?',problem:'Elegir el producto adecuado puede costar.',benefit:'Mira cómo incorporarlo a tu día.',visual:'Demostración física de uso real, sin funciones inventadas'}
+  }[category];
+  const hook=defaults.hook;
+  const problem=compactSpeech(d.problem,9)||defaults.problem;
+  const benefit=compactSpeech(d.benefit,9)||defaults.benefit;
+  const productLine='Te presento '+name+'.';
+  const cta=d.cta?.toLowerCase().includes('whatsapp')?'Escríbenos por WhatsApp.':'Escríbenos para conocerlo.';
+  const isDirect=d.style==='ugc'||d.style==='auto';
+  const voice=isDirect?'El mismo adulto habla directamente a cámara, boca sincronizada':'Voz en off audible sobre la acción, en español latino';
+  const specs=total<=7?[
+    {id:'hook',role:'HOOK + PROBLEMA',line:'¿Buscas algo diferente?',visual:'Abrir con el problema o deseo reconocible, movimiento humano inmediato y producto en cuadro'},
+    {id:'close',role:'PRODUCTO + SOLUCIÓN + CTA',line:'Conoce '+name+'. Escríbenos.',visual:'Mostrar producto real y una acción breve y plausible; cerrar con persona y producto'}
+  ]:total<=11?[
+    {id:'hook',role:'HOOK',line:'¿Buscas algo diferente?',visual:'Persona a cámara o problema visible desde el primer fotograma; producto temprano'},
+    {id:'problem',role:'PROBLEMA',line:compactSpeech(d.problem,5)||'Elegir bien no siempre es fácil.',visual:'Situación cotidiana concreta que expresa el deseo, sin inventar una prueba'},
+    {id:'solution',role:'SOLUCIÓN + DEMO',line:'Conoce '+name+'.',visual:'Presentar envase fiel, manos y uso real, con un corte claro'},
+    {id:'close',role:'BENEFICIO + CTA',line:'Escríbenos para conocerlo.',visual:'Resultado observable o utilidad real; persona cierra mirando a cámara'}
+  ]:[
+    {id:'hook',role:'HOOK',line:hook,visual:'Iniciar en acción desde 0.0s; persona a cámara, producto cercano y gesto que detiene el scroll'},
+    {id:'problem',role:'PROBLEMA / DESEO',line:problem,visual:'Situación cotidiana y reconocible del comprador; acción distinta del primer plano'},
+    {id:'solution',role:'PRODUCTO / SOLUCIÓN',line:productLine,visual:'Presentar '+name+' con etiqueta, tapa, escala y colores intactos; mismo actor'},
+    {id:'benefit',role:'DEMOSTRACIÓN / BENEFICIO',line:benefit,visual:defaults.visual+'; mostrar, no inventar un resultado'},
+    {id:'close',role:'CIERRE / CTA',line:cta,visual:'Regresar al rostro que habla a cámara con producto visible; cierre comercial sin packshot mudo'}
+  ];
+  const n=specs.length;
+  return specs.map((scene,i)=>{
+    const from=Number((i*total/n).toFixed(1));
+    const to=i===n-1?total:Number(((i+1)*total/n).toFixed(1));
+    const seconds=Number((to-from).toFixed(1));
+    return {...scene,from,to,seconds,maxWords:Math.max(4,Math.floor(seconds*2.8)),
+      line:String(d.sceneLines?.[scene.id]??scene.line).trim(),
+      audioInstruction:voice};
+  });
+}
 function scriptFor(d){
   const name=d.name.trim();
-  const cta=d.cta.trim()||'Pide más información';
-  const identity='@image1 es la referencia OBLIGATORIA de identidad del producto '+name+'. Conserva estrictamente marca, tipografía, etiqueta, tapa, envase, proporciones y colores originales en todas las tomas. La referencia NO es un fotograma inicial: empieza una filmación nueva en un escenario real.';
-  const context='Mercado: '+d.market+'. Público: '+(d.audience.trim()||'personas interesadas en el producto')+'. Objetivo: '+(OBJECTIVES.find(x=>x.id===d.objective)?.name||'Generar ventas')+'.';
-  const facts='Producto: '+name+'. Información verificada por el vendedor: '+(d.description.trim()||'sin características adicionales confirmadas')+'. No inventes ingredientes, eficacia, testimonios, precios, descuentos, disponibilidad ni resultados.';
-  const common='Filmación hiperrealista con física, piel, manos y materiales naturales. Un solo anuncio continuo con luz, vestuario, reparto, espacios, escala del producto y sonido coherentes entre cortes. Hook visual inmediato, producto visible temprano, demostración o detalle observable, beneficio fundamentado y cierre claro. Sin animar el envase flotando, rotaciones CGI, etiquetas deformadas, escenas decorativas repetidas ni letras inventadas. Composición legible para anuncio móvil.';
-  const style=d.style==='auto'
-    ?'IA creativa: elige automáticamente el enfoque comercial más adecuado para la información disponible entre UGC hablado a cámara, demostración o mini-historia visual. Prioriza claridad del uso del producto, deseo del público y continuidad de tomas. Si hay una persona, conserva siempre su identidad. No inventes pruebas, datos ni testimonios.'
-    :d.style==='ugc'
-    ?'UGC creíble: adulto natural mirando y hablando directamente a cámara desde el primer segundo. Sonido y labios sincronizados, español latinoamericano conversacional, 1 o 2 acciones reales y producto en mano. Alterna rostro y detalle manteniendo al mismo personaje. Nada de falso testimonio real ni voz de locutor exagerada.'
-    :d.style==='demo'
-    ?'Demostración: muestra el producto funcionando de forma físicamente plausible en un contexto cotidiano, con planos útiles, manos naturales y continuidad de la misma acción. Narración breve en español si ayuda.'
-    :d.style==='cine'
-    ?'Cine comercial: microhistoria visual en un único entorno coherente, cámara física, movimiento natural y montaje con intención. No es un avatar hablando a cámara. Música ambiente y voz solo si ayudan al objetivo.'
-    :d.style==='premium'
-    ?'Comercial premium aspiracional: persona adulta usando o mostrando el producto, iluminación elegante pero real, identidad humana estable, detalle del producto y cierre memorable; no una animación de botella.'
-    :'POV cámara en primera persona: manos interactuando con el producto, uso verificable y ambiente real, sin un personaje hablando frente a cámara.';
-  const extras=Array.from({length:8},(_,i)=>i+2).filter(i=>i<=d.imageCount)
-    .map(i=>'@image'+i+' es referencia adicional de apariencia o escenario; úsala sin sustituir la identidad de @image1.').join(' ');
-  const audio='Si hay voz, habla español latinoamericano, con frases breves adecuadas para '+d.duration+' segundos. CTA: '+cta+'.';
-  return [identity,extras,context,facts,style,common,audio,d.notes.trim()?'Instrucciones adicionales del cliente: '+d.notes.trim():null].filter(Boolean).join('\n').slice(0,3900);
+  const scenes=buildScenePlan(d);
+  const identity='@image1 REFERENCIA OBLIGATORIA DE IDENTIDAD de '+name+'. Conserva marca, etiqueta, tipografía, color, tapa, envase, geometría y proporciones. La imagen NO es primer fotograma; filma escenas nuevas realistas.';
+  const extra=Array.from({length:8},(_,i)=>i+2).filter(i=>i<=d.imageCount)
+    .map(i=>'@image'+i+' es referencia adicional, nunca sustituye @image1.').join(' ');
+  const context='MERCADO: '+d.market+'. PÚBLICO: '+(d.audience.trim()||'compradores interesados')+'. OBJETIVO: '+(OBJECTIVES.find(x=>x.id===d.objective)?.name||'Generar ventas')+'.';
+  const voice=d.style==='ugc'||d.style==='auto'
+    ?'UGC: mismo actor adulto visible que MIRA Y HABLA A CÁMARA desde el primer segundo, sincronía labial y voz natural en ESPAÑOL LATINO.'
+    :'NARRADOR: VOZ EN OFF clara y audible en español latino sobre las imágenes, sin montaje mudo.';
+  const shots=scenes.map((scene,i)=>
+    'ESCENA '+(i+1)+' — '+scene.from+' a '+scene.to+' s ('+scene.seconds+' s; CORTE OBLIGATORIO, nunca toma mayor de 4 s). '+scene.role+
+    '\nVISUAL: '+scene.visual+'. Cámara y acción cambian respecto a la toma anterior. No repetir acción.'+
+    '\nAUDIO: pronunciar TEXTUALMENTE en este intervalo: «'+scene.line+'». Voz audible, dicción rápida pero natural; no dejar la frase solo como texto en pantalla.'
+  ).join('\n');
+  const details='PRODUCTO: '+name+'. Datos aportados por el vendedor: '+(d.description.trim().slice(0,390)||'sin detalles adicionales')+'. Sin resultados clínicos, feromonas efectivas, atracción garantizada, testimonios, descuentos ni urgencia inventados.';
+  const rules='CONTRATO EDITORIAL: anuncio de respuesta directa, NO video de producto decorativo. Hook audible y visual desde 0 s; plantear problema/deseo; presentar producto, uso visible, beneficio sustentado y CTA HABLADO al final. Audio verbal durante las escenas, sin silencios largos, sin voz solo al final, sin música que oculte la voz. CORTES REALES: cada escena dura como máximo 4 segundos y debe cambiar encuadre, acción e información. Mismo personaje, espacio, vestuario y objeto entre tomas. Física, manos y rostro naturales; nada de envases CGI flotando, mutación de etiquetas o gestos repetitivos. No generar subtítulos con letras falsas; dejar espacio seguro para subtítulos de edición.';
+  const additional=d.notes.trim()?'NOTAS DEL USUARIO: '+d.notes.trim().slice(0,350):'';
+  return ['ANUNCIO COMERCIAL CON DIÁLOGO OBLIGATORIO. DURACIÓN TOTAL '+d.duration+' s.',identity,extra,context,voice,
+    'GUION TEMPORIZADO / STORYBOARD (obligatorio, no sugerencias):',shots,rules,details,additional].filter(Boolean).join('\n').slice(0,3900);
 }
 function Option({chosen,onClick,title,detail,icon}){
  return <button type="button" onClick={onClick} aria-pressed={chosen}
@@ -90,6 +145,8 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
 
  const change=(field,value)=>{setD(old=>({...old,[field]:value}));setQuote(null);setQuoteError('');};
  const data=useMemo(()=>({...d,imageCount:photos.length}),[d,photos.length]);
+ const scenePlan=useMemo(()=>buildScenePlan(d),[d]);
+ const dialogueTooLong=scenePlan.some(scene=>scene.line.split(/\s+/).filter(Boolean).length>scene.maxWords);
  const prompt=useMemo(()=>scriptFor(data),[data]);
  const input=useMemo(()=>({prompt,images_list:photos.map(p=>p.url),aspect_ratio:d.ratio,
    duration:Number(d.duration),resolution:d.resolution,quality:d.quality}),[prompt,photos,d.ratio,d.duration,d.resolution,d.quality]);
@@ -152,7 +209,7 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
  },[step,signature]);
 
  async function startGeneration(){
-   if(sending||!quote||quote.signature!==signature||!quote.affordable)return;
+   if(sending||dialogueTooLong||!quote||quote.signature!==signature||!quote.affordable)return;
    setSending(true);setJobError('');setPollError('');
    if(!keyRef.current)keyRef.current=crypto.randomUUID();
    try{
@@ -284,6 +341,11 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
          <input autoFocus className={INPUT} maxLength={120} placeholder="Ej. GODA para hombre" value={d.name} onChange={e=>change('name',e.target.value)}/></label>
        <label className="block"><span className="text-[13px] font-bold block mb-2">¿Qué hace y cómo se usa?</span>
          <textarea rows={4} className={INPUT+' resize-y'} maxLength={1300} placeholder="Describe beneficios y usos que puedas respaldar…" value={d.description} onChange={e=>change('description',e.target.value)}/></label>
+       <label className="block"><span className="text-[13px] font-bold block mb-2">¿Qué problema o deseo tiene tu comprador? <span className="font-normal text-[#b7aaca]">(recomendado)</span></span>
+         <input className={INPUT} maxLength={160} value={d.problem} onChange={e=>change('problem',e.target.value)} placeholder="Ej. Quiero que mi aroma encaje con mi estilo"/></label>
+       <label className="block"><span className="text-[13px] font-bold block mb-2">¿Qué beneficio real podemos comunicar? <span className="font-normal text-[#b7aaca]">(recomendado)</span></span>
+         <input className={INPUT} maxLength={160} value={d.benefit} onChange={e=>change('benefit',e.target.value)} placeholder="Ej. Aroma para acompañar mi rutina"/></label>
+       <p className="text-[12px] text-[#c6b5d7]">La IA propone un guion si no completas estos datos. No inventará resultados clínicos ni testimonios.</p>
        {preview&&<div className="flex items-center gap-3 rounded-2xl bg-[#25232e] border border-[#3e3649] p-3"><img src={preview} alt="" className="w-14 h-14 object-contain rounded-lg"/><span className="text-[12px] text-[#c4b8d0]">Tu producto se conservará visualmente en las tomas.</span></div>}
      </div>}
      {step===2&&<div className="grid sm:grid-cols-2 gap-3">
@@ -322,6 +384,31 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
        <p className="text-[12px] text-[#bdb2c9]">El sistema preparará un guion visual acorde con la duración, sin añadir datos comerciales que no proporcionaste.</p>
      </div>}
      {step===6&&<div className="space-y-5">
+       <div className="rounded-[22px] border border-[#5e4778] bg-[#272132] p-4 sm:p-5">
+         <p className="text-[10px] uppercase tracking-[.17em] font-extrabold text-[#c9aafa]">Director comercial de Realizo</p>
+         <h3 className="mt-1 text-[19px] font-extrabold text-[#f8f4ff]">Tu video, escena por escena</h3>
+         <p className="mt-1 text-[12px] leading-5 text-[#d0c3db]">Cada toma dura 4 segundos o menos. Revisa y modifica exactamente lo que se escuchará antes de pagar.</p>
+         <div className="mt-4 space-y-3">
+           {scenePlan.map((scene,i)=><div key={scene.id} className="rounded-2xl border border-[#4c405b] bg-[#1b1b25] p-4">
+             <div className="flex flex-wrap justify-between items-center gap-2">
+               <strong className="text-[12px] tracking-wide text-[#e6d1ff]">ESCENA {i+1} · {scene.role}</strong>
+               <span className="rounded-full bg-[#392d4b] px-3 py-1 text-[11px] font-bold text-[#d5b6ff]">{scene.from}–{scene.to} s · {scene.seconds} s</span>
+             </div>
+             <p className="mt-3 text-[12px] text-[#c9bfce]"><strong className="text-[#f5ebff]">Visual:</strong> {scene.visual}</p>
+             <label className="block mt-3">
+               <span className="text-[12px] font-bold text-[#ddc5ff]">Texto hablado · español latino</span>
+               <input className={INPUT+' mt-1'} aria-label={'Diálogo hablado, escena '+(i+1)} maxLength={140}
+                 value={scene.line} onChange={e=>change('sceneLines',{...d.sceneLines,[scene.id]:e.target.value})}/>
+             </label>
+             <p className={'mt-2 text-[11px] '+(scene.line.split(/\s+/).filter(Boolean).length>scene.maxWords?'text-[#ffb3ac]':'text-[#b8a7c5]')}>
+               {scene.line.split(/\s+/).filter(Boolean).length}/{scene.maxWords} palabras recomendadas para esta toma
+             </p>
+           </div>)}
+         </div>
+         {dialogueTooLong&&<p role="alert" className="mt-4 text-[12px] font-bold text-[#ffb3ac]">Acorta los diálogos marcados: las palabras deben caber en su escena. El cargo está bloqueado hasta corregirlos.</p>}
+         {d.duration<12&&<p className="mt-3 text-[12px] text-[#d8bedc]">Para contar hook, problema, solución y cierre con claridad, recomendamos 12–15 segundos. En videos más breves se comprimen etapas.</p>}
+         <p className="mt-3 text-[12px] text-[#bfb0cc]">Seedance puede incumplir instrucciones de voz o montaje. El guion explícito reduce la ambigüedad, pero no garantiza sincronía ni audio final.</p>
+       </div>
        <div className="grid sm:grid-cols-[145px_1fr] gap-5 bg-[#24232e] border border-[#42394f] rounded-[22px] p-4">
          {preview&&<img src={preview} className="h-40 w-full rounded-2xl object-contain bg-[#171820]" alt="Producto seleccionado"/>}
          <div className="space-y-2"><strong className="text-lg">{d.name}</strong>
@@ -341,7 +428,7 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
            <p role="alert" className="text-[#ffadb4] text-sm">{quoteError||'Precio no disponible. No puedes generar hasta obtener una cotización.'}</p>}
        </div>
        {jobError&&<p role="alert" className="text-[13px] text-[#ffadb4]">{jobError}</p>}
-       <button type="button" onClick={startGeneration} disabled={sending||quoting||!quote?.affordable||quote.signature!==signature}
+       <button type="button" onClick={startGeneration} disabled={sending||quoting||dialogueTooLong||!quote?.affordable||quote.signature!==signature}
          className="w-full rounded-2xl bg-[#7750c7] text-white disabled:opacity-45 hover:bg-[#6841b8] px-6 py-4 font-extrabold text-sm transition">
          {sending?'Enviando solicitud…':'Confirmar '+(quote?.price_cents?usd(quote.price_cents):'')+' y generar video'}
        </button>
