@@ -60,7 +60,7 @@ function buildScenePlan(d){
     general:{hook:'¿Buscas algo útil para tu rutina?',problem:'Elegir el producto adecuado puede costar.',benefit:'Mira cómo incorporarlo a tu día.',visual:'Demostración física de uso real, sin funciones inventadas'}
   }[category];
   const hook=defaults.hook;
-  const problem=compactSpeech(d.problem,9)||defaults.problem;
+  const problem=compactSpeech(d.problem,8)||defaults.problem;
   const benefit=compactSpeech(d.benefit,9)||defaults.benefit;
   const productLine='Te presento '+name+'.';
   const cta=d.cta?.toLowerCase().includes('whatsapp')?'Escríbenos por WhatsApp.':'Escríbenos para conocerlo.';
@@ -86,7 +86,7 @@ function buildScenePlan(d){
     const from=Number((i*total/n).toFixed(1));
     const to=i===n-1?total:Number(((i+1)*total/n).toFixed(1));
     const seconds=Number((to-from).toFixed(1));
-    return {...scene,from,to,seconds,maxWords:Math.max(4,Math.floor(seconds*2.8)),
+    return {...scene,from,to,seconds,maxWords:Math.max(4,Math.floor(seconds*3)),
       line:String(d.sceneLines?.[scene.id]??scene.line).trim(),
       audioInstruction:voice};
   });
@@ -94,7 +94,7 @@ function buildScenePlan(d){
 function scriptFor(d){
   const name=d.name.trim();
   const scenes=buildScenePlan(d);
-  const identity='@image1 REFERENCIA OBLIGATORIA DE IDENTIDAD de '+name+'. Conserva marca, etiqueta, tipografía, color, tapa, envase, geometría y proporciones. La imagen NO es primer fotograma; filma escenas nuevas realistas.';
+  const identity='@image1 REFERENCIA OBLIGATORIA DE IDENTIDAD de '+name+'. Conserva marca, etiqueta, tipografía, color, tapa, envase, geometría y proporciones. La imagen NO es un fotograma inicial; filma escenas nuevas realistas.';
   const extra=Array.from({length:8},(_,i)=>i+2).filter(i=>i<=d.imageCount)
     .map(i=>'@image'+i+' es referencia adicional, nunca sustituye @image1.').join(' ');
   const context='MERCADO: '+d.market+'. PÚBLICO: '+(d.audience.trim()||'compradores interesados')+'. OBJETIVO: '+(OBJECTIVES.find(x=>x.id===d.objective)?.name||'Generar ventas')+'.';
