@@ -44,7 +44,7 @@ export default function RealizoMotionHome({onCreate,onTemplates,onUseTemplate,on
    <div className="realizo-motion-ambient" aria-hidden="true"/>
    <div className="realizo-motion-hero-copy">
     <div className="realizo-motion-live"><span className="realizo-motion-live-dot"/> REALIZO STUDIO <span className="realizo-motion-live-line"/> IA CREATIVA</div>
-    <h1>De una foto<br/>a algo <em>extraordinario.</em></h1>
+    <h1>De una foto{' '}<br/>a algo <em>extraordinario.</em></h1>
     <p>Crea anuncios que destacan.</p>
     <div className="realizo-motion-hero-actions">
      <button type="button" className="realizo-motion-cta" onClick={onCreate}>Crear video <span aria-hidden="true">↗</span></button>
@@ -127,10 +127,10 @@ export default function RealizoMotionHome({onCreate,onTemplates,onUseTemplate,on
     </div>
    </div>
   </section>
-  <section className="realizo-motion-footer-action" data-reveal>
+  <footer className="realizo-motion-footer-action" data-reveal>
    <div><span className="realizo-motion-kicker">EMPIEZA AQUÍ</span><h2>La siguiente idea es tuya<span>.</span></h2></div>
    <div><button type="button" className="realizo-motion-cta" onClick={onCreate}>Crear video <span aria-hidden="true">↗</span></button>
    <button type="button" className="realizo-motion-footer-link" onClick={onViewVideos}>Mis creaciones →</button></div>
-  </section>
+  </footer>
  </div>;
 }

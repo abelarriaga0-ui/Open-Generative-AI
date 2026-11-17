@@ -251,7 +251,7 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
       <Icon name={icon}/>{label}{page===id&&<span className="ml-auto h-2 w-2 rounded-full bg-[#E9898F]"/>}
    </button>
  );
- return <main ref={shellRef} className="realizo-app min-h-screen flex flex-col">
+ return <main id="main-content" ref={shellRef} className="realizo-app min-h-screen flex flex-col">
    <header className="realizo-topbar shrink-0 px-5 sm:px-7 flex items-center justify-between gap-3">
      <Link href="/studio" className="realizo-brand flex items-center gap-2.5 font-extrabold tracking-tight text-[24px]">
        <Mark/>realizo<span className="text-[#EF8B89]">.</span>

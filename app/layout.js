@@ -16,7 +16,7 @@ const inter = Inter({
 
 export const metadata = {
   title: 'Realizo | Estudio creativo con IA',
-  description: 'Crea y prueba videos e imágenes publicitarias con inteligencia artificial en Realizo.',
+  description: 'Crea videos e imágenes publicitarias con inteligencia artificial. Plantillas UGC, imágenes que venden y modo libre para anuncios que destacan.',
   applicationName: 'Realizo',
   manifest: '/manifest.webmanifest',
   icons: {
@@ -27,6 +27,20 @@ export const metadata = {
     apple: [{ url: '/icons/realizo-192.png', sizes: '192x192' }],
   },
   appleWebApp: { capable: true, title: 'Realizo', statusBarStyle: 'black-translucent' },
+  openGraph: {
+    title: 'Realizo — Crea videos con IA',
+    description: 'De una foto a algo extraordinario. Videos e imágenes publicitarias con inteligencia artificial.',
+    siteName: 'Realizo',
+    images: [{ url: '/icons/realizo-512.png', width: 512, height: 512, alt: 'Realizo' }],
+    type: 'website',
+    locale: 'es_AR',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Realizo — Crea videos con IA',
+    description: 'De una foto a algo extraordinario. Videos e imágenes publicitarias con inteligencia artificial.',
+    images: ['/icons/realizo-512.png'],
+  },
 };
 
 export const viewport = { themeColor: '#100c12' };
@@ -40,7 +54,28 @@ export default async function RootLayout({ children }) {
 
   return (
     <html lang={htmlLang}>
-      <body className={inter.variable}>{children}</body>
+      <head>
+        <link rel="preconnect" href="https://cdn.muapi.ai" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://cdn.muapi.ai" />
+        <link rel="preconnect" href="https://api.muapi.ai" crossOrigin="anonymous" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'WebApplication',
+            name: 'Realizo',
+            description: 'Genera videos e imágenes publicitarias con inteligencia artificial',
+            url: 'https://realizo-auth-sandbox.abelarriaga0.workers.dev',
+            applicationCategory: 'MultimediaApplication',
+            operatingSystem: 'Web',
+            inLanguage: 'es',
+          })}}
+        />
+      </head>
+      <body className={inter.variable}>
+        <a href="#main-content" className="realizo-skip-link">Saltar al contenido principal</a>
+        {children}
+      </body>
     </html>
   );
 }

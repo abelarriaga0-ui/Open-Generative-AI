@@ -5,7 +5,15 @@ import { getWalletEnvironment } from '@/lib/wallet/server';
 import { getOwnSession } from '@/lib/realizo-auth/session';
 
 export const dynamic = 'force-dynamic';
-export const metadata = { title: 'Estudio de videos | Realizo' };
+export const metadata = {
+  title: 'Estudio de videos | Realizo',
+  description: 'Crea y prueba videos e imágenes publicitarias con inteligencia artificial en Realizo. Plantillas UGC, creador guiado con IA y modo libre.',
+  openGraph: {
+    title: 'Estudio de videos | Realizo',
+    description: 'Crea anuncios de video e imagen con IA. Plantillas UGC, Seedance, Veo y Kling para publicidad que destaca.',
+    type: 'website',
+  },
+};
 
 export default async function StudioPage({ params }) {
   // Other deployments continue using the existing full Open Generative AI studio.
