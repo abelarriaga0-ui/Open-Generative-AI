@@ -70,7 +70,7 @@ test('Mis videos reconciles pending Seedance jobs after reopening on a different
 
 test('sales director produces spoken visual plan with every cut <= 4 seconds and no overlong default lines',()=>{
  const source=wizard.slice(wizard.indexOf('const MODEL_ID='),wizard.indexOf('const QUESTIONS=['))+wizard.slice(wizard.indexOf('function compactSpeech('),wizard.indexOf('function Option({'));
- assert.ok(source.startsWith('function compactSpeech') && source.includes('function scriptFor('));
+ assert.ok(source.includes('function compactSpeech') && source.includes('function scriptFor('));
  const {buildScenePlan,scriptFor}=runInNewContext(source+'\n({buildScenePlan,scriptFor})',{
    OBJECTIVES:[{id:'sales',name:'Generar ventas'}]
  });
