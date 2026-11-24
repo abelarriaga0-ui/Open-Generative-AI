@@ -14,6 +14,7 @@ import RealizoMotionHome from '@/components/RealizoMotionHome';
 import ConversionTemplatesStudio from '@/components/ConversionTemplatesStudio';
 import RealizoCreationsGallery from '@/components/RealizoCreationsGallery';
 import RealizoSeedanceFlow from '@/components/RealizoSeedanceFlow';
+import RealizoFreePrompt from '@/components/RealizoFreePrompt';
 import {getAdTemplate} from '@/lib/realizo-creative/ad-templates';
 
 function Mark() {
@@ -226,8 +227,8 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
    if(guest)return requireLogin();
    setPage('create');setSidebar(false);
    setBrief(null);setResumeProjectId(null);setTemplateId(null);setCreateKey(current=>current+1);
-   setCreatorMode(mode);
-   // El creador público utiliza un único flujo guiado Seedance 2.0.
+   setCreatorMode(mode==='manual'?'manual':'seedance');
+   // Prompt libre y creación guiada usan la misma billetera, con interfaces independientes.
  }
  function chooseVisualFormat(format){
   if(guest)return requireLogin();
@@ -261,6 +262,7 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
        <button type="button" aria-current={page==='templates'?'page':undefined} onClick={()=>{setTemplateId(null);setPage('templates')}}>Plantillas</button>
        <button type="button" aria-current={page==='images'?'page':undefined} onClick={()=>setPage('images')}>Imágenes</button>
        <button type="button" onClick={startNewVideo}>Crear video</button>
+       <button type="button" aria-current={page==='create'&&creatorMode==='manual'?'page':undefined} onClick={()=>chooseCreatorMode('manual')}>Prompt libre</button>
        <button type="button" aria-current={page==='hyperreal'?'page':undefined} onClick={()=>setPage('hyperreal')}>Hiperrealista PRO</button>
        <button type="button" onClick={()=>setPage('videos')}>Mis creaciones</button>
       </nav>
@@ -282,6 +284,7 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
       <nav aria-label="Menú de Realizo" className="space-y-2">
        {nav('home','Inicio','video')}
        {nav('create','Crear video','video',startNewVideo)}
+       <button type="button" onClick={()=>chooseCreatorMode('manual')} aria-current={page==='create'&&creatorMode==='manual'?'page':undefined} className={navBase+' '+(page==='create'&&creatorMode==='manual'?'bg-[#EDE2FB] text-[#6542AB]':'text-[#756782] hover:bg-[#F7F0F7]')}><Icon name="sliders"/>Prompt libre</button>
        {nav('hyperreal','Hiperrealista PRO','sliders')}
        {nav('templates','Plantillas','sliders',()=>setTemplateId(null))}
        {nav('images','Imágenes que venden','sliders')}
@@ -330,6 +333,10 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
        onWalletRefresh={refreshWallet}
        onGenerationComplete={()=>{setPage('videos');setCreationsRefresh(n=>n+1);refreshWallet();}}
        onViewCreations={()=>{setPage('videos');setCreationsRefresh(n=>n+1);}}/>}
+     {page==='create'&&!resumeProjectId&&<div className="mx-auto max-w-[1070px] mb-5 flex flex-wrap gap-2" role="group" aria-label="Modo de creación de video">
+        <button type="button" aria-pressed={creatorMode!=='manual'} onClick={()=>chooseCreatorMode('seedance')} className={'rounded-xl px-5 py-3 text-[13px] font-bold border '+(creatorMode!=='manual'?'bg-[#7650c6] border-[#7650c6] text-white':'bg-[#292332] border-[#655276] text-[#eee2fc]')}>Creación guiada</button>
+        <button type="button" aria-pressed={creatorMode==='manual'} onClick={()=>chooseCreatorMode('manual')} className={'rounded-xl px-5 py-3 text-[13px] font-bold border '+(creatorMode==='manual'?'bg-[#7650c6] border-[#7650c6] text-white':'bg-[#292332] border-[#655276] text-[#eee2fc]')}>Prompt libre</button>
+      </div>}
      {page==='create'&&(
        resumeProjectId
          ? <section className="max-w-[1230px] mx-auto">
@@ -353,6 +360,9 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
                  onViewCreations={()=>{setPage('videos');setCreationsRefresh(n=>n+1);}}
                  onWalletRefresh={refreshWallet}/>}
            </section>
+         : creatorMode==='manual' ? <RealizoFreePrompt key={'free-prompt-'+createKey} accountId={accountId}
+             uploadAsset={uploadAsset} onWalletRefresh={refreshWallet}
+             onViewVideos={()=>{setPage('videos');setCreationsRefresh(n=>n+1);}}/>
          : <RealizoSeedanceFlow key={'seedance-'+createKey} accountId={accountId}
              initialStyle={formatPreset}
              initialNotes={brief?.prompt||''}
