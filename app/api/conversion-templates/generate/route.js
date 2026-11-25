@@ -36,6 +36,10 @@ export async function POST(request) {
         !/^[A-Za-z0-9_-]{8,128}$/.test(body.idempotency_key)) {
       return Response.json({ error: 'invalid_idempotency_key' }, { status: 400 });
     }
+    const ownedUpload=await env.WALLETS_DB.prepare(
+      'SELECT id FROM realizo_image_uploads WHERE user_id=? AND image_url=? LIMIT 1'
+    ).bind(user.id,body.product_url).first();
+    if(!ownedUpload)return Response.json({error:'product_image_not_found'},{status:404});
     const referenceUrl = env[template.referenceEnvKey];
     const modelId = env[template.modelEnvKey];
     if (!isSafePublicImageUrl(referenceUrl) || !modelId) {
