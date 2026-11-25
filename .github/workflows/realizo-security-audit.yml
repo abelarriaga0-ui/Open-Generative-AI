@@ -30,11 +30,11 @@ jobs:
           out="$(mktemp -d)"
           trap 'rm -rf "$out"' EXIT
           set +e
-          docker run --rm -v "$PWD:/repo:ro" -v "$out:/out" zricethezav/gitleaks@sha256:e1b35e12a8c6fa8901f060459cfb6b2fc4c484d3afbe3b029733a3bbfab07055 git /repo --log-opts="--all" --redact=100 --no-banner --log-level error --report-format json --report-path /out/findings.json --exit-code 23
+          docker run --rm -v "$PWD:/repo:ro" -v "$out:/out" zricethezav/gitleaks@sha256:e1b35e12a8c6fa8901f060459cfb6b2fc4c484d3afbe3b029733a3bbfab07055 git /repo --log-opts="--all" --redact=0 --no-banner --log-level error --report-format json --report-path /out/findings.json --exit-code 23 > "$out/scanner.log" 2>&1
           code=$?
           set -e
           if [ "$code" -eq 23 ]; then
-            python3 -c 'import json,sys; a=json.load(open(sys.argv[1])); print("Potential secret findings:",len(a)); [print(json.dumps({k:x.get(k) for k in ("RuleID","File","StartLine","Commit")},ensure_ascii=True)) for x in a[:100]]' "$out/findings.json"
-            exit 23
+            python3 scripts/classify-security-scan.py "$out/findings.json"
+            exit $?
           fi
           exit "$code"
