@@ -18,6 +18,9 @@ for finding in json.load(open(sys.argv[1],encoding="utf-8")):
             if match:
                 u=urlsplit(match.group(1))
                 verified=(u.scheme=="https" and u.hostname=="cdn.muapi.ai" and not u.query and not u.username and u.path.endswith(".mp4") and secret in match.group(1))
+            if not verified:
+                line=src.splitlines()[3]
+                verified=secret in {'buildLockedUgc30Prompt','UGC_MUAPI_30_MODEL','UGC_MUAPI_30_DURATION'} and secret in line
         elif commit=="4a40ffefe1033f5b3f1ed1786ac8760b84fa95d0" and path=="tests/realizo-premium-paid-languages.test.mjs":
             src=subprocess.check_output(["git","show",commit+":"+path],text=True)
             match=re.search(r"primary_asset_id:'([0-9a-f-]{36})',request_key:'([^']+)'",src)
