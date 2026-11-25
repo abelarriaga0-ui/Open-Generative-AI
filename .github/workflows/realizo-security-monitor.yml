@@ -1,0 +1,40 @@
+name: Realizo security monitoring
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  monitor:
+    if: github.repository == 'abelarriaga0-ui/Open-Generative-AI' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: '7e405c54c1a91abbdad537f7fec379a1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Inspect aggregate security counters and recovery availability
+        run: |
+          node --input-type=module <<'JS'
+          import {readFileSync} from 'node:fs';
+          const cfg=JSON.parse(readFileSync('wrangler.consolidated.jsonc','utf8'));
+          const base='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/d1/database/'+cfg.d1_databases[0].database_id;
+          const headers={Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,'Content-Type':'application/json'};
+          const recovery=await fetch(base+'/time_travel/bookmark',{headers,signal:AbortSignal.timeout(20000)});
+          const bookmark=await recovery.json().catch(()=>({}));
+          if(!recovery.ok||!bookmark.success||!bookmark.result?.bookmark)throw Error('D1 recovery bookmark unavailable');
+          const query=await fetch(base+'/query',{method:'POST',headers,signal:AbortSignal.timeout(20000),body:JSON.stringify({sql:"SELECT event_type,SUM(event_count) AS n FROM realizo_security_events WHERE hour_start >= ? GROUP BY event_type",params:[Math.floor(Date.now()/3600000)*3600-3600]})});
+          const data=await query.json().catch(()=>({}));
+          if(!query.ok||!data.success||!Array.isArray(data.result?.[0]?.results))throw Error('Security counter query unavailable');
+          const limits={login_failed:40,webhook_rejected:10,otp_throttled:20,ownership_denied:20,invalid_upload:20};
+          for(const row of data.result[0].results){
+            if(Object.hasOwn(limits,row.event_type)&&Number(row.n)>=limits[row.event_type]){
+              console.log('Security threshold exceeded: '+row.event_type);
+              process.exitCode=1;
+            }
+          }
+          console.log('Security and recovery availability checked; no customer data printed.');
+          JS
