@@ -4,6 +4,15 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/realizo-consolidated-release.yml"
+      - ".github/workflows/realizo-security-audit.yml"
+      - "migrations/0037_realizo_auth_rate_buckets.sql"
+      - "lib/realizo-auth/email.js"
+      - "lib/wallet/request-policy.js"
+      - "app/api/auth/email/verify/route.js"
+      - "app/api/conversion-templates/**"
+      - "app/api/realizo/images/upload/route.js"
+      - "tests/realizo-security-hardening.test.mjs"
+      - ".github/workflows/realizo-consolidated-release.yml"
       - "components/RealizoStudio.jsx"
       - "components/RealizoSeedanceFlow.jsx"
       - "components/RealizoFreePrompt.jsx"
@@ -157,6 +166,8 @@ jobs:
           if(!process.env.CLOUDFLARE_API_TOKEN)throw Error('Cloudflare token missing');
           console.log('Verified public video, images, premium and Live checkout. Auto-topup remains consent-only and not implemented.');
           JS
+      - name: Security regression gate
+        run: node --test tests/realizo-security-hardening.test.mjs
       - name: Verify realistic video appearance across all director styles before deployment
         run: node --test tests/realizo-free-prompt.test.mjs tests/realizo-seedance-guided.test.mjs tests/realizo-ugc15-omni-template.test.mjs tests/realizo-physical-realism.test.mjs tests/realizo-luxury-template.test.mjs tests/realizo-seedance-20-endpoint.test.mjs tests/realizo-live-models.test.mjs tests/realizo-muapi-endpoint.test.mjs tests/realizo-user-templates.test.mjs tests/realizo-sales-director.test.mjs
       - name: Check product identity and spoken-script integrity
@@ -190,6 +201,18 @@ jobs:
           npm run build:packages
           npx opennextjs-cloudflare build --config wrangler.consolidated.jsonc
           test -s .open-next/worker.js
+      - name: Inspect production D1 recovery bookmark without reading customer data
+        run: |
+          node --input-type=module <<'JS'
+          import {readFileSync} from 'node:fs';
+          const cfg=JSON.parse(readFileSync('wrangler.consolidated.jsonc','utf8'));
+          const id=cfg.d1_databases[0].database_id;
+          const base='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/d1/database/'+id+'/time_travel/bookmark';
+          const response=await fetch(base,{headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN},signal:AbortSignal.timeout(20000)});
+          const data=await response.json().catch(()=>({}));
+          if(!response.ok||!data.success||!data.result?.bookmark) throw Error('D1 recovery bookmark could not be verified; HTTP '+response.status);
+          console.log('D1 production recovery bookmark verified (value withheld).');
+          JS
       - name: Verify existing account, reference media, and creative project records in-place
         run: |
           set -euo pipefail
@@ -200,6 +223,8 @@ jobs:
           console.log('Existing identity, media and AI project record counts preserved.');
           JS
           npx wrangler d1 migrations apply WALLETS_DB --config wrangler.consolidated.jsonc --remote
+          npx wrangler d1 execute WALLETS_DB --config wrangler.consolidated.jsonc --remote --command "SELECT CASE WHEN EXISTS(SELECT 1 FROM sqlite_master WHERE name='realizo_auth_rate_buckets' AND type='table') THEN 1 ELSE 0 END AS otp_quota_schema_ready;" > /tmp/realizo-otp-schema.json
+          node -e "if(!/\"otp_quota_schema_ready\"\\s*:\\s*1/.test(require('node:fs').readFileSync('/tmp/realizo-otp-schema.json','utf8')))throw Error('OTP quota schema missing'); console.log('OTP quota schema verified');"
           npx wrangler d1 execute WALLETS_DB --config wrangler.consolidated.jsonc --remote --command "SELECT CASE WHEN (SELECT COUNT(*) FROM sqlite_master WHERE name='realizo_user_templates' AND type='table')=1 AND (SELECT COUNT(*) FROM pragma_table_info('generation_jobs') WHERE name='template_source_json')=1 THEN 1 ELSE 0 END AS private_template_schema_ready;" > /tmp/realizo-templates-schema.json
           node - <<'JS'
           const result=require('node:fs').readFileSync('/tmp/realizo-templates-schema.json','utf8');
