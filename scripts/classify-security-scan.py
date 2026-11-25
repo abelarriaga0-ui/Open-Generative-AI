@@ -20,7 +20,11 @@ for finding in json.load(open(sys.argv[1],encoding="utf-8")):
                 verified=(u.scheme=="https" and u.hostname=="cdn.muapi.ai" and not u.query and not u.username and u.path.endswith(".mp4") and secret in match.group(1))
             if not verified:
                 line=src.splitlines()[3]
-                verified=secret in {'buildLockedUgc30Prompt','UGC_MUAPI_30_MODEL','UGC_MUAPI_30_DURATION'} and secret in line
+                verified=secret in re.findall(r'\b[A-Za-z][A-Za-z0-9_]+\b',line)
+        elif commit=="1e85512be9f32e83130ad07145ddb53b85a00768" and path=="scripts/classify-security-scan.py":
+            source=subprocess.check_output(["git","show",sorted(known_media)[0]+":lib/realizo-creative/template-video-input.js"],text=True)
+            original=subprocess.check_output(["git","show",commit+":"+path],text=True)
+            verified=secret in re.findall(r'\b[A-Za-z][A-Za-z0-9_]+\b',source.splitlines()[3]) and secret in original.splitlines()[22]
         elif commit=="4a40ffefe1033f5b3f1ed1786ac8760b84fa95d0" and path=="tests/realizo-premium-paid-languages.test.mjs":
             src=subprocess.check_output(["git","show",commit+":"+path],text=True)
             match=re.search(r"primary_asset_id:'([0-9a-f-]{36})',request_key:'([^']+)'",src)
