@@ -1,3 +1,4 @@
+import {recordSecurityEvent} from '@/lib/wallet/security-events';
 import { NextResponse } from 'next/server';
 import { getWalletEnvironment } from '@/lib/wallet/server';
 import { findOrCreateAccount } from '@/lib/realizo-auth/accounts';
@@ -10,10 +11,12 @@ export async function GET(request) {
     const env=await getWalletEnvironment();
     if(new URL(request.url).origin!==env.REALIZO_AUTH_ORIGIN) return fallback();
     const identity=await finishGoogle(env,request);
-    if(!identity) return fallback();
+    if(!identity){await recordSecurityEvent(env,'login_failed');return fallback();}
     const user=await findOrCreateAccount(env.WALLETS_DB,identity.email,'google',identity.subject);
     const response=NextResponse.redirect(new URL('/studio',env.REALIZO_AUTH_ORIGIN),303);
-    return clearOauthCookie(await createOwnSession(env,user.id,response));
+    const authenticated=await createOwnSession(env,user.id,response);
+    await recordSecurityEvent(env,'login_success');
+    return clearOauthCookie(authenticated);
   }catch{
     console.error('Google login failed');
     return fallback();
