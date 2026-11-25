@@ -1,7 +1,11 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {DatabaseSync} from 'node:sqlite';
+import {DatabaseSync,backup} from 'node:sqlite';
+import {mkdtempSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {recordSecurityEvent} from '../lib/wallet/security-events.js';
 import {claimOtpQuota} from '../lib/realizo-auth/email.js';
 import {sniffImageMime} from '../lib/realizo-creative/media.js';
 import {quoteLiveVideo} from '../lib/wallet/live-video-models.js';
@@ -57,4 +61,39 @@ test('wallet mode denies legacy admin API and restricts browser embedding',()=>{
   assert.equal(walletPilotAction('/admin',true,true),'redirect');
   const csp=contentSecurityPolicy('/studio');
   for(const rule of ["object-src 'none'","base-uri 'self'","frame-ancestors 'none'"])assert.ok(csp.includes(rule));
+});
+
+test('security events use atomic aggregate counters with no personal data',async()=>{
+  const db=new DatabaseSync(':memory:');
+  db.exec(read('migrations/0038_realizo_security_events.sql'));
+  const d1={prepare(sql){return {bind(...args){return {async run(){return {meta:{changes:Number(db.prepare(sql).run(...args).changes)}}}}}}}};
+  await recordSecurityEvent({WALLETS_DB:d1},'login_failed');
+  await recordSecurityEvent({WALLETS_DB:d1},'login_failed');
+  await recordSecurityEvent({WALLETS_DB:d1},'not_allowed');
+  assert.equal(db.prepare('SELECT event_count FROM realizo_security_events WHERE event_type=?').get('login_failed').event_count,2);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM realizo_security_events').get().n,1);
+  db.close();
+});
+test('isolated SQLite backup restores synthetic account and security counters',async()=>{
+  const dir=mkdtempSync(join(tmpdir(),'realizo-restore-'));
+  const source=new DatabaseSync(':memory:');
+  try{
+    source.exec(read('migrations/0003_realizo_identity.sql'));
+    source.exec(read('migrations/0038_realizo_security_events.sql'));
+    source.prepare('INSERT INTO realizo_accounts(id,email) VALUES(?,?)').run('synthetic','fixture@example.invalid');
+    source.prepare('INSERT INTO realizo_security_events VALUES(?,?,?)').run(3600,'login_failed',2);
+    await backup(source,join(dir,'restore.sqlite'));
+    const restored=new DatabaseSync(join(dir,'restore.sqlite'));
+    try{
+      assert.equal(restored.prepare('SELECT COUNT(*) AS n FROM realizo_accounts').get().n,1);
+      assert.equal(restored.prepare('SELECT event_count FROM realizo_security_events').get().event_count,2);
+      assert.equal(restored.prepare('PRAGMA integrity_check').get().integrity_check,'ok');
+    }finally{restored.close();}
+  }finally{source.close();rmSync(dir,{recursive:true,force:true});}
+});
+test('server account creation cannot mass assign browser roles or permissions',()=>{
+  const src=read('lib/realizo-auth/accounts.js');
+  const route=read('app/api/auth/email/verify/route.js');
+  assert.match(src,/INSERT OR IGNORE INTO realizo_accounts \(id,email\) VALUES \(\?,\?\)/);
+  assert.match(route,/findOrCreateAccount\(env\.WALLETS_DB,email,'email',email\)/);
 });
