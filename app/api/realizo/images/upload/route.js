@@ -1,3 +1,5 @@
+import {recordSecurityEvent} from '@/lib/wallet/security-events';
+import {sniffImageMime} from '@/lib/realizo-creative/media';
 import {getWalletEnvironment,requireWalletUser,jsonError} from '@/lib/wallet/server';
 import {enforceSameOrigin} from '@/lib/wallet/access-auth';
 import {isConversionImageGenerationEnabled} from '@/lib/wallet/generation-policy';
@@ -18,8 +20,12 @@ export async function POST(request){
   if(!file||typeof file.arrayBuffer!=='function'||!TYPES.has(file.type)||file.size<1||file.size>MAX)
     return Response.json({error:'invalid_product_image'},{status:400});
   // Uploads are owned by the current wallet user; clients cannot supply an arbitrary URL.
+  const bytes=new Uint8Array(await file.arrayBuffer());
+  if(sniffImageMime(bytes)!==file.type){await recordSecurityEvent(env,'invalid_upload');return Response.json({error:'invalid_image_content'},{status:400});}
+  const extension={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[file.type];
+  const safeImage=new Blob([bytes],{type:file.type});
   const form=new FormData();
-  form.append('file',file,file.name||'producto.webp');
+  form.append('file',safeImage,'producto.'+extension);
   const remote=await fetch('https://api.muapi.ai/api/v1/upload_file',{
    method:'POST',headers:{'x-api-key':env.MUAPI_API_KEY},body:form,signal:AbortSignal.timeout(45000)
   });

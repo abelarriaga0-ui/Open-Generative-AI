@@ -1,3 +1,5 @@
+import {recordSecurityEvent} from '@/lib/wallet/security-events';
+import {sniffImageMime} from '@/lib/realizo-creative/media';
 import { getWalletEnvironment, requireWalletUser, jsonError } from '@/lib/wallet/server';
 import { enforceSameOrigin } from '@/lib/wallet/access-auth';
 import { isConversionImageGenerationEnabled } from '@/lib/wallet/generation-policy';
@@ -26,8 +28,12 @@ export async function POST(request) {
         !file.size || file.size > MAX_BYTES) {
       return Response.json({ error: 'invalid_product_image' }, { status: 400 });
     }
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    if(sniffImageMime(bytes)!==file.type){await recordSecurityEvent(env,'invalid_upload');return Response.json({error:'invalid_image_content'},{status:400});}
+    const extension = {'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[file.type];
+    const safeImage = new Blob([bytes], {type:file.type});
     const form = new FormData();
-    form.set('file', file, file.name || 'producto.jpg');
+    form.set('file', safeImage, 'producto.' + extension);
     const upstream = await fetch('https://api.muapi.ai/api/v1/upload_file', {
       method: 'POST',
       headers: { 'x-api-key': env.MUAPI_API_KEY },
@@ -39,6 +45,8 @@ export async function POST(request) {
     if (!isSafePublicImageUrl(imageUrl)) {
       return Response.json({ error: 'invalid_uploaded_image_url' }, { status: 502 });
     }
+    await env.WALLETS_DB.prepare('INSERT INTO realizo_image_uploads(id,user_id,image_url) VALUES(?,?,?)')
+      .bind(crypto.randomUUID(),user.id,imageUrl).run();
     return Response.json({ image_url: imageUrl }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) { return jsonError(error); }
 }

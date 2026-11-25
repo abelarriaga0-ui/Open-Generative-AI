@@ -32,7 +32,9 @@ test('new public video creator uses the guided Seedance 2.0 flow, retaining the 
   const editor=readFileSync('packages/studio/src/components/VideoStudio.jsx','utf8');
   assert.match(wrapper,/<RealizoSeedanceFlow/);
   assert.match(wizard,/const MODEL_ID='seedance-2-omni-reference'/);
-  assert.match(wizard,/images_list:photos\.map/);
+  assert.match(wizard,/const images=photos\.map\(p=>p\.url\)/);
+  assert.match(wizard,/images_list:images/);
+  assert.match(wizard,/image_urls:images/);
   assert.match(wizard,/provider_progress_percent/);
   assert.match(wizard,/confirmar el cargo|Confirmar /i);
   assert.match(editor,/realizo-generation-action/);
