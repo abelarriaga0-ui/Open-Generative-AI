@@ -44,6 +44,8 @@ export async function POST(request) {
     if (!isSafePublicImageUrl(imageUrl)) {
       return Response.json({ error: 'invalid_uploaded_image_url' }, { status: 502 });
     }
+    await env.WALLETS_DB.prepare('INSERT INTO realizo_image_uploads(id,user_id,image_url) VALUES(?,?,?)')
+      .bind(crypto.randomUUID(),user.id,imageUrl).run();
     return Response.json({ image_url: imageUrl }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) { return jsonError(error); }
 }
