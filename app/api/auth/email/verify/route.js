@@ -11,7 +11,7 @@ export async function POST(request){
     if(!sameOrigin(request,env)) return NextResponse.json({error:'invalid_origin'},{status:403});
     if(Number(request.headers.get('content-length')||0)>4096) return NextResponse.json({error:'too_large'},{status:413});
     const body=await request.json();
-    const email=await verifyEmailCode(env,body?.email,body?.code);
+    const email=await verifyEmailCode(env,body?.email,body?.code,request.headers.get('cf-connecting-ip'));
     if(!email)return NextResponse.json({error:'invalid_or_expired_code'},{status:401});
     const user=await findOrCreateAccount(env.WALLETS_DB,email,'email',email);
     return await createOwnSession(env,user.id,NextResponse.json({authenticated:true}));
