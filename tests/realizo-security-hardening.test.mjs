@@ -4,6 +4,8 @@ import {readFileSync} from 'node:fs';
 import {DatabaseSync} from 'node:sqlite';
 import {claimOtpQuota} from '../lib/realizo-auth/email.js';
 import {sniffImageMime} from '../lib/realizo-creative/media.js';
+import {quoteLiveVideo} from '../lib/wallet/live-video-models.js';
+import {contentSecurityPolicy,walletPilotAction} from '../lib/wallet/request-policy.js';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 test('OTP quota is atomic and cannot be reset by replacing the challenge',async()=>{
   const db=new DatabaseSync(':memory:');
@@ -29,4 +31,30 @@ test('webhook refuses invalid signatures before settlement',()=>{
   const src=read('app/api/wallet/paypal/webhook/route.js');
   assert.match(src,/verification\.data\.verification_status !== 'SUCCESS'/);
   assert.ok(src.indexOf('unverified_webhook')<src.indexOf('await settlePaypalOrder'));
+});
+
+test('negative billing inputs fail before any provider request',async()=>{
+  const previous=globalThis.fetch;
+  let calls=0;
+  globalThis.fetch=async()=>{calls++;throw Error('unexpected_network')};
+  try{
+    for(const input of [{duration:-5},{duration:'-5s'},{duration:0},{quantity:-1},{num_outputs:0},{batch_size:1.5}]){
+      await assert.rejects(quoteLiveVideo('kling-3',{prompt:'test',...input}),/invalid_generation_request/);
+    }
+    assert.equal(calls,0);
+  }finally{globalThis.fetch=previous;}
+});
+test('conversion template can use only uploads recorded for authenticated owner',()=>{
+  const upload=read('app/api/conversion-templates/upload/route.js');
+  const generate=read('app/api/conversion-templates/generate/route.js');
+  assert.match(upload,/INSERT INTO realizo_image_uploads\(id,user_id,image_url\)/);
+  assert.match(generate,/WHERE user_id=\? AND image_url=\?/);
+  assert.match(generate,/\.bind\(user\.id,body\.product_url\)/);
+  assert.ok(generate.indexOf('if(!ownedUpload)')<generate.indexOf('await createReservedJob'));
+});
+test('wallet mode denies legacy admin API and restricts browser embedding',()=>{
+  assert.equal(walletPilotAction('/api/admin',true,true),'deny');
+  assert.equal(walletPilotAction('/admin',true,true),'redirect');
+  const csp=contentSecurityPolicy('/studio');
+  for(const rule of ["object-src 'none'","base-uri 'self'","frame-ancestors 'none'"])assert.ok(csp.includes(rule));
 });
