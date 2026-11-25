@@ -1,3 +1,4 @@
+import {recordSecurityEvent} from '@/lib/wallet/security-events';
 import {sniffImageMime} from '@/lib/realizo-creative/media';
 import { getWalletEnvironment, requireWalletUser, jsonError } from '@/lib/wallet/server';
 import { enforceSameOrigin } from '@/lib/wallet/access-auth';
@@ -28,7 +29,7 @@ export async function POST(request) {
       return Response.json({ error: 'invalid_product_image' }, { status: 400 });
     }
     const bytes = new Uint8Array(await file.arrayBuffer());
-    if (sniffImageMime(bytes) !== file.type) return Response.json({error:'invalid_image_content'},{status:400});
+    if(sniffImageMime(bytes)!==file.type){await recordSecurityEvent(env,'invalid_upload');return Response.json({error:'invalid_image_content'},{status:400});}
     const extension = {'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[file.type];
     const safeImage = new Blob([bytes], {type:file.type});
     const form = new FormData();
