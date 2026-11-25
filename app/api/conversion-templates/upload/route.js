@@ -1,3 +1,4 @@
+import {sniffImageMime} from '@/lib/realizo-creative/media';
 import { getWalletEnvironment, requireWalletUser, jsonError } from '@/lib/wallet/server';
 import { enforceSameOrigin } from '@/lib/wallet/access-auth';
 import { isConversionImageGenerationEnabled } from '@/lib/wallet/generation-policy';
@@ -26,8 +27,12 @@ export async function POST(request) {
         !file.size || file.size > MAX_BYTES) {
       return Response.json({ error: 'invalid_product_image' }, { status: 400 });
     }
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    if (sniffImageMime(bytes) !== file.type) return Response.json({error:'invalid_image_content'},{status:400});
+    const extension = {'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[file.type];
+    const safeImage = new Blob([bytes], {type:file.type});
     const form = new FormData();
-    form.set('file', file, file.name || 'producto.jpg');
+    form.set('file', safeImage, 'producto.' + extension);
     const upstream = await fetch('https://api.muapi.ai/api/v1/upload_file', {
       method: 'POST',
       headers: { 'x-api-key': env.MUAPI_API_KEY },
