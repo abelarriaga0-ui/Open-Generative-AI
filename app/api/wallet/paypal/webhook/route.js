@@ -1,3 +1,4 @@
+import {recordSecurityEvent} from '@/lib/wallet/security-events';
 import { getWalletEnvironment, jsonError } from '@/lib/wallet/server';
 import { paypalRequest, settlePaypalOrder } from '@/lib/wallet/paypal';
 export const dynamic = 'force-dynamic';
@@ -19,6 +20,7 @@ export async function POST(request) {
     const headerNames = ['paypal-auth-algo', 'paypal-cert-url', 'paypal-transmission-id',
       'paypal-transmission-sig', 'paypal-transmission-time'];
     if (headerNames.some(name => !request.headers.get(name))) {
+      await recordSecurityEvent(env,'webhook_rejected');
       return Response.json({ error: 'missing_signature_headers' }, { status: 401 });
     }
     const verification = await paypalRequest(env, '/v1/notifications/verify-webhook-signature', 'POST', {
@@ -31,6 +33,7 @@ export async function POST(request) {
       webhook_event: event,
     });
     if (!verification.ok || verification.data.verification_status !== 'SUCCESS') {
+      await recordSecurityEvent(env,'webhook_rejected');
       return Response.json({ error: 'unverified_webhook' }, { status: 401 });
     }
     if (event.event_type !== 'PAYMENT.CAPTURE.COMPLETED') {
