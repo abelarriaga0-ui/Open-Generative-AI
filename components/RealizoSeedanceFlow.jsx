@@ -325,7 +325,7 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
  }
  const percentage=Math.round(step/6*100);
  const styleName=STYLES.find(s=>s.id===d.style)?.name||'IA decide';
- return <div className="mx-auto max-w-[1070px] pb-14 text-[#f7f3fc]">
+ return <div className="ra-wizard mx-auto max-w-[1070px] pb-14 text-[#f7f3fc]">
  {!selectedEngine ? <section className={CARD+' px-5 py-7 sm:px-9 sm:py-9'} aria-label="Seleccionar generador de video">
    <p className="uppercase tracking-[.2em] text-[#c5a6eb] font-extrabold text-[11px]">REALIZO · PASO 1 DE 8</p>
    <h1 className="mt-3 text-[28px] sm:text-[36px] font-extrabold text-[#faf8ff]">¿Con qué IA creamos tu video?</h1>

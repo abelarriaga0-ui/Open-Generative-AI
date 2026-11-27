@@ -165,7 +165,7 @@ export default function RealizoFreePrompt({accountId,uploadAsset,onWalletRefresh
    setError('');setQuoteError('');setPhotos([]);setValues(old=>({...old,prompt:''}));idempotencyRef.current=null;
    try{sessionStorage.removeItem(activeKey);}catch{}
  }
- return <div className="mx-auto max-w-[1070px] text-[#f9f6ff] pb-14" data-testid="realizo-prompt-libre">
+ return <div className="ra-free-editor mx-auto max-w-[1070px] text-[#f9f6ff] pb-14" data-testid="realizo-prompt-libre">
    <div className="mb-6 rounded-[28px] border border-[#4f4164] p-6 sm:p-8" style={{background:'linear-gradient(110deg,#181821,#2b213b)'}}>
      <p className="text-[11px] uppercase tracking-[.17em] font-extrabold text-[#c9adf1]">REALIZO · MODO LIBRE</p>
      <h1 className="mt-2 text-[29px] sm:text-[36px] font-extrabold">Crea con tu propio prompt<span className="text-[#ee9289]">.</span></h1>

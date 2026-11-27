@@ -9,7 +9,9 @@ test('Crear video starts a fresh project and never auto-opens the previous Premi
  assert.doesNotMatch(premium,/setProject\(await response\.json\(\)\);[\s\S]*?latest/);
  assert.match(premium,/if\(initialProjectId\)/);
  assert.match(premium,/onCreateNew/);
- assert.match(studio,/nav\('create','Crear video','video',startNewVideo\)/);
+ assert.match(studio,/onClick=\{startNewVideo\}>Crear video<\/button>/);
+ assert.doesNotMatch(studio,/aria-label="Abrir menú"|<aside className=/);
+ assert.match(studio,/className="realizo-v11-topnav" aria-label="Navegación principal"/);
  assert.match(studio,/setResumeProjectId\(null\)/);
  assert.match(studio,/setCreateKey\(current=>current\+1\)/);
  assert.match(studio,/key=\{'seedance-'\+createKey/);
