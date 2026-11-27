@@ -396,3 +396,71 @@
 @media(prefers-reduced-motion:reduce){
  .realizo-apple-home *, .realizo-apple-home *::before,.realizo-apple-home *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 }
+
+
+/* Apple-style controls inside the intact video-generation workflows. */
+.realizo-app .ra-wizard,
+.realizo-app .ra-free-editor{
+  font-size:14px;letter-spacing:-.01em;
+}
+.realizo-app .ra-wizard :is(input:not([type="radio"]):not([type="checkbox"]),textarea,select),
+.realizo-app .ra-free-editor :is(input:not([type="radio"]):not([type="checkbox"]),textarea,select){
+  background:#202026!important;
+  border-color:#44444c!important;
+  color:#f5f5f7!important;
+  border-radius:15px!important;
+  line-height:1.5;
+}
+.realizo-app .ra-wizard :is(input,textarea,select):focus,
+.realizo-app .ra-free-editor :is(input,textarea,select):focus{
+  border-color:#2997ff!important;
+  box-shadow:0 0 0 3px #0071e325!important;
+}
+.realizo-app .ra-wizard :is(input,textarea)::placeholder,
+.realizo-app .ra-free-editor :is(input,textarea)::placeholder{color:#8b8b94!important}
+.realizo-app .ra-wizard button,
+.realizo-app .ra-free-editor button{
+  min-height:42px;
+  transition:background .16s,border-color .16s,transform .16s;
+}
+.realizo-app .ra-wizard button[aria-pressed="true"],
+.realizo-app .ra-free-editor button[aria-pressed="true"]{
+  background-color:#163455!important;
+  border-color:#2997ff!important;
+  color:#f7fbff!important;
+}
+.realizo-app .ra-wizard button[class*="bg-[#7650"],
+.realizo-app .ra-free-editor button[class*="bg-[#7650"],
+.realizo-app .ra-wizard button[class*="bg-[#6e4b"],
+.realizo-app .ra-free-editor button[class*="bg-[#6e4b"] {
+  background:#0071e3!important;
+  border-color:#0071e3!important;
+  color:white!important;
+}
+.realizo-app .ra-wizard :is(h1,h2,h3),
+.realizo-app .ra-free-editor :is(h1,h2,h3){letter-spacing:-.045em!important}
+.realizo-app .ra-wizard [class*="bg-gradient-to-r"][class*="from-[#a87aff]"]{
+  background:#2997ff!important;
+}
+.realizo-app .ra-wizard [class*="tracking-[.2em]"],
+.realizo-app .ra-free-editor [class*="tracking-[.17em]"]{color:#a0a0a9!important}
+.realizo-app .ra-free-editor>div:first-child{
+  border-color:#36363d!important;
+  background:#1a1a20!important;
+  border-radius:24px!important;
+}
+.realizo-app .ra-free-editor>div:first-child>h1 span{color:#2997ff!important}
+.realizo-app .ra-wizard button:disabled,
+.realizo-app .ra-free-editor button:disabled{opacity:.5}
+.realizo-app .ri-studio{--ri-copper:#2997ff;--ri-edge:#353b48}
+.realizo-app .ri-header h1 em,
+.realizo-app .ri-eyebrow{color:#75baff!important}
+.realizo-app .ri-card{border-color:#383840!important}
+.realizo-wallet-page header{background:#131316!important;border-bottom:1px solid #303037!important}
+.realizo-wallet-page header a[class*="bg-[#"]{background:#24242b!important;border-color:#3b3b42!important}
+.realizo-wallet-page [class*="bg-[#302246]"]{background:linear-gradient(125deg,#142b43,#151922)!important;border-color:#31516e!important}
+.realizo-wallet-page [class*="text-[#FFC3AF]"]{color:#77c1ff!important}
+.realizo-wallet-page h1 span{color:#2997ff!important}
+.realizo-login-page section:first-child .relative.mt-12{filter:saturate(.33)}
+.realizo-login-page section:first-child h2 span{color:#b8d9ff!important}
+.realizo-login-page section:first-child>div:first-child span span{color:#2997ff!important}
