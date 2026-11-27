@@ -65,6 +65,12 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
  const [resumeProjectId,setResumeProjectId]=useState(null);
  const [createKey,setCreateKey]=useState(0);
  const [sidebar,setSidebar]=useState(false);
+ useEffect(()=>{
+   const main=shellRef.current?.querySelector('.realizo-content');
+   if(!main||!main.animate||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+   main.animate([{opacity:.8,transform:'translateY(8px)'},{opacity:1,transform:'translateY(0px)'}],
+     {duration:260,easing:'cubic-bezier(.2,.75,.28,1)'});
+ },[page,creatorMode]);
  const loginUrl='/login';
  function requireLogin(){window.location.assign(loginUrl)}
  const uploadAsset=useCallback(async(file)=>{
@@ -376,5 +382,11 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
       </section>}
     </div>
    </div>
+   <nav className="ra-mobile-dock" aria-label="Navegación rápida de Realizo">
+     <button type="button" aria-current={page==='home'?'page':undefined} onClick={()=>setPage('home')}><Icon name="video" size={20}/><span>Inicio</span></button>
+     <button type="button" aria-current={page==='create'?'page':undefined} onClick={()=>{if(page!=='create')startNewVideo()}}><Icon name="sliders" size={20}/><span>Crear video</span></button>
+     <button type="button" aria-current={page==='images'?'page':undefined} onClick={()=>setPage('images')}><Icon name="folder" size={20}/><span>Imágenes</span></button>
+     <button type="button" aria-current={page==='videos'?'page':undefined} onClick={()=>setPage('videos')}><Icon name="folder" size={20}/><span>Mis obras</span></button>
+   </nav>
  </main>;
 }

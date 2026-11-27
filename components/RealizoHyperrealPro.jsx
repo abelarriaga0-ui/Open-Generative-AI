@@ -197,7 +197,7 @@ export default function RealizoHyperrealPro({guest=false,onWalletRefresh}){
   finally{setBusy(false);setProgress('');}
  };
  const currentJobs=useMemo(()=>jobs.slice(0,6),[jobs]);
- return <section className={styles.shell}>
+ return <section className={styles.shell+' ra-hyperreal'}>
   <header className="mb-6">
    <span className={styles.stat}>✦ Hiperrealista PRO · Producción automática</span>
    <h1 className="text-[29px] sm:text-[40px] font-extrabold text-[#FCF5FF] mt-3">Comerciales que parecen grabados de verdad.</h1>

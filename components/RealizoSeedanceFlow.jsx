@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import RealizoSwipeRail from '@/components/RealizoSwipeRail';
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {extractGeneratedVideoUrl} from '@/lib/realizo-creative/wallet-generation';
 
@@ -330,7 +331,7 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
    <p className="uppercase tracking-[.2em] text-[#c5a6eb] font-extrabold text-[11px]">REALIZO · PASO 1 DE 8</p>
    <h1 className="mt-3 text-[28px] sm:text-[36px] font-extrabold text-[#faf8ff]">¿Con qué IA creamos tu video?</h1>
    <p className="mt-2 mb-6 text-[13px] text-[#d0c4da]">Primero elige el generador. Después sube tus imágenes y elige ajustes compatibles.</p>
-   <div className="grid gap-3 sm:grid-cols-3">
+   <RealizoSwipeRail className="ra-wizard-engines" label="Desliza entre generadores de video">
      {VIDEO_ENGINES.map(engine=><button key={engine.id} type="button" onClick={()=>chooseEngine(engine.id)}
        className="min-h-[180px] rounded-[20px] border border-[#655079] bg-[#25222e] p-5 text-left transition hover:bg-[#372a47] hover:border-[#bd91ef] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#c8a4ff]">
        <span className="block text-[11px] uppercase tracking-[.12em] text-[#baa4cf]">{engine.id==='seedance'?'Creativo dinámico':engine.id==='veo'?'Cine con audio':'Versátil · larga duración'}</span>
@@ -338,7 +339,7 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
        <span className="block mt-2 text-[12px] leading-5 text-[#cfc4d8]">{engine.description}</span>
        <span className="block mt-4 font-extrabold text-[12px] text-[#e2b8ff]">{engine.min===engine.max?engine.min+' segundos fijos':engine.min+' a '+engine.max+' segundos'}</span>
      </button>)}
-   </div>
+   </RealizoSwipeRail>
    <p className="text-[12px] mt-5 text-[#bdb0cb]">Puedes elegir sin costo. Antes de generar verás la cotización real de MuAPI.</p>
  </section> : <>
    <div className="rounded-[30px] border border-[#3c334a] bg-gradient-to-r from-[#181820] to-[#2b213a] px-6 py-5 sm:px-8 mb-6 flex flex-wrap items-center justify-between gap-3" style={{background:"linear-gradient(105deg,#181820 0%,#2b213a 100%)",color:"#faf8ff"}}>
@@ -372,7 +373,7 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
        <div className="h-full rounded-full bg-gradient-to-r from-[#a87aff] to-[#f6a16b] transition-all duration-500" style={{width:percentage+'%'}}/>
      </div>
    </div>}
-   {step<7&&<section className={CARD+' px-5 py-7 sm:px-9 sm:py-9'} style={{backgroundColor:'#191a22',color:'#f7f3fc'}}>
+   {step<7&&<section key={'wizard-step-'+step} className={CARD+' ra-wizard-stage px-5 py-7 sm:px-9 sm:py-9'} style={{backgroundColor:'#191a22',color:'#f7f3fc'}}>
      <div className="mb-7"><p className="uppercase tracking-[.18em] text-[#bd9ce9] text-[10px] font-extrabold">Realizo te pregunta</p>
        <h2 className="mt-2 text-[25px] sm:text-[32px] font-extrabold tracking-tight text-[#faf8ff]">{QUESTIONS[step].title}</h2>
        <p className="mt-2 text-[13px] sm:text-sm text-[#c7bdcf] leading-6">{QUESTIONS[step].hint}</p></div>
@@ -408,17 +409,17 @@ export default function RealizoSeedanceFlow({accountId,initialStyle='auto',initi
        <p className="text-[12px] text-[#c6b5d7]">La IA propone un guion si no completas estos datos. No inventará resultados clínicos ni testimonios.</p>
        {preview&&<div className="flex items-center gap-3 rounded-2xl bg-[#25232e] border border-[#3e3649] p-3"><img src={preview} alt="" className="w-14 h-14 object-contain rounded-lg"/><span className="text-[12px] text-[#c4b8d0]">Tu producto se conservará visualmente en las tomas.</span></div>}
      </div>}
-     {step===2&&<div className="grid sm:grid-cols-2 gap-3">
+     {step===2&&<RealizoSwipeRail className="ra-wizard-styles" label="Desliza para elegir un estilo de video">
        {STYLES.map(s=><Option key={s.id} icon={s.icon} title={s.name} detail={s.detail} chosen={d.style===s.id}
          onClick={()=>{change('style',s.id);setStep(3);}}/>)}
-     </div>}
+     </RealizoSwipeRail>}
      {step===3&&<div className="space-y-5">
        <label className="block"><span className="text-[13px] font-bold block mb-2">¿A qué país va dirigido?</span>
          <input className={INPUT} maxLength={80} placeholder="Ecuador" value={d.market} onChange={e=>change('market',e.target.value)}/></label>
        <label className="block"><span className="text-[13px] font-bold block mb-2">¿Qué tipo de persona debería verlo?</span>
          <input className={INPUT} maxLength={200} placeholder="Ej. Hombres de 25 a 45 años que cuidan su imagen" value={d.audience} onChange={e=>change('audience',e.target.value)}/></label>
        <span className="text-[13px] font-bold block">¿Qué resultado buscas?</span>
-       <div className="grid sm:grid-cols-3 gap-3">{OBJECTIVES.map(o=><Option key={o.id} title={o.name} detail={o.detail} chosen={d.objective===o.id} onClick={()=>{change('objective',o.id);setStep(4);}}/>)}</div>
+       <RealizoSwipeRail className="ra-wizard-objectives" label="Desliza para elegir el objetivo del anuncio">{OBJECTIVES.map(o=><Option key={o.id} title={o.name} detail={o.detail} chosen={d.objective===o.id} onClick={()=>{change('objective',o.id);setStep(4);}}/>)}</RealizoSwipeRail>
      </div>}
      {step===4&&<div className="space-y-6">
        {activeEngine.ratios.length>0?<fieldset><legend className="text-[13px] font-bold mb-3">Formato de pantalla</legend>

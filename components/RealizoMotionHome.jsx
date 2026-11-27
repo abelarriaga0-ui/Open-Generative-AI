@@ -1,6 +1,7 @@
 'use client';
 
 import {useEffect, useRef} from 'react';
+import RealizoSwipeRail from '@/components/RealizoSwipeRail';
 import {TEMPLATE_HOVER_SRC,TEMPLATE_POSTER_SRC} from '@/lib/realizo-creative/template-video-input';
 
 const options = [
@@ -50,16 +51,16 @@ export default function RealizoMotionHome({onCreate,onTemplates,onUseTemplate,on
 
     <section className="ra-tool-section" aria-labelledby="ra-tools-title">
       <div className="ra-section-title"><div><p className="ra-eyebrow">TU ESTUDIO, TUS REGLAS</p><h2 id="ra-tools-title">Todo empieza aquí.</h2></div><p>Elige cómo quieres crear.</p></div>
-      <div className="ra-tools">
+      <RealizoSwipeRail className="ra-tools ra-swipe-home" label="Desliza entre las formas de crear">
         {options.map(option=><button type="button" key={option.kind} className={'ra-tool-card'+(option.wide?' ra-tool-wide':'')} onClick={actions[option.kind]}>
           <span className="ra-tool-top"><span>{option.number} / {option.tag}</span><span aria-hidden="true">↗</span></span>
           <span className="ra-tool-icon" aria-hidden="true">{option.symbol}</span>
           <span className="ra-tool-bottom"><strong>{option.title}</strong><small>{option.description}</small></span>
         </button>)}
-      </div>
+      </RealizoSwipeRail>
     </section>
 
-    <section className="ra-spotlight" aria-label="Imágenes publicitarias">
+    <section data-ra-reveal className="ra-spotlight" aria-label="Imágenes publicitarias">
       <div className="ra-spotlight-copy">
         <p className="ra-eyebrow">IMÁGENES QUE VENDEN</p>
         <h2>Tu marca, en<br/><span>primer plano.</span></h2>
@@ -72,7 +73,7 @@ export default function RealizoMotionHome({onCreate,onTemplates,onUseTemplate,on
       </button>
     </section>
 
-    <section className="ra-closing" aria-label="Comienza a crear">
+    <section data-ra-reveal className="ra-closing" aria-label="Comienza a crear">
       <div><p className="ra-eyebrow">EL SIGUIENTE PASO</p><h2>Imagina. Crea. Publica.</h2><p>Elige tu formato. Nosotros te acompañamos en el proceso.</p></div>
       <div className="ra-closing-actions"><button className="ra-button ra-button-primary" type="button" onClick={onCreate}>Empezar a crear <span aria-hidden="true">↗</span></button><button className="ra-text-link" type="button" onClick={onViewVideos}>Ver mis creaciones →</button></div>
     </section>
