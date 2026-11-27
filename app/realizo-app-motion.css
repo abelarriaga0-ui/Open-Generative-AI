@@ -1,0 +1,546 @@
+/* REALIZO App Motion
+ * Scope: presentation, tactile navigation and motion only.
+ * Payment, user identity and generation services remain unchanged.
+ */
+.realizo-app {
+ --ra-blue:#2997ff;--ra-blue-deep:#0071e3;
+ --ra-surface:#18191f;--ra-surface-alt:#202127;
+ --ra-border:#34363e;--ra-muted:#a5a7b1;
+}
+.realizo-app .ra-carousel{width:100%;min-width:0}
+.realizo-app .ra-swipe-track{
+ display:grid!important;
+ grid-auto-flow:column!important;
+ grid-template-columns:none!important;
+ grid-auto-columns:minmax(242px,calc((100% - 32px)/3))!important;
+ align-items:stretch!important;
+ gap:16px!important;
+ width:100%;
+ min-width:0;
+ padding:3px 2px 10px;
+ overflow-x:auto!important;
+ overflow-y:hidden;
+ overscroll-behavior-inline:contain;
+ -webkit-overflow-scrolling:touch;
+ scroll-snap-type:x mandatory;
+ scroll-behavior:smooth;
+ scroll-padding-inline:2px;
+ scrollbar-width:none;
+ touch-action:pan-x pan-y;
+}
+.realizo-app .ra-swipe-track::-webkit-scrollbar{display:none}
+.realizo-app .ra-swipe-track>*{
+ min-width:0;
+ max-width:none!important;
+ width:100%!important;
+ scroll-snap-align:start;
+ scroll-snap-stop:normal;
+}
+.realizo-app .ra-carousel-controls{
+ display:flex;justify-content:flex-end;align-items:center;gap:9px;
+ min-height:50px;padding:8px 1px 1px;color:#a4a5ae;
+}
+.realizo-app .ra-carousel-hint{margin-right:auto;font-size:12px;font-weight:550}
+.realizo-app .ra-carousel-hint span{color:#74baff;padding-left:5px;font-size:16px}
+.realizo-app .ra-carousel-count{font-size:12px;min-width:35px;text-align:right;font-variant-numeric:tabular-nums}
+.realizo-app .ra-carousel-arrow{
+ display:grid;place-items:center;min-width:39px;min-height:39px;
+ border-radius:50%;border:1px solid #454751;
+ background:#23252c;color:#f5f5f7;font-size:20px;
+ transition:background .2s,transform .2s;
+}
+.realizo-app .ra-carousel-arrow:hover:not(:disabled){background:#0071e3;transform:translateY(-1px)}
+.realizo-app .ra-carousel-arrow:disabled{opacity:.35;cursor:default}
+.realizo-app .ra-swipe-track:focus-visible{outline:2px solid #2997ff;outline-offset:2px;border-radius:12px}
+.realizo-app .ra-swipe-track.ra-tools{
+ grid-auto-columns:minmax(270px,calc((100% - 36px)/3))!important;
+}
+.realizo-app .ra-swipe-track.ra-tools .ra-tool-wide{grid-column:auto!important}
+.realizo-app .ra-swipe-track.ra-tools .ra-tool-card{
+ height:260px!important;min-height:260px!important;padding:25px;
+ background:#1d2027;border:1px solid #3a3f4b;
+}
+.realizo-app .ra-swipe-track.ra-tools .ra-tool-card:first-child{
+ background:linear-gradient(150deg,#183152,#152132);
+ border-color:#376392;
+}
+.realizo-app .ra-swipe-track.ra-tools .ra-tool-card:last-child{background:#20232b}
+.realizo-app .ra-swipe-track.ra-tools .ra-tool-icon{font-size:42px;color:#8cc4ff}
+.realizo-app .ra-swipe-track.ra-tools .ra-tool-bottom strong{font-size:clamp(20px,2vw,28px)}
+.realizo-app .ra-swipe-track.ra-tools .ra-tool-bottom small{color:#bdc0c8}
+.realizo-app .ra-swipe-track.ra-tools .ra-tool-top{color:#b1c9e5}
+.realizo-app .ra-wizard,.realizo-app .ra-free-editor,.realizo-app .ra-hyperreal{
+ max-width:1220px!important;
+ font-size:14px;
+}
+.realizo-app .ra-wizard .ra-carousel,
+.realizo-app .ra-images-studio .ra-carousel,
+.realizo-app .realizo-v11-library .ra-carousel{
+ margin:2px 0 3px;
+}
+.realizo-app .ra-swipe-track.ra-wizard-engines{
+ grid-auto-columns:minmax(220px,calc((100% - 34px)/3))!important;
+}
+.realizo-app .ra-swipe-track.ra-wizard-styles{
+ grid-auto-columns:minmax(220px,calc((100% - 18px)/2))!important;
+}
+.realizo-app .ra-swipe-track.ra-wizard-objectives{
+ grid-auto-columns:minmax(210px,calc((100% - 34px)/3))!important;
+}
+.realizo-app .ra-wizard>section,
+.realizo-app .ra-wizard .ra-wizard-stage,
+.realizo-app .ra-free-editor>section,
+.realizo-app .ra-free-editor>div>section{
+ background:#181a20!important;
+ border:1px solid #343842!important;
+ border-radius:26px!important;
+ box-shadow:none!important;
+}
+.realizo-app .ra-wizard>div:first-child:not(.ra-carousel){
+ background:#171b23!important;
+ border:1px solid #343c48!important;
+ border-radius:25px!important;
+ box-shadow:none!important;
+}
+.realizo-app .ra-wizard .ra-wizard-stage{
+ animation:ra-stage-enter .34s cubic-bezier(.2,.75,.25,1) both;
+}
+.realizo-app .ra-wizard :is(h1,h2,h3),
+.realizo-app .ra-free-editor :is(h1,h2,h3),
+.realizo-app .ra-hyperreal :is(h1,h2,h3){
+ font-weight:720!important;
+ line-height:1.13;
+ letter-spacing:-.045em!important;
+}
+.realizo-app .ra-wizard :is(button[aria-pressed],button[class*="rounded-[20px]"]),
+.realizo-app .ra-free-editor button[aria-pressed]{
+ background:#22252d!important;
+ color:#eeeef3!important;
+ border:1px solid #454a56!important;
+ border-radius:18px!important;
+ box-shadow:none!important;
+}
+.realizo-app .ra-wizard button[aria-pressed="true"],
+.realizo-app .ra-free-editor button[aria-pressed="true"]{
+ background:#18395d!important;
+ border-color:#2997ff!important;
+ color:#fff!important;
+ box-shadow:inset 0 0 0 1px #2997ff33!important;
+}
+.realizo-app .ra-wizard button[aria-pressed]:hover:not(:disabled),
+.realizo-app .ra-free-editor button[aria-pressed]:hover:not(:disabled){
+ background:#2b3240!important;border-color:#6c86a4!important;
+}
+.realizo-app .ra-wizard button:not(:disabled),
+.realizo-app .ra-free-editor button:not(:disabled){cursor:pointer}
+.realizo-app .ra-wizard select,.realizo-app .ra-wizard textarea,
+.realizo-app .ra-wizard input:not([type=file]),
+.realizo-app .ra-free-editor :is(input:not([type=file]),textarea,select){
+ min-height:46px;
+ border-radius:14px!important;
+ border-color:#454b58!important;
+ background:#20232b!important;
+ color:#f5f5f7!important;
+ font-size:14px;
+}
+.realizo-app .ra-wizard button[class*="bg-[#7953"],
+.realizo-app .ra-wizard button[class*="bg-[#7650"],
+.realizo-app .ra-free-editor button[class*="bg-[#7650"]{
+ background:#0071e3!important;border-color:#0071e3!important;color:#fff!important
+}
+.realizo-app .ra-wizard .ra-wizard-stage>div:first-child{margin-bottom:22px}
+.realizo-app .ra-wizard .ra-wizard-stage h2{font-size:clamp(26px,3.2vw,39px)}
+.realizo-app .ra-wizard [role="progressbar"]{border-radius:999px!important;overflow:hidden}
+.realizo-app .ra-wizard [role="progressbar"]>div{
+ background:linear-gradient(90deg,#0071e3,#60bbff)!important;
+}
+.realizo-app .ra-free-editor>div:first-child{
+ background:linear-gradient(145deg,#1b2635,#171a22)!important;
+ border:1px solid #3b495a!important;border-radius:28px!important;
+}
+.realizo-app .ra-free-editor [class*="border-dashed"],
+.realizo-app .ra-wizard [class*="border-dashed"]{
+ background:#1b2430!important;border-color:#53718f!important;
+}
+.realizo-app .ra-free-editor>div>section h2{font-size:20px!important}
+.realizo-app .ra-free-editor button[class*="px-4"][aria-pressed]{min-height:115px!important}
+
+/* Realizo template discovery and template editor */
+.realizo-app .realizo-v11-library .realizo-v11-lib-head h2{
+ color:#f5f5f7!important;font-size:clamp(30px,3.1vw,48px);font-weight:720!important;
+ letter-spacing:-.055em!important;
+}
+.realizo-app .realizo-v11-library .realizo-v11-count{color:#a5a6af}
+.realizo-app .realizo-v11-library .realizo-template-filter{
+ display:flex;overflow-x:auto;flex-wrap:nowrap;gap:9px;
+ padding-bottom:10px;scrollbar-width:none;-webkit-overflow-scrolling:touch;
+}
+.realizo-app .realizo-v11-library .realizo-template-filter::-webkit-scrollbar{display:none}
+.realizo-app .realizo-v11-library .realizo-template-filter button{
+ flex:none;border-radius:999px!important;
+ background:#24252c!important;border:1px solid #424550!important;color:#b7bac6!important;
+ min-height:42px;
+}
+.realizo-app .realizo-v11-library .realizo-template-filter button[aria-pressed="true"]{
+ background:#18395c!important;color:#dceeff!important;border-color:#2997ff!important;
+}
+.realizo-app .ra-swipe-track.realizo-v11-cards{
+ grid-auto-columns:minmax(225px,calc((100% - 40px)/3))!important;
+}
+.realizo-app .ra-swipe-track.realizo-v11-cards .realizo-v11-card{
+ min-width:0!important;
+ max-width:none!important;
+ display:flex;flex-direction:column;
+ background:#1b1e25!important;
+ border:1px solid #393d48!important;
+ border-radius:21px!important;
+ overflow:hidden;
+ transform:none!important;
+ box-shadow:none!important;
+}
+.realizo-app .ra-swipe-track.realizo-v11-cards .realizo-v11-use{
+ margin-top:auto;
+ background:#242a35!important;
+ border-top:1px solid #3e4654!important;
+ color:#99ccff!important;
+ font-weight:700!important;
+}
+.realizo-app .ra-swipe-track.realizo-v11-cards .realizo-v11-card-extra{
+ color:#adb6c2!important;
+}
+.realizo-app .realizo-template-creator-head h1{
+ font-size:clamp(31px,3.5vw,48px)!important;font-weight:730!important;
+ letter-spacing:-.06em!important;
+}
+.realizo-app .realizo-template-creator-head h1 em{color:#72baff!important}
+.realizo-app .realizo-template-creator .realizo-template-back{color:#90c7ff!important}
+.realizo-app .realizo-template-creator-grid{gap:18px!important}
+.realizo-app .realizo-template-panel{
+ background:#1b1d24!important;
+ border:1px solid #373d4a!important;border-radius:23px!important;
+ box-shadow:none!important;
+}
+.realizo-app .realizo-template-panel h2{font-weight:700!important}
+.realizo-app .realizo-template-field{
+ background:#232731!important;
+ border:1px solid #484f5c!important;
+ color:#f5f5f7!important;border-radius:14px!important;
+}
+.realizo-app .realizo-template-field:focus{
+ border-color:#2997ff!important;
+ box-shadow:0 0 0 3px #2997ff22!important;
+}
+.realizo-app .realizo-template-upload{
+ background:#202b38!important;
+ border:1px dashed #5d819e!important;
+ color:#e4f1ff!important;
+ border-radius:20px!important;
+}
+.realizo-app .realizo-template-upload small{color:#a6bbcd!important}
+.realizo-app .realizo-template-primary{
+ min-height:51px;border-radius:15px!important;
+ background:#0071e3!important;color:#fff!important;
+ box-shadow:none!important;
+}
+.realizo-app .realizo-template-quote{
+ background:#162338!important;border:1px solid #4371a3!important;
+}
+.realizo-app .realizo-template-quote>strong{color:#9cd0ff!important}
+.realizo-app .realizo-template-chips span{
+ background:#232935!important;border:1px solid #3c4d64!important;color:#abcffc!important;
+}
+
+/* Native image generation */
+.realizo-app .ra-images-studio {max-width:1320px!important}
+.realizo-app .ra-images-studio .ri-header{border-color:#303844!important;padding-top:9px}
+.realizo-app .ra-images-studio .ri-header h1{
+ color:#f5f5f7!important;font-size:clamp(38px,4.6vw,63px)!important;
+ font-weight:740!important;
+}
+.realizo-app .ra-images-studio .ri-header h1 em{color:#8ac5ff!important}
+.realizo-app .ra-images-studio .ri-model-chip{
+ background:#1d2d43!important;border:1px solid #3f638f!important;
+ border-radius:17px!important;
+}
+.realizo-app .ra-images-studio .ri-model-chip strong{color:#e2f0ff!important}
+.realizo-app .ra-images-studio .ri-tabs{
+ flex-wrap:nowrap;gap:5px;overflow-x:auto;border-color:#343943;
+ scrollbar-width:none;-webkit-overflow-scrolling:touch;
+}
+.realizo-app .ra-images-studio .ri-tabs::-webkit-scrollbar{display:none}
+.realizo-app .ra-images-studio .ri-tabs button{
+ flex:none;min-height:43px;border-radius:999px!important;
+ border:1px solid transparent!important;
+}
+.realizo-app .ra-images-studio .ri-tabs button.selected{
+ background:#243c59!important;border-color:#43739f!important;
+ box-shadow:none!important;color:#d7ebff!important;
+}
+.realizo-app .ra-images-studio .ri-card,
+.realizo-app .ra-images-studio .ri-preview-card,
+.realizo-app .ra-images-studio .ri-action-card,
+.realizo-app .ra-images-studio .ri-result{
+ background:#1b1d24!important;
+ border:1px solid #383d48!important;
+ box-shadow:none!important;border-radius:24px!important;
+}
+.realizo-app .ra-images-studio .ri-num{
+ background:#1c3a58!important;border-color:#3d6d9b!important;color:#c3e2ff!important;
+ border-radius:11px;
+}
+.realizo-app .ra-images-studio .ri-upload{
+ background:#1c2937!important;border-color:#5b7391!important;border-radius:17px!important;
+}
+.realizo-app .ra-images-studio .ri-upload:hover{border-color:#2997ff!important}
+.realizo-app .ra-images-studio .ri-upload-plus{background:#294561!important;color:#c4e5ff!important}
+.realizo-app .ra-images-studio .ri-upload b{color:#8cc9ff!important}
+.realizo-app .ra-images-studio .ri-field-label{color:#d2d7e2;font-size:12px}
+.realizo-app .ra-images-studio input:not([type=file]),
+.realizo-app .ra-images-studio textarea{
+ background:#242730!important;border-color:#434956!important;
+ color:#fff!important;font-size:14px!important;border-radius:14px!important;
+}
+.realizo-app .ra-swipe-track.ri-type-grid{
+ grid-auto-columns:minmax(165px,calc((100% - 25px)/3))!important;
+}
+.realizo-app .ra-images-studio .ri-type{
+ min-height:112px!important;
+ padding:16px!important;
+ border-radius:17px!important;
+ background:#232833!important;border:1px solid #414d61!important;
+}
+.realizo-app .ra-images-studio .ri-type strong{font-size:14px}
+.realizo-app .ra-images-studio .ri-type small{font-size:11px;line-height:1.5}
+.realizo-app .ra-images-studio .ri-type.is-selected{
+ background:#183a60!important;border-color:#2997ff!important;
+ box-shadow:none!important;
+}
+.realizo-app .ra-images-studio .ri-type.is-selected small{color:#b7dcff!important}
+.realizo-app .ra-images-studio .ri-choice button{
+ min-height:42px;background:#242831;border:1px solid #46505f;color:#c1c6d1;
+}
+.realizo-app .ra-images-studio .ri-choice button.is-selected{
+ background:#204d78!important;border-color:#2997ff!important;color:#e1f2ff!important;
+}
+.realizo-app .ra-images-studio .ri-action-card{background:#192335!important;border-color:#3c5f83!important}
+.realizo-app .ra-images-studio .ri-generate{
+ background:#0071e3!important;color:#fff!important;border-color:#0071e3!important;
+ border-radius:15px!important;box-shadow:none!important;font-weight:700!important;
+}
+.realizo-app .ra-images-studio .ri-cost strong{color:#b4deff!important}
+.realizo-app .ra-images-studio .ri-save button{background:#252d3b!important;color:#bfdfff!important}
+.realizo-app .ra-images-studio .ri-preview-visual{box-shadow:0 12px 28px #0004}
+.realizo-app .ra-images-studio .ri-progress-fill{background:#2997ff!important}
+
+/* Hiperrealista PRO visual modernization only */
+.realizo-app .ra-hyperreal {max-width:1220px!important;padding-top:3px}
+.realizo-app .ra-hyperreal>header{padding:4px 3px 16px}
+.realizo-app .ra-hyperreal>header h1{
+ font-size:clamp(35px,4.4vw,61px)!important;font-weight:740!important;
+ letter-spacing:-.06em!important;max-width:900px;
+}
+.realizo-app .ra-hyperreal>header>span{
+ color:#b1d6ff!important;border-color:#446688!important;
+ background:#1e354d!important;border-radius:999px!important;
+}
+.realizo-app .ra-hyperreal :is(section[class*="panel"],div[class*="softPanel"]){
+ background:#1c2028!important;border:1px solid #3b434f!important;
+ border-radius:23px!important;box-shadow:none!important;
+}
+.realizo-app .ra-hyperreal :is(input:not([type="file"]),textarea,select){
+ background:#252a34!important;border:1px solid #4c596a!important;
+ border-radius:14px!important;
+}
+.realizo-app .ra-hyperreal button[class*="primary"]{
+ background:#0071e3!important;border:1px solid #2389f0!important;
+ color:#fff!important;border-radius:14px!important;
+}
+.realizo-app .ra-hyperreal button[class*="secondary"]{
+ background:#272d38!important;border-color:#4a5364!important;color:#e4e7ed!important;
+ border-radius:14px!important;
+}
+.realizo-app .ra-hyperreal button[aria-pressed="true"]{
+ border:1px solid #2997ff!important;
+ background:#1a4b7a!important;
+}
+
+/* My creations library */
+.realizo-app .realizo-videos-page h1{font-size:clamp(35px,3.6vw,54px)!important}
+.realizo-app .realizo-videos-page h1 span{color:#2997ff!important}
+.realizo-app .rc-library {
+ background:#16181f!important;
+ border:1px solid #333944!important;
+ border-radius:25px!important;
+ padding:clamp(13px,2.2vw,25px)!important;
+}
+.realizo-app .rc-filters button{
+ border-radius:999px!important;
+ background:#242830!important;color:#b7c0cc!important;
+ border:1px solid #3d4654!important;
+}
+.realizo-app .rc-filters button.rc-active{
+ background:#1b4872!important;color:#fff!important;border-color:#2997ff!important;
+}
+.realizo-app .rc-refresh{border-radius:999px!important;color:#8cc8ff!important}
+.realizo-app .rc-card{
+ background:#20232b!important;border:1px solid #3a424f!important;
+ border-radius:21px!important;
+ overflow:hidden;
+ box-shadow:none!important;
+}
+.realizo-app .rc-media{background:#11151c!important}
+.realizo-app .rc-actions .rc-primary{
+ background:#0071e3!important;color:#fff!important;border-radius:12px!important;
+}
+.realizo-app .rc-actions .rc-secondary{
+ background:#2d3542!important;color:#cfe5ff!important;border-radius:12px!important;
+}
+.realizo-app .rc-empty{background:#1b2130!important;border-radius:20px!important}
+.realizo-app .realizo-videos-page>section:last-child[class*="bg-white"]{
+ background:#1a1d25!important;border:1px solid #383c46!important;
+}
+
+/* Account and wallet -- no behavior or prices changed */
+.realizo-wallet-page{background:#0d0f14!important;color:#f6f7fb!important}
+.realizo-wallet-page>header{background:#14171f!important;border-color:#353b46!important}
+.realizo-wallet-page>header nav a{
+ background:#213955!important;color:#e6f2ff!important;
+ border:1px solid #3c5e81!important;border-radius:999px!important;
+}
+.realizo-wallet-page h1{font-size:clamp(36px,4vw,54px)!important;letter-spacing:-.06em!important}
+.realizo-wallet-page h1>span{color:#2997ff!important}
+.realizo-wallet-page main,.realizo-wallet-page section{color:#f4f5f8}
+.realizo-wallet-page [class*="bg-[#302246]"]{
+ background:linear-gradient(130deg,#18365c,#111e35)!important;border:1px solid #476e9a!important;
+}
+.realizo-wallet-page [class*="text-[#FFC3AF]"]{color:#95d1ff!important}
+.realizo-wallet-page [class*="bg-white"][class*="border"]{
+ background:#1b1e26!important;border-color:#3b434f!important;
+ border-radius:24px!important;box-shadow:none!important;
+}
+.realizo-wallet-page [class*="bg-amber-50"]{
+ background:#473b20!important;border-color:#b18a30!important;color:#ffe7aa!important;
+}
+.realizo-wallet-page [class*="text-[#8"]{color:#a9aebd!important}
+.realizo-login-page{
+ background:#f5f5f7!important;color:#1c1c1f!important;
+}
+.realizo-login-page section:first-child{background:#111921!important}
+.realizo-login-page section:first-child h2 span{color:#a7d5ff!important}
+.realizo-login-page section:first-child .relative.mt-12{filter:saturate(.25)}
+.realizo-login-page [class*="focus:ring"]{--tw-ring-color:#0071e333}
+.realizo-login-page button[type="submit"]{
+ background:#0071e3!important;color:#fff!important;border-radius:15px!important;
+}
+
+/* Native-like mobile dock: always direct links, no hidden dropdown. */
+.realizo-app .ra-mobile-dock{display:none}
+@media(max-width:1250px){
+ .realizo-app .ra-swipe-track{
+  grid-auto-columns:minmax(236px,calc((100% - 16px)/2))!important;
+ }
+ .realizo-app .ra-swipe-track.ra-tools,
+ .realizo-app .ra-swipe-track.realizo-v11-cards{
+  grid-auto-columns:minmax(225px,calc((100% - 20px)/2))!important;
+ }
+}
+@media(max-width:900px){
+ .realizo-app .ra-swipe-track{
+  grid-auto-columns:minmax(210px,74%)!important;gap:12px!important;
+ }
+ .realizo-app .ra-swipe-track.ra-tools,
+ .realizo-app .ra-swipe-track.ra-wizard-engines,
+ .realizo-app .ra-swipe-track.ra-wizard-styles,
+ .realizo-app .ra-swipe-track.ra-wizard-objectives,
+ .realizo-app .ra-swipe-track.realizo-v11-cards,
+ .realizo-app .ra-swipe-track.ri-type-grid{
+  grid-auto-columns:minmax(210px,77%)!important;
+ }
+ .realizo-app .ra-swipe-track.ra-tools .ra-tool-card{min-height:238px!important;height:238px!important}
+ .realizo-app .ra-carousel-hint{font-size:11px}
+ .realizo-app .ra-wizard .ra-wizard-stage{padding:22px!important}
+ .realizo-app .ra-images-studio .ri-choice{
+  flex-wrap:nowrap!important;overflow-x:auto!important;
+  scroll-snap-type:x proximity;touch-action:pan-x pan-y;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch;
+  padding:3px 2px 9px;
+ }
+ .realizo-app .ra-images-studio .ri-choice::-webkit-scrollbar{display:none}
+ .realizo-app .ra-images-studio .ri-choice button{flex:none;scroll-snap-align:start}
+ .realizo-app .ra-mobile-dock{
+  position:fixed!important;bottom:0;left:0;right:0;z-index:95;
+  display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:1px;align-items:stretch;
+  min-height:68px;padding:7px 8px calc(7px + env(safe-area-inset-bottom,0px));
+  background:rgba(20,21,27,.95);
+  border-top:1px solid #42444f;
+  -webkit-backdrop-filter:blur(24px) saturate(160%);
+  backdrop-filter:blur(24px) saturate(160%);
+ }
+ .realizo-app .ra-mobile-dock button{
+  min-height:49px;border:0;border-radius:13px;
+  display:flex;align-items:center;justify-content:center;flex-direction:column;
+  gap:3px;color:#a3a6af;
+  font-size:10px;font-weight:650;
+  background:transparent;
+ }
+ .realizo-app .ra-mobile-dock button svg{width:19px;height:19px}
+ .realizo-app .ra-mobile-dock button[aria-current="page"]{
+  background:#203751;color:#96cfff;
+ }
+ .realizo-app .ra-mobile-dock button:active{background:#293a4c}
+ .realizo-app .realizo-content{
+  padding-bottom:calc(115px + env(safe-area-inset-bottom,0px))!important;
+ }
+ .realizo-app .realizo-topbar{z-index:85!important}
+}
+@media(max-width:600px){
+ .realizo-app .ra-swipe-track.ra-wizard-engines,
+ .realizo-app .ra-swipe-track.ra-wizard-objectives,
+ .realizo-app .ra-swipe-track.ra-wizard-styles,
+ .realizo-app .ra-swipe-track.realizo-v11-cards,
+ .realizo-app .ra-swipe-track.ri-type-grid{
+  grid-auto-columns:minmax(210px,84%)!important;
+ }
+ .realizo-app .ra-carousel-controls{gap:8px}
+ .realizo-app .ra-carousel-arrow{width:37px;min-width:37px;height:37px;min-height:37px}
+ .realizo-app .ra-swipe-track.ra-tools .ra-tool-card{height:224px!important;min-height:224px!important}
+ .realizo-app .realizo-template-creator-grid{grid-template-columns:1fr!important}
+ .realizo-app .realizo-template-two{grid-template-columns:1fr!important}
+ .realizo-app .realizo-template-panel{padding:20px!important}
+ .realizo-app .ra-images-studio .ri-card{padding:19px!important}
+ .realizo-app .ra-images-studio .ri-grid{grid-template-columns:minmax(0,1fr)!important}
+ .realizo-app .ra-images-studio .ri-side{display:flex!important}
+ .realizo-app .rc-gallery{
+  display:grid!important;
+  grid-auto-flow:column!important;
+  grid-auto-columns:85%!important;
+  grid-template-columns:none!important;
+  gap:14px!important;overflow-x:auto!important;
+  scroll-snap-type:x mandatory;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+  padding-bottom:9px;
+ }
+ .realizo-app .rc-gallery::-webkit-scrollbar{display:none}
+ .realizo-app .rc-gallery .rc-card{scroll-snap-align:start;min-width:0}
+ .realizo-app .rc-filters{overflow-x:auto;scrollbar-width:none;flex-wrap:nowrap}
+ .realizo-app .rc-filters button{white-space:nowrap;min-height:40px}
+}
+@keyframes ra-stage-enter{
+ from{opacity:.6;transform:translateY(12px)}
+ to{opacity:1;transform:translateY(0)}
+}
+.realizo-app.ra-reveal-enabled [data-ra-reveal]{
+ transition:transform .55s cubic-bezier(.2,.75,.24,1),opacity .5s ease;
+ transform:translateY(22px);opacity:.65;
+}
+.realizo-app.ra-reveal-enabled [data-ra-reveal][data-ra-visible="true"]{
+ transform:translateY(0);opacity:1;
+}
+@media(prefers-reduced-motion:reduce){
+ .realizo-app .ra-swipe-track{scroll-behavior:auto!important}
+ .realizo-app .ra-wizard .ra-wizard-stage{animation:none!important}
+ .realizo-app [data-ra-reveal]{opacity:1!important;transform:none!important;transition:none!important}
+ .realizo-app .ra-carousel-arrow{transition:none!important}
+}

@@ -1,4 +1,5 @@
 'use client';
+import RealizoSwipeRail from '@/components/RealizoSwipeRail';
 import {useEffect,useRef,useState} from 'react';
 import {AD_TEMPLATES} from '@/lib/realizo-creative/ad-templates';
 import {USER_TEMPLATE_CATEGORIES} from '@/lib/realizo-creative/user-templates';
@@ -121,7 +122,7 @@ export default function RealizoTemplateLibrary({onChoose,onChooseSaved,guest=fal
         {category.label}
       </button>)}
    </div>}
-   <div className="realizo-v11-cards">
+   <RealizoSwipeRail className="realizo-v11-cards ra-swipe-templates" label="Desliza entre las plantillas publicitarias">
     {(activeCategory==='todos'||activeCategory==='ugc')&&<article className="realizo-v11-card realizo-template-preview-card"
       onMouseEnter={playHover} onMouseLeave={stopHover} onContextMenu={blockSave}>
       <div className="realizo-v11-image-link realizo-template-video-frame">
@@ -189,7 +190,7 @@ export default function RealizoTemplateLibrary({onChoose,onChooseSaved,guest=fal
         Usar plantilla <span aria-hidden="true">→</span>
       </button>
     </article>}
-   </div>
+   </RealizoSwipeRail>
    {!featured&&!guest&&<section className="mt-9 space-y-4" aria-label="Mis plantillas">
      <div className="flex flex-wrap items-center justify-between gap-2">
        <div><h3 className="text-2xl font-extrabold text-[#31233B]">Mis plantillas</h3>

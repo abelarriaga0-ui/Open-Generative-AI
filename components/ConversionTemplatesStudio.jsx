@@ -1,4 +1,5 @@
 'use client';
+import RealizoSwipeRail from '@/components/RealizoSwipeRail';
 import {useEffect,useRef,useState} from 'react';
 
 const TYPES=[
@@ -217,7 +218,7 @@ export default function ConversionTemplatesStudio({guest=false,onViewCreations,o
   finally{setBusy(false);setPhase('');onGenerationEnd?.();}
  }
  const changeMode=name=>{if(busy)return;setMode(name);setError('');setNotice('');};
- return <section className="ri-studio" aria-label="Generador de imágenes de Realizo">
+ return <section className="ri-studio ra-images-studio" aria-label="Generador de imágenes de Realizo">
   <div className="ri-header">
    <div><span className="ri-eyebrow">REALIZO · CREATIVOS ESTÁTICOS</span>
     <h1>Imágenes que <em>venden.</em></h1>
@@ -250,9 +251,9 @@ export default function ConversionTemplatesStudio({guest=false,onViewCreations,o
     <section className="ri-card">
      <div className="ri-section-title"><span className="ri-num">02</span><div><h2>Cómo quieres que se vea</h2><p>Selecciona la intención visual de tu anuncio.</p></div></div>
      <div className="ri-field-label">Tipo de imagen</div>
-     <div className="ri-type-grid">{TYPES.map(t=><button type="button" key={t.id} onClick={()=>change('creative_type',t.id)}
+     <RealizoSwipeRail className="ri-type-grid ra-swipe-image-types" label="Desliza entre tipos de imágenes">{TYPES.map(t=><button type="button" key={t.id} onClick={()=>change('creative_type',t.id)}
       className={'ri-type '+(form.creative_type===t.id?'is-selected':'')} aria-pressed={form.creative_type===t.id}>
-       <strong>{t.label}</strong><small>{t.detail}</small></button>)}</div>
+       <strong>{t.label}</strong><small>{t.detail}</small></button>)}</RealizoSwipeRail>
      <div className="ri-field-label">Acabado visual</div>
      <Choice options={STYLES} value={form.style} onChange={v=>change('style',v)}/>
      <div className="ri-field-label">Objetivo</div>
