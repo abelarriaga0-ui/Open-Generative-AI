@@ -18,13 +18,10 @@ import RealizoFreePrompt from '@/components/RealizoFreePrompt';
 import {getAdTemplate} from '@/lib/realizo-creative/ad-templates';
 
 function Mark() {
-  return <svg width="37" height="37" viewBox="0 0 56 56" fill="none" aria-hidden="true">
-    <defs><linearGradient id="realizo-studio-sign" x1="2" y1="5" x2="54" y2="52">
-      <stop stopColor="#FFB76D"/><stop offset=".53" stopColor="#F49348"/><stop offset="1" stopColor="#A96032"/>
-    </linearGradient></defs><rect width="56" height="56" rx="18" fill="url(#realizo-studio-sign)"/>
-    <path d="M19 14.5v27l23-13.5L19 14.5Z" fill="#261C3C"/>
-    <path d="M21.7 20.2 35 28l-13.3 7.8V20.2Z" fill="#FFF6EF"/>
-    <circle cx="43" cy="13" r="4.5" fill="#C6FFCB"/>
+  return <svg width="38" height="38" viewBox="0 0 56 56" fill="none" aria-hidden="true">
+    <rect width="56" height="56" rx="16" fill="#FFFFFF"/>
+    <path d="M19 15v26l22-13-22-13Z" fill="#09090B"/>
+    <path d="m23 22 11 6-11 6V22Z" fill="#FFFFFF"/>
   </svg>;
 }
 function Icon({name,size=20}){
@@ -40,7 +37,6 @@ function Icon({name,size=20}){
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]||paths.video}</svg>;
 }
 const usd=c=>new Intl.NumberFormat('es-EC',{style:'currency',currency:'USD'}).format((c||0)/100);
-const navBase='realizo-nav-link flex items-center gap-3 px-4 py-3 rounded-2xl transition w-full text-left font-semibold text-[14px]';
 export default function RealizoStudio({accountId,guest=false,initialPage='home'}){
  const shellRef=useRef(null);
  const [wallet,setWallet]=useState(null);
@@ -245,26 +241,19 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
   setCreatorMode('seedance');setPage('create');setSidebar(false);
   setCreateKey(x=>x+1);
  }
- const nav=(id,label,icon,action)=>(
-   <button key={id} type="button" onClick={()=>{setPage(id);setSidebar(false);if(action)action();}}
-     aria-current={page===id?'page':undefined}
-     className={navBase+' '+(page===id?'bg-[#EDE2FB] text-[#6542AB]':'text-[#756782] hover:bg-[#F7F0F7]')}>
-      <Icon name={icon}/>{label}{page===id&&<span className="ml-auto h-2 w-2 rounded-full bg-[#E9898F]"/>}
-   </button>
- );
  return <main id="main-content" ref={shellRef} className="realizo-app min-h-screen flex flex-col">
    <header className="realizo-topbar shrink-0 px-5 sm:px-7 flex items-center justify-between gap-3">
      <Link href="/studio" className="realizo-brand flex items-center gap-2.5 font-extrabold tracking-tight text-[24px]">
-       <Mark/>realizo<span className="text-[#EF8B89]">.</span>
+       <Mark/>realizo<span className="realizo-brand-dot">.</span>
      </Link>
      <nav className="realizo-v11-topnav" aria-label="Navegación principal">
        <button type="button" aria-current={page==='home'?'page':undefined} onClick={()=>setPage('home')}>Inicio</button>
        <button type="button" aria-current={page==='templates'?'page':undefined} onClick={()=>{setTemplateId(null);setPage('templates')}}>Plantillas</button>
        <button type="button" aria-current={page==='images'?'page':undefined} onClick={()=>setPage('images')}>Imágenes</button>
-       <button type="button" onClick={startNewVideo}>Crear video</button>
+       <button type="button" aria-current={page==='create'&&creatorMode!=='manual'?'page':undefined} onClick={startNewVideo}>Crear video</button>
        <button type="button" aria-current={page==='create'&&creatorMode==='manual'?'page':undefined} onClick={()=>chooseCreatorMode('manual')}>Prompt libre</button>
        <button type="button" aria-current={page==='hyperreal'?'page':undefined} onClick={()=>setPage('hyperreal')}>Hiperrealista PRO</button>
-       <button type="button" onClick={()=>setPage('videos')}>Mis creaciones</button>
+       <button type="button" aria-current={page==='videos'?'page':undefined} onClick={()=>setPage('videos')}>Mis creaciones</button>
       </nav>
      <div className="flex items-center gap-3">
        {guest?<Link href={loginUrl} className="realizo-login-cta inline-flex items-center gap-2 rounded-full font-bold text-[13px] px-5 py-2.5 transition">
@@ -273,32 +262,12 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
        <Link href="/wallet" className="realizo-balance inline-flex gap-2 items-center rounded-full font-bold text-[13px] px-4 py-2.5 transition">
          <Icon name="wallet" size={18}/>{wallet?usd(wallet.available_cents):'Mis créditos'}
        </Link>}
-       <button onClick={()=>setSidebar(b=>!b)} type="button" className="realizo-icon-button lg:hidden w-10 h-10 grid place-items-center rounded-full" aria-label="Abrir menú"><Icon name="sliders"/></button>
        {!guest&&<button onClick={exit} type="button" className="realizo-icon-button hidden lg:grid w-10 h-10 place-items-center rounded-full" aria-label="Cerrar sesión" title="Cerrar sesión"><Icon name="exit"/></button>}
      </div>
    </header>
 
    <div className="flex flex-1 min-h-[calc(100vh-76px)]">
-    <aside className={(sidebar?'block':'hidden')+' realizo-sidebar lg:block w-full lg:w-[245px] shrink-0 p-5 lg:p-6 space-y-4'}>
-      <div className="hidden lg:block py-3 mb-5"><p className="realizo-kicker mb-2">REALIZO AI STUDIO</p><p className="text-lg font-extrabold leading-snug">Estudio creativo<span className="realizo-orange">.</span></p></div>
-      <nav aria-label="Menú de Realizo" className="space-y-2">
-       {nav('home','Inicio','video')}
-       {nav('create','Crear video','video',startNewVideo)}
-       <button type="button" onClick={()=>chooseCreatorMode('manual')} aria-current={page==='create'&&creatorMode==='manual'?'page':undefined} className={navBase+' '+(page==='create'&&creatorMode==='manual'?'bg-[#EDE2FB] text-[#6542AB]':'text-[#756782] hover:bg-[#F7F0F7]')}><Icon name="sliders"/>Prompt libre</button>
-       {nav('hyperreal','Hiperrealista PRO','sliders')}
-       {nav('templates','Plantillas','sliders',()=>setTemplateId(null))}
-       {nav('images','Imágenes que venden','sliders')}
-       {nav('videos','Mis creaciones','folder')}
-       <Link href={guest?loginUrl:'/wallet'} className={navBase+' text-[#756782] hover:bg-[#F7F0F7]'}><Icon name="wallet"/>Mis créditos{guest?<Icon name="chevron" size={14}/>:<Icon name="chevron" size={14}/>}</Link>
-      </nav>
-      <div className="hidden lg:block pt-7"><div className="rounded-[22px] realizo-sidebar-banner p-5 relative overflow-hidden">
-        <div className="absolute w-24 h-24 -right-8 -top-10 rounded-full bg-[#D7A2D8]/20"/>
-        <p className="realizo-kicker mb-2">REALIZO STUDIO</p>
-        <p className="text-[17px] leading-6 font-extrabold">Tu próxima gran campaña empieza aquí.</p>
-        <div className="mt-5 flex gap-1.5 items-center"><span className="h-2 w-2 rounded-full bg-[#BBF2CD]"/><span className="text-[10px] text-[#DCCFEB]">Tu estudio creativo</span></div>
-      </div></div>
-      {guest?<Link href={loginUrl} className="lg:hidden mt-6 inline-flex items-center gap-2 text-sm text-[#fdb77b] px-4 py-2"><Icon name="arrow"/>Iniciar sesión</Link>:<button onClick={exit} className="lg:hidden mt-6 inline-flex items-center gap-2 text-sm text-[#765F88] px-4 py-2"><Icon name="exit"/>Cerrar sesión</button>}
-    </aside>
+
 
     <div className="realizo-content flex-1 min-w-0 px-4 sm:px-7 lg:px-10 py-8">
      <div className="realizo-contextbar max-w-[1420px] mx-auto" aria-label="Espacio actual">

@@ -5,6 +5,7 @@ import './realizo-premium-v11.css';
 import './realizo-template-creator.css';
 import './realizo-motion-home.css';
 import './realizo-conversion-images.css';
+import './realizo-apple-experience.css';
 import { Inter } from "next/font/google";
 import { headers } from 'next/headers';
 import { getLocaleConfig } from '@/lib/locales';
@@ -43,7 +44,7 @@ export const metadata = {
   },
 };
 
-export const viewport = { themeColor: '#100c12' };
+export const viewport = { themeColor: '#0b0b0e' };
 
 export default async function RootLayout({ children }) {
   // Locale is derived from the URL path by middleware.js and passed
