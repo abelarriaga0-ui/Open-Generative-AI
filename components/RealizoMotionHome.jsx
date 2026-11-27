@@ -9,9 +9,10 @@ const options = [
   {number:'02',tag:'DISEÑO PUBLICITARIO',title:'Crear imágenes',description:'Elige un diseño y adáptalo a tu producto.',symbol:'▧',kind:'images',wide:false},
   {number:'03',tag:'EMPIEZA CON UNA IDEA',title:'Explorar plantillas',description:'Parte de un formato y hazlo tuyo.',symbol:'▤',kind:'template',wide:false},
   {number:'04',tag:'CONTROL CREATIVO',title:'Prompt libre',description:'Describe la escena y ajusta los parámetros a tu gusto.',symbol:'⌘',kind:'manual',wide:true},
+  {number:'05',tag:'PRODUCCIÓN CINEMATOGRÁFICA',title:'Hiperrealista PRO',description:'Crea una campaña de varias escenas con actores, imágenes y montaje.',symbol:'✦',kind:'hyperreal',wide:false},
 ];
 
-export default function RealizoMotionHome({onCreate,onTemplates,onUseTemplate,onManual,onViewVideos,onImages}) {
+export default function RealizoMotionHome({onCreate,onTemplates,onUseTemplate,onManual,onViewVideos,onImages,onHyperreal}) {
   const videoRef=useRef(null);
   useEffect(()=>{
     const node=videoRef.current;
@@ -23,7 +24,7 @@ export default function RealizoMotionHome({onCreate,onTemplates,onUseTemplate,on
     observer.observe(node);
     return ()=>{observer.disconnect();node.pause();};
   },[]);
-  const actions={ai:onCreate,images:onImages,template:onTemplates,manual:onManual};
+  const actions={ai:onCreate,images:onImages,template:onTemplates,manual:onManual,hyperreal:onHyperreal};
   return <div className="realizo-apple-home">
     <section className="ra-hero" aria-label="Bienvenido a Realizo">
       <div className="ra-hero-copy">

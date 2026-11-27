@@ -27,6 +27,9 @@ function Mark() {
 function Icon({name,size=20}){
   const paths={
     video:<><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9 5 3-5 3V9Z"/></>,
+    home:<><path d="m3 11 9-7 9 7v9H3v-9Z"/><path d="M9 20v-7h6v7"/></>,
+    templates:<><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8m-8 4h8m-8 4h5"/></>,
+    image:<><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m4 18 5-5 3 3 4-5 4 5"/></>,
     wallet:<><rect x="3" y="6" width="18" height="14" rx="3"/><path d="M3 9V6a3 3 0 0 1 3-3h12"/><path d="M16 13h5"/></>,
     folder:<><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10H3V7Z"/></>,
     sliders:<><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="2" fill="#F7F3EE"/><circle cx="15" cy="17" r="2" fill="#F7F3EE"/></>,
@@ -303,6 +306,7 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
         onTemplates={()=>{setTemplateId(null);setPage('templates')}}
         onImages={()=>setPage('images')}
         onUseTemplate={chooseAdTemplate}
+        onHyperreal={()=>setPage('hyperreal')}
         onManual={()=>chooseCreatorMode('manual')}
         onViewVideos={()=>setPage('videos')}
       />}
@@ -399,10 +403,11 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
       </section>}
     </div>
    </div>
-   <nav className="ra-mobile-dock" aria-label="Navegación rápida de Realizo">
-     <button type="button" aria-current={page==='home'?'page':undefined} onClick={()=>setPage('home')}><Icon name="video" size={20}/><span>Inicio</span></button>
-     <button type="button" aria-current={page==='create'?'page':undefined} onClick={()=>{if(page!=='create')startNewVideo()}}><Icon name="sliders" size={20}/><span>Crear video</span></button>
-     <button type="button" aria-current={page==='images'?'page':undefined} onClick={()=>setPage('images')}><Icon name="folder" size={20}/><span>Imágenes</span></button>
+   <nav className="ra-mobile-dock" aria-label="Navegación inferior de Realizo">
+     <button type="button" aria-current={page==='home'?'page':undefined} onClick={()=>setPage('home')}><Icon name="home" size={20}/><span>Inicio</span></button>
+     <button type="button" aria-current={page==='templates'?'page':undefined} onClick={()=>{setTemplateId(null);setPage('templates')}}><Icon name="templates" size={20}/><span>Plantillas</span></button>
+     <button type="button" aria-current={page==='create'?'page':undefined} onClick={()=>{if(page!=='create')startNewVideo()}}><Icon name="video" size={20}/><span>Crear</span></button>
+     <button type="button" aria-current={page==='images'?'page':undefined} onClick={()=>setPage('images')}><Icon name="image" size={20}/><span>Imágenes</span></button>
      <button type="button" aria-current={page==='videos'?'page':undefined} onClick={()=>setPage('videos')}><Icon name="folder" size={20}/><span>Mis obras</span></button>
    </nav>
  </main>;
