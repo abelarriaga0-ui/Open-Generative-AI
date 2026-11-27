@@ -9,9 +9,9 @@ test('Mis creaciones sustituye Mis videos en navegación y conserva acceso desde
   const studio=read('components/RealizoStudio.jsx');
   const home=read('components/RealizoMotionHome.jsx');
   assert.match(studio,/>Mis creaciones<\/button>/);
-  assert.match(studio,/nav\('videos','Mis creaciones','folder'\)/);
+  assert.match(studio,/onClick=\{\(\)=>setPage\('videos'\)\}>Mis creaciones<\/button>/);
   assert.match(studio,/<RealizoCreationsGallery/);
-  assert.match(home,/onViewVideos}>Mis creaciones/);
+  assert.match(home,/onClick=\{onViewVideos\}>Ver mis creaciones/);
   assert.doesNotMatch(studio,/>Mis videos<\/button>/);
 });
 test('video e imagen se recuperan separadamente con sesión y se combinan por fecha',()=>{
