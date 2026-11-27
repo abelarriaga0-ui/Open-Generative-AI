@@ -544,3 +544,81 @@
  .realizo-app [data-ra-reveal]{opacity:1!important;transform:none!important;transition:none!important}
  .realizo-app .ra-carousel-arrow{transition:none!important}
 }
+
+
+/* Mobile navigation correction: one navigation surface, not duplicated rows.
+ * Move the swipeable creation choices above the large video preview so the
+ * interactive part of the application appears immediately on a phone. */
+@media(max-width:900px){
+  .realizo-app .realizo-v11-topnav{
+    display:none!important;
+    visibility:hidden!important;
+  }
+  .realizo-app .realizo-topbar{
+    height:66px!important;
+    min-height:66px!important;
+    flex-wrap:nowrap!important;
+    justify-content:space-between!important;
+    gap:10px!important;
+    padding:0 14px!important;
+  }
+  .realizo-app .realizo-topbar>div:last-child{
+    order:2!important;
+    margin-left:auto!important;
+  }
+  .realizo-app .ra-mobile-dock{
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;
+    padding-inline:5px!important;
+    gap:2px!important;
+  }
+  .realizo-app .ra-mobile-dock button{padding:4px 2px!important;min-width:0}
+  .realizo-app .ra-mobile-dock button span{
+    display:block;max-width:100%;overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap;font-size:10px;
+  }
+  .realizo-app .realizo-apple-home{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:stretch!important;
+  }
+  .realizo-app .realizo-apple-home .ra-hero{display:contents!important}
+  .realizo-app .realizo-apple-home .ra-hero-copy{
+    order:0;
+    padding:32px 27px!important;
+    border:1px solid #32343e;
+    border-radius:24px;
+    background:linear-gradient(140deg,#171a22,#111218)!important;
+  }
+  .realizo-app .realizo-apple-home .ra-tool-section{
+    order:1;
+    margin-top:28px!important;
+  }
+  .realizo-app .realizo-apple-home .ra-showcase{
+    order:2;
+    margin-top:30px!important;
+    max-width:100%;
+  }
+  .realizo-app .realizo-apple-home .ra-spotlight{order:3}
+  .realizo-app .realizo-apple-home .ra-closing{order:4}
+}
+@media(max-width:600px){
+  .realizo-app .realizo-apple-home .ra-hero-copy{padding:25px 20px!important}
+  .realizo-app .realizo-apple-home .ra-hero h1{
+    font-size:clamp(35px,9vw,47px)!important;
+    margin-top:17px!important;line-height:1.075!important;
+  }
+  .realizo-app .realizo-apple-home .ra-hero-description{
+    font-size:14px!important;line-height:1.55!important;margin-top:16px!important;
+  }
+  .realizo-app .realizo-apple-home .ra-hero-actions{margin-top:22px!important}
+  .realizo-app .realizo-apple-home .ra-button{min-height:46px!important}
+  .realizo-app .realizo-apple-home .ra-hero-assurance{
+    margin-top:20px!important;gap:12px!important;
+    font-size:10px!important;
+  }
+  .realizo-app .realizo-apple-home .ra-tool-section{margin-top:25px!important}
+  .realizo-app .realizo-apple-home .ra-section-title h2{font-size:27px!important}
+  .realizo-app .ra-mobile-dock button{font-size:10px!important}
+  .realizo-app .realizo-brand{font-size:22px!important}
+  .realizo-app .realizo-brand svg{width:32px;height:32px}
+}
