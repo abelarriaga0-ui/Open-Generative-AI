@@ -6,6 +6,7 @@ import './realizo-template-creator.css';
 import './realizo-motion-home.css';
 import './realizo-conversion-images.css';
 import './realizo-apple-experience.css';
+import './realizo-app-motion.css';
 import { Inter } from "next/font/google";
 import { headers } from 'next/headers';
 import { getLocaleConfig } from '@/lib/locales';

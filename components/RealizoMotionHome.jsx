@@ -49,7 +49,7 @@ export default function RealizoMotionHome({onCreate,onTemplates,onUseTemplate,on
       </div>
     </section>
 
-    <section className="ra-tool-section" aria-labelledby="ra-tools-title">
+    <section data-ra-reveal className="ra-tool-section" aria-labelledby="ra-tools-title">
       <div className="ra-section-title"><div><p className="ra-eyebrow">TU ESTUDIO, TUS REGLAS</p><h2 id="ra-tools-title">Todo empieza aquí.</h2></div><p>Elige cómo quieres crear.</p></div>
       <RealizoSwipeRail className="ra-tools ra-swipe-home" label="Desliza entre las formas de crear">
         {options.map(option=><button type="button" key={option.kind} className={'ra-tool-card'+(option.wide?' ra-tool-wide':'')} onClick={actions[option.kind]}>

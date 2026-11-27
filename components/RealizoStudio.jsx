@@ -66,6 +66,23 @@ export default function RealizoStudio({accountId,guest=false,initialPage='home'}
  const [createKey,setCreateKey]=useState(0);
  const [sidebar,setSidebar]=useState(false);
  useEffect(()=>{
+   const root=shellRef.current;
+   if(!root||!('IntersectionObserver' in window)||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+   const targets=Array.from(root.querySelectorAll('[data-ra-reveal]'));
+   if(!targets.length)return;
+   const observer=new IntersectionObserver(entries=>{
+     for(const entry of entries){
+       if(entry.isIntersecting){
+         entry.target.setAttribute('data-ra-visible','true');
+         observer.unobserve(entry.target);
+       }
+     }
+   },{threshold:.09,rootMargin:'0px 0px -12px 0px'});
+   targets.forEach(target=>observer.observe(target));
+   root.classList.add('ra-reveal-enabled');
+   return ()=>{observer.disconnect();root.classList.remove('ra-reveal-enabled');};
+ },[page]);
+ useEffect(()=>{
    const main=shellRef.current?.querySelector('.realizo-content');
    if(!main||!main.animate||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
    main.animate([{opacity:.8,transform:'translateY(8px)'},{opacity:1,transform:'translateY(0px)'}],
