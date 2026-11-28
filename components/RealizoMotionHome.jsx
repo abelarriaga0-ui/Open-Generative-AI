@@ -1,6 +1,6 @@
 'use client';
 
-import {useEffect, useRef} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import RealizoSwipeRail from '@/components/RealizoSwipeRail';
 import {TEMPLATE_HOVER_SRC,TEMPLATE_POSTER_SRC} from '@/lib/realizo-creative/template-video-input';
 
@@ -14,23 +14,51 @@ const options = [
 
 export default function RealizoMotionHome({onCreate,onTemplates,onUseTemplate,onManual,onViewVideos,onImages,onHyperreal}) {
   const videoRef=useRef(null);
+  const playbackPreference=useRef('auto');
+  const [isPlaying,setIsPlaying]=useState(false);
   useEffect(()=>{
     const node=videoRef.current;
-    if(!node||!('IntersectionObserver' in window)||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-    const observer=new IntersectionObserver(entries=>{
-      if(entries[0]?.isIntersecting)node.play().catch(()=>{});
+    if(!node)return;
+    const motion=window.matchMedia('(prefers-reduced-motion: reduce)');
+    let inView=false;
+    const sync=()=>{
+      const preference=playbackPreference.current;
+      const canPlay=inView&&!document.hidden&&preference!=='paused'&&(!motion.matches||preference==='playing');
+      if(canPlay)node.play().catch(()=>{});
       else node.pause();
-    },{threshold:.25});
-    observer.observe(node);
-    return ()=>{observer.disconnect();node.pause();};
+    };
+    const observer='IntersectionObserver' in window?new IntersectionObserver(entries=>{
+      inView=Boolean(entries[0]?.isIntersecting&&entries[0]?.intersectionRatio>=.25);
+      sync();
+    },{threshold:.25}):null;
+    observer?.observe(node);
+    document.addEventListener('visibilitychange',sync);
+    motion.addEventListener?.('change',sync);
+    return ()=>{
+      observer?.disconnect();
+      document.removeEventListener('visibilitychange',sync);
+      motion.removeEventListener?.('change',sync);
+      node.pause();
+    };
   },[]);
+  function togglePreview(){
+    const node=videoRef.current;
+    if(!node)return;
+    if(node.paused){
+      playbackPreference.current='playing';
+      node.play().catch(()=>{});
+    }else{
+      playbackPreference.current='paused';
+      node.pause();
+    }
+  }
   const actions={ai:onCreate,images:onImages,template:onTemplates,manual:onManual,hyperreal:onHyperreal};
   return <div className="realizo-apple-home">
     <section className="ra-hero" aria-label="Bienvenido a Realizo">
       <div className="ra-hero-copy">
         <p className="ra-eyebrow"><span className="ra-live-dot" aria-hidden="true"/> REALIZO STUDIO</p>
-        <h1>Tu producto.<br/><span>Una nueva historia.</span></h1>
-        <p className="ra-hero-description">Transforma una foto en videos e imágenes para tu negocio. Crea con IA, con libertad y sin complicaciones.</p>
+        <h1><span className="ra-headline-line">Imagina.</span>{' '}<span className="ra-headline-line">Crea.</span>{' '}<span className="ra-headline-line ra-headline-accent">Hazlo realidad.</span></h1>
+        <p className="ra-hero-description">Tu próximo gran anuncio empieza aquí. Transforma una foto en videos e imágenes con IA.</p>
         <div className="ra-hero-actions">
           <button type="button" className="ra-button ra-button-primary" onClick={onCreate}>Crear video <span aria-hidden="true">↗</span></button>
           <button type="button" className="ra-button ra-button-secondary" onClick={onTemplates}>Ver plantillas <span aria-hidden="true">→</span></button>
@@ -43,8 +71,11 @@ export default function RealizoMotionHome({onCreate,onTemplates,onUseTemplate,on
       <div className="ra-showcase" aria-label="Ejemplo visual de video publicitario">
         <div className="ra-showcase-top"><span><i/> EJEMPLO DE VIDEO</span><span>FORMATO VERTICAL</span></div>
         <div className="ra-preview">
-          <video ref={videoRef} src={TEMPLATE_HOVER_SRC} poster={TEMPLATE_POSTER_SRC} muted loop playsInline preload="metadata" disablePictureInPicture controlsList="nodownload noremoteplayback noplaybackrate" aria-label="Ejemplo visual de anuncio UGC"/>
+          <video ref={videoRef} src={TEMPLATE_HOVER_SRC} poster={TEMPLATE_POSTER_SRC} muted loop playsInline preload="metadata" disablePictureInPicture controlsList="nodownload noremoteplayback noplaybackrate" aria-label="Ejemplo visual de anuncio UGC" onPlay={()=>setIsPlaying(true)} onPause={()=>setIsPlaying(false)} onEnded={()=>setIsPlaying(false)}/>
           <span className="ra-preview-float">CREADO PARA DESTACAR</span>
+          <button type="button" className="ra-preview-toggle" onClick={togglePreview} aria-label={isPlaying?'Pausar video de ejemplo':'Reproducir video de ejemplo'} title={isPlaying?'Pausar video':'Reproducir video'}>
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">{isPlaying?<><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></>:<path d="M8 5v14l11-7z"/>}</svg>
+          </button>
         </div>
         <div className="ra-showcase-bottom"><div><strong>UGC Vendedor</strong><span>Una idea de lo que puedes crear</span></div><button type="button" onClick={onTemplates} aria-label="Explorar plantillas">↗</button></div>
       </div>
