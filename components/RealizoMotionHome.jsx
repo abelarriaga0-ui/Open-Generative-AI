@@ -68,6 +68,14 @@ export default function RealizoMotionHome({onCreate,onTemplates,onManual,onViewV
  function pointerEnd(e){if(drag.current?.id===e.pointerId)drag.current=null;turn(0,0);}
  useEffect(()=>()=>{if(frame.current)cancelAnimationFrame(frame.current);},[]);
  useEffect(()=>{
+  const hero=heroRef.current;if(!hero)return;
+  const motion=window.matchMedia('(prefers-reduced-motion: reduce)');let request=0;
+  const update=()=>{request=0;if(motion.matches){hero.style.removeProperty('--rzx-scroll-shift');return;}const rect=hero.getBoundingClientRect();const progress=Math.max(0,Math.min(1,-rect.top/Math.max(1,rect.height)));hero.style.setProperty('--rzx-scroll-shift',(progress*45).toFixed(2)+'px');};
+  const queue=()=>{if(!request)request=requestAnimationFrame(update);};
+  window.addEventListener('scroll',queue,{passive:true});motion.addEventListener?.('change',queue);queue();
+  return()=>{window.removeEventListener('scroll',queue);motion.removeEventListener?.('change',queue);if(request)cancelAnimationFrame(request);};
+ },[]);
+ useEffect(()=>{
   const node=videoRef.current;if(!node)return;
   const motion=window.matchMedia('(prefers-reduced-motion: reduce)');let visible=false;
   const sync=()=>{if(visible&&!document.hidden&&playbackPreference.current!=='paused'&&(!motion.matches||playbackPreference.current==='playing'))node.play().catch(()=>{});else node.pause();};
@@ -93,7 +101,7 @@ export default function RealizoMotionHome({onCreate,onTemplates,onManual,onViewV
      <button type="button" onClick={()=>changeProduct(selected+1)} aria-label="Producto siguiente">→</button>
     </div>
    </div>
-   <div className="rzx-meta"><span>01 / 03 — CONCEPTOS</span><div className="rzx-swatches" aria-label="Elegir producto">{products.map((p,i)=><button key={p.name} type="button" style={{'--swatch':p.tone}} aria-label={p.name} aria-pressed={selected===i} onClick={()=>changeProduct(i)}/>)}</div><small>Arrastra o mueve el cursor.</small></div>
+   <div className="rzx-meta"><span>{String(selected+1).padStart(2,'0')} / 03 — CONCEPTOS</span><div className="rzx-swatches" aria-label="Elegir producto">{products.map((p,i)=><button key={p.name} type="button" style={{'--swatch':p.tone}} aria-label={p.name} aria-pressed={selected===i} onClick={()=>changeProduct(i)}/>)}</div><small>Arrastra o mueve el cursor.</small></div>
    <div className="rzx-copy"><p className="rzx-script">sin límites.</p><p>Tu producto. Una foto. Un universo de posibilidades.</p><div className="rzx-actions"><button type="button" className="rzx-primary" onClick={onCreate}>Crear video <span>↗</span></button><button type="button" className="rzx-secondary" onClick={onTemplates}>Ver plantillas</button></div><small>Conoce el precio antes de generar.</small></div>
    <a className="rzx-scroll" href="#rzx-tools">Explorar el estudio <span aria-hidden="true">↓</span></a>
   </section>
