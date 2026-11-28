@@ -266,3 +266,77 @@
 @media(max-width:1100px){.realizo-motion-way-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:650px){.realizo-motion-image-spotlight{grid-template-columns:1fr}.realizo-motion-image-art{min-height:265px}.realizo-motion-image-art img{height:300px}.realizo-motion-image-copy{padding:28px}.realizo-motion-way-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:370px){.realizo-motion-way-grid{grid-template-columns:1fr}}
+
+
+/* Cinematic first impression — home only, no blocking loader.
+   Initial content is server-rendered and usable even without animation. */
+.realizo-app .realizo-apple-home .ra-hero{
+  background:radial-gradient(ellipse at 88% 26%,#35236075,transparent 56%),linear-gradient(135deg,#191722,#101116 65%,#1c1830);
+  border-color:#39334a;
+}
+.realizo-app .realizo-apple-home .ra-hero h1 .ra-headline-line{display:block;color:#f5f5f7}
+.realizo-app .realizo-apple-home .ra-hero h1 .ra-headline-accent{color:#bea8ff}
+.realizo-app .realizo-apple-home .ra-hero .ra-button-primary{
+  background:#c2adff;color:#171026;border-color:#c2adff;
+}
+.realizo-app .realizo-apple-home .ra-hero .ra-button-primary:hover{background:#d8caff}
+.realizo-app .realizo-apple-home .ra-showcase{
+  background:linear-gradient(145deg,#292432,#1b1b22);
+  border-color:#514663;
+}
+.realizo-app .realizo-apple-home .ra-preview-toggle{
+  position:absolute;right:12px;bottom:12px;z-index:2;
+  min-width:44px;min-height:44px;border-radius:50%;
+  border:1px solid #ffffff65;background:#11121ad9;color:#fff;
+  display:grid;place-items:center;cursor:pointer;
+}
+.realizo-app .realizo-apple-home .ra-preview-toggle:hover{background:#343047}
+.realizo-app .realizo-apple-home .ra-preview-toggle svg{width:19px;height:19px}
+.realizo-app .realizo-apple-home .ra-preview-float{max-width:calc(100% - 72px)}
+@keyframes ra-cinematic-type-in{
+  from{opacity:.68;translate:0 13px;filter:blur(2px)}
+  to{opacity:1;translate:0 0;filter:blur(0)}
+}
+@keyframes ra-cinematic-media-in{
+  from{opacity:.78;translate:0 14px;scale:.975}
+  to{opacity:1;translate:0 0;scale:1}
+}
+@keyframes ra-cinematic-card-in{
+  from{opacity:.82;translate:0 8px}
+  to{opacity:1;translate:0 0}
+}
+@media(prefers-reduced-motion:no-preference){
+  .realizo-app .realizo-apple-home .ra-hero-copy>.ra-eyebrow{
+    animation:ra-cinematic-type-in .32s cubic-bezier(.2,.75,.2,1) both;
+  }
+  .realizo-app .realizo-apple-home .ra-headline-line{
+    animation:ra-cinematic-type-in .55s cubic-bezier(.2,.75,.2,1) both;
+  }
+  .realizo-app .realizo-apple-home .ra-headline-line:nth-child(2){animation-delay:65ms}
+  .realizo-app .realizo-apple-home .ra-headline-line:nth-child(3){animation-delay:130ms}
+  .realizo-app .realizo-apple-home .ra-hero-description{
+    animation:ra-cinematic-type-in .42s cubic-bezier(.2,.75,.2,1) 100ms both;
+  }
+  .realizo-app .realizo-apple-home .ra-hero-assurance{
+    animation:ra-cinematic-card-in .35s ease-out 150ms both;
+  }
+  .realizo-app .realizo-apple-home .ra-showcase{
+    animation:ra-cinematic-media-in .65s cubic-bezier(.2,.75,.2,1) both;
+  }
+  .realizo-app .realizo-apple-home .ra-tool-section[data-ra-visible="true"] .ra-tool-card{
+    animation:ra-cinematic-card-in .4s cubic-bezier(.2,.75,.2,1) both;
+  }
+  .realizo-app .realizo-apple-home .ra-tool-section[data-ra-visible="true"] .ra-tool-card:nth-child(2){animation-delay:55ms}
+  .realizo-app .realizo-apple-home .ra-tool-section[data-ra-visible="true"] .ra-tool-card:nth-child(3){animation-delay:110ms}
+  .realizo-app .realizo-apple-home .ra-tool-section[data-ra-visible="true"] .ra-tool-card:nth-child(4){animation-delay:165ms}
+  .realizo-app .realizo-apple-home .ra-tool-section[data-ra-visible="true"] .ra-tool-card:nth-child(5){animation-delay:220ms}
+  .realizo-app .realizo-apple-home .ra-hero-copy:focus-within .ra-headline-line,
+  .realizo-app .realizo-apple-home .ra-showcase:focus-within,
+  .realizo-app .realizo-apple-home .ra-tool-section[data-ra-visible="true"] .ra-tool-card:focus-visible{animation:none}
+}
+@media(max-width:900px){
+  .realizo-app .realizo-apple-home .ra-hero .ra-hero-copy{
+    background:radial-gradient(ellipse at 95% 5%,#39266a80,transparent 62%),linear-gradient(140deg,#1b1828,#101116)!important;
+    border-color:#39334a;
+  }
+}
